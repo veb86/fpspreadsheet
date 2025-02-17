@@ -360,6 +360,15 @@ begin
           rtCellRange:
             begin
               val := GetCellValue(valuesheet, r, c);
+              // When val contains an error, but the value cell is the same as
+              // as the criteria cell we have extracted a criteria value.
+              // Since a match had been found before the formula must use the
+              // error value as search criterion.
+              if IsNaN(val) and (FValueRangeIndex = FCriteriaRangeIndex) then
+              begin;
+                val := 1;
+                FError := errOK;
+              end;
               if not (FFuncType in [ftCountIF, ftCountIFS]) and (FError <> errOK) then
               begin
                 Result := ErrorResult(FError);
@@ -414,6 +423,7 @@ begin
           if not TryStrToFloat(cell^.UTF8StringValue, Result) then Result := NaN;
         cctError:
           begin
+ //           Result := 1;   // we're just counting the error
             FError := cell^.ErrorValue;
             Result := NaN;
           end;
@@ -1003,7 +1013,13 @@ begin
   if IsError(Args[0], Result) then
     exit;
 
-  x := ArgToFloat(Args[0]);
+  if (Args[0].ResultType = rtMissingArg) then
+  begin
+    Result := ErrorResult(errOverflow);  // #NUM! as tested by Excel
+    exit;
+  end;
+
+  x := ArgToFloatOrNaN(Args[0]);
   if IsNaN(x) then begin
     Result := ErrorResult(errWrongType);
     exit;
@@ -1016,12 +1032,14 @@ begin
 
   if (Length(Args) = 2) then
   begin
+    if IsError(Args[1], Result) then
+      exit;
     if (Args[1].ResultType = rtMissingArg) then
     begin
       Result := ErrorResult(errOverflow);  // #NUM! as tested by Excel
       exit;
     end;
-    base := ArgToFloat(Args[1]);
+    base := ArgToFloatOrNaN(Args[1]);
     if IsNaN(base) then begin
       Result := ErrorResult(errWrongType);
       exit;
@@ -1043,14 +1061,24 @@ begin
   if IsError(Args[0], Result) then
     exit;
 
-  x := ArgToFloat(Args[0]);
-  if IsNaN(x) then
-    Result := ErrorResult(errWrongType)    // #VALUE!
-  else
-  if x > 0 then
-    Result := FloatResult(log10(x))
-  else
-    Result := ErrorResult(errOverflow);   // #NUM!
+  if (Args[0].ResultType = rtMissingArg) then
+  begin
+    Result := ErrorResult(errOverflow);  // #NUM! as tested by Excel
+    exit;
+  end;
+
+  x := ArgToFloatOrNaN(Args[0]);
+  if IsNaN(x) then begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
+
+  if x <= 0 then begin
+    Result := ErrorResult(errOverflow);  // #NUM!
+    exit;
+  end;
+
+  Result := FloatResult(log10(x))
 end;
 
 procedure fpsMOD(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2881,10 +2909,11 @@ end;
 //   #NULL!  #DIV/0!  #VALUE!  #REF!  #NAME?  #NUM!  #N/A  // #GETTING_DATA and newer ones -- not supported
 // When there is no error in the argument the function reports a #N/A error!
 procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  res: TsExpressionResult;
 begin
-  if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
-  then
-    Result := IntegerResult(ord(Args[0].ResError))
+  if IsError(Args[0], res) then
+    Result := IntegerResult(ord(res.ResError))
   else
     Result := ErrorResult(errArgError);
 end;
@@ -3143,15 +3172,13 @@ end;
 procedure fpsCOLUMN(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 begin
-  if IsError(Args[0], Result) then
-    exit;
   Result := ErrorResult(errArgError);
-  if Length(Args) = 0 then
-    exit;  // We don't know here which cell contains the formula.
   case Args[0].ResultType of
-    rtCell     : Result := IntegerResult(Args[0].ResCol + 1);
-    rtCellRange: Result := IntegerResult(Args[0].ResCellRange.Col1 + 1);
-    else         Result := ErrorResult(errWrongType);
+    rtCell       : Result := IntegerResult(Args[0].ResCol + 1);
+    rtCellRange  : Result := IntegerResult(Args[0].ResCellRange.Col1 + 1);
+    rtError      : Result := ErrorResult(Args[0].ResError);
+    rtMissingArg : Result := IntegerResult(Args[0].ResCol + 1);
+    else           Result := ErrorResult(errWrongType);
   end;
 end;
 
@@ -3462,14 +3489,12 @@ procedure fpsROW(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 begin
   Result := ErrorResult(errArgError);
-  if Length(Args) = 0 then
-    exit;  // We don't know here which cell contains the formula.
-  if IsError(Args[0], Result) then
-    exit;
   case Args[0].ResultType of
-    rtCell     : Result := IntegerResult(Args[0].ResRow + 1);
-    rtCellRange: Result := IntegerResult(Args[0].ResCellRange.Row1 + 1);
-    else         Result := ErrorResult(errWrongType);
+    rtCell       : Result := IntegerResult(Args[0].ResRow + 1);
+    rtCellRange  : Result := IntegerResult(Args[0].ResCellRange.Row1 + 1);
+    rtError      : Result := ErrorResult(Args[0].ResError);
+    rtMissingArg : Result := IntegerResult(Args[0].ResRow + 1);
+    else           Result := ErrorResult(errWrongType);
   end;
 end;
 

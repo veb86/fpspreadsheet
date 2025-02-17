@@ -305,6 +305,8 @@ begin
 end;
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
+const
+  dummy = Cardinal(-1);
 var
   r,c: Cardinal;
   parser: TsSpreadsheetParser;
@@ -317,7 +319,7 @@ begin
     // Special case: v is a formula, i.e. begins with '='
     if (Length(Result) > 1) and (Result[1] = '=') then
     begin
-      parser := TsSpreadsheetParser.Create(AWorksheet);
+      parser := TsSpreadsheetParser.Create(AWorksheet, dummy, dummy);
       try
         try
           parser.Expression[fdExcelA1] := Result;    // Parse in Excel-A1 dialect
@@ -1048,7 +1050,7 @@ begin
         else
         if TsCFCondition(condition) = cfcExpression then
         begin
-          parser := TsSpreadsheetParser.Create(AWorksheet);
+          parser := TsSpreadsheetParser.Create(AWorksheet, 0, 0);
           try
             try
               parser.R1C1Expression[nil] := s;       // Parse in Excel-R1C1 dialect

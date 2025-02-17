@@ -3066,7 +3066,7 @@ begin
     formula := TsWorksheet(FWorksheet).Formulas.FindFormula(ACell);
     if formula = nil then begin
       formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ACell^.Row, ACell^.Col);
-      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet, ACell^.Row, ACell^.Col);
     end;
     formula^.Parser.RPNFormula := rpnFormula;
     formula^.Text := formula^.Parser.Expression[fdExcelA1];

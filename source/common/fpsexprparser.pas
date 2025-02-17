@@ -125,6 +125,7 @@ type
   protected
     procedure GetNodeValue(out AResult: TsExpressionResult); virtual; abstract;
   public
+    constructor Create(AParser: TsExpressionParser);
     function AsRPNItem(ANext: PRPNItem): PRPNItem; virtual; abstract;
     function AsString: string; virtual; abstract;
     procedure Check; virtual; //abstract;
@@ -701,6 +702,8 @@ type
     FHashList: TFPHashObjectlist;
     FDirty: Boolean;
     FWorksheet: TsBasicWorksheet;
+    FRow: Cardinal;  // cell which contains the formula handled by the parser
+    FCol: Cardinal;
     FDialect: TsFormulaDialect;
     FSourceCell: PCell;
     FDestCell: PCell;
@@ -754,7 +757,7 @@ type
     property ExprNode: TsExprNode read FExprNode;
 
   public
-    constructor Create(AWorksheet: TsBasicWorksheet); virtual;
+    constructor Create(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal); virtual;
     destructor Destroy; override;
     function IdentifierByName(AName: ShortString): TsExprIdentifierDef; virtual;
     procedure Clear;
@@ -797,7 +800,7 @@ type
 
   TsSpreadsheetParser = class(TsExpressionParser)
   public
-    constructor Create(AWorksheet: TsBasicWorksheet); override;
+    constructor Create(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal); override;
     procedure AddDefinedNames;
   end;
 
@@ -879,6 +882,7 @@ function IntegerResult(const AValue: Integer): TsExpressionResult;
 function IsBlank(const AValue: TsExpressionResult): Boolean;
 function IsError(const AValue: TsExpressionResult; out AError: TsExpressionResult): boolean;
 function IsInteger(const AValue: TsExpressionResult): Boolean;
+function IsReference(const AValue: TsExpressionResult): Boolean;
 function IsString(const AValue: TsExpressionResult): Boolean;
 function StringResult(const AValue: String): TsExpressionResult;
 
@@ -887,8 +891,8 @@ procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
 procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
   const AParamTypes: String; const AExcelCode: Integer; ACallBack: TsExprFunctionEvent); overload;
 
-function ConvertFormulaDialect(AFormula: String;
-  ASrcDialect, ADestDialect: TsFormulaDialect; AWorksheet: TsBasicWorksheet): String;
+function ConvertFormulaDialect(AFormula: String; ASrcDialect, ADestDialect: TsFormulaDialect;
+  AWorksheet: TsBasicWorksheet): String;
 
 var
   // Format settings used in stored parsed formulas.
@@ -1510,10 +1514,12 @@ end;
 {  TsExpressionParser                                                         }
 {------------------------------------------------------------------------------}
 
-constructor TsExpressionParser.Create(AWorksheet: TsBasicWorksheet);
+constructor TsExpressionParser.Create(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal);
 begin
   inherited Create;
   FWorksheet := AWorksheet;
+  FRow := ARow;
+  FCol := ACol;
   FIdentifiers := TsExprIdentifierDefs.Create(TsExprIdentifierDef);
   FIdentifiers.FParser := Self;
   FScanner := TsExpressionScanner.Create(self);
@@ -2013,7 +2019,7 @@ begin
           end;
           if (prevTokenType in [ttLeft, ttListSep]) and (TokenType in [ttListSep, ttRight]) then
           begin
-            Args[AI] := TsMissingArgExprNode.Create;
+            Args[AI] := TsMissingArgExprNode.Create(self);
             inc(AI);
             Continue;
           end;
@@ -2321,7 +2327,7 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
         end;
       fekMissingArg:
         begin
-          ANode := TsMissingArgExprNode.Create;
+          ANode := TsMissingArgExprNode.Create(self);
           dec(AIndex);
         end;
 
@@ -2427,9 +2433,11 @@ end;
 {  TsSpreadsheetParser                                                         }
 {------------------------------------------------------------------------------}
 
-constructor TsSpreadsheetParser.Create(AWorksheet: TsBasicWorksheet);
+constructor TsSpreadsheetParser.Create(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal);
 begin
-  inherited Create(AWorksheet);
+  inherited Create(AWorksheet, ARow, ACol);
+  FRow := ARow;
+  FCol := ACol;
   BuiltIns := AllBuiltIns;
 end;
 
@@ -2991,6 +2999,11 @@ end;
 
 { TsExprNode }
 
+constructor TsExprNode.Create(AParser: TsExpressionParser);
+begin
+  FParser := AParser;
+end;
+
 procedure TsExprNode.Check;
 begin
 end;
@@ -3077,17 +3090,11 @@ begin
 
   FLeft.GetNodeValue(ALeft);
   if IsError(ALeft, AError) then
-  begin
-    AError := ErrorResult(ALeft.ResError);
     exit;
-  end;
 
   FRight.GetNodeValue(ARight);
   if IsError(ARight, AError) then
-  begin
-    AError := ErrorResult(ARight.ResError);
     exit;
-  end;
 
   Result := true;
 end;
@@ -3254,7 +3261,11 @@ end;
 procedure TsMissingArgExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
   AResult.ResultType := rtMissingArg;
-  AResult.ResInteger := 0;
+  // Some formulas use the cell containing the formula as replacement argument.
+  // Here we put in the required information.
+  AResult.Worksheet := FParser.FWorksheet;
+  AResult.ResRow := FParser.FRow;
+  AResult.ResCol := FParser.FCol;
 end;
 
 function TsMissingArgExprNode.NodeType: TsResultType;
@@ -4395,11 +4406,13 @@ begin
          {$ENDIF}
         end;
     end;
+             (*
     if cell^.ContentType = cctError then
     begin
       AResult := ErrorResult(cell^.ErrorValue);
       exit;
     end;
+    *)
   end;
 
   AResult.ResultType := rtCell;
@@ -5344,6 +5357,11 @@ begin
   end;
 end;
 
+function IsReference(const AValue: TsExpressionResult): Boolean;
+begin
+  Result := AValue.ResultType = rtCell;
+end;
+
 function IsString(const AValue: TsExpressionResult): Boolean;
 var
   cell: PCell;
@@ -5366,8 +5384,10 @@ begin
 end;
 
 
-function ConvertFormulaDialect(AFormula: String;
-  ASrcDialect, ADestDialect: TsFormulaDialect; AWorksheet: TsBasicWorksheet): String;
+function ConvertFormulaDialect(AFormula: String; ASrcDialect, ADestDialect: TsFormulaDialect;
+  AWorksheet: TsBasicWorksheet): String;
+const
+  dummy = Cardinal(-1);
 var
   parser: TsSpreadsheetParser;
 begin
@@ -5380,7 +5400,7 @@ begin
   if (ASrcDialect = fdExcelR1C1) or (ADestDialect = fdExcelR1C1) then
     raise Exception.Create('ConvertFormulaDialect cannot be used for Excel R1C1 syntax.');
 
-  parser := TsSpreadsheetParser.Create(AWorksheet);
+  parser := TsSpreadsheetParser.Create(AWorksheet, dummy, dummy);
   try
     try
       parser.Expression[ASrcDialect] := AFormula;    // Parse in source dialect

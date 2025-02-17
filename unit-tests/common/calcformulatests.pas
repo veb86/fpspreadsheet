@@ -25,6 +25,7 @@ type
     procedure Test_AVERAGE;
     procedure Test_AVERAGEIF;
     procedure Test_CEILING;
+    procedure Test_COLUMN;
     procedure Test_CONCATENATE;
     procedure Test_COUNT;
     procedure Test_COUNTA;
@@ -48,6 +49,8 @@ type
     procedure Test_ISREF;
     procedure Test_ISTEXT;
     procedure Test_LEN;
+    procedure Test_LOG;
+    procedure Test_LOG10;
     procedure Test_LOWER;
     procedure Test_MATCH;
     procedure Test_MAX;
@@ -56,6 +59,7 @@ type
     procedure Test_OR;
     procedure Test_PRODUCT;
     procedure Test_ROUND;
+    procedure Test_ROW;
     procedure Test_STDEV;
     procedure Test_STDEVP;
     procedure Test_SUM;
@@ -507,6 +511,33 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #12 CEILING(5.4, 1/0) result mismatch');
 end;
 
+procedure TCalcFormulaTests.Test_COLUMN;
+begin
+  // Get column number of specified cell
+  FWorksheet.WriteFormula(0, 1, '=COLUMN(B2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 COLUMN(B2) result mismatch');
+
+  // Get col of the formula cell --- NOT CORRECTLY IMPLEMENTED IN FPS
+  FWorksheet.WriteFormula(0, 1, '=COLUMN()');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 COLUMN() result mismatch');   // This would be the Excel result!
+  //CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #2 COLUMN() result mismatch');
+
+  // Error value as argument
+  FWorksheet.WriteFormula(0, 1, '=COLUMN(#REF!)');
+  FWorksheet.CalcFormulas;
+  //CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 COLUMN() result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #3 COLUMN(#REF!) result mismatch');
+
+  // Cell containing an error as argument
+  FWorksheet.WriteFormula(1, 1, '=1/0');  // cell B2
+  FWorksheet.WriteFormula(0, 2, '=COLUMN(B2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 COLUMN(B2) (B2 contains error) result mismatch');
+
+end;
+
 procedure TCalcFormulaTests.Test_CONCATENATE;
 begin
   // Test data
@@ -903,11 +934,16 @@ end;
 
 procedure TCalcFormulaTests.Test_ERRORTYPE;
 begin
-  // No error
+  // Explicit error type
+  FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(ord(errIllegalRef), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE(#REF!) result mismatch');
+
+  // No error in cell --> #N/A
   FWorksheet.WriteNumber(0, 0, 123);
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 1), 'Formula #1 ERROR.TYPE (no error!) result mismatch');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 1), 'Formula #2 ERROR.TYPE (no error!) result mismatch');
 
   // #NULL! error
   FWorksheet.WriteNumber(0, 0, 12);
@@ -927,25 +963,25 @@ begin
   FWorksheet.DeleteRow(0);     // This creates the #REF! error in the sum cell A2
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(A2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(ord(errIllegalRef), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE (#REF!) result mismatch');
+  CheckEquals(ord(errIllegalRef), FWorksheet.ReadAsNumber(0, 1), 'Formula #3 ERROR.TYPE (#REF!) result mismatch');
 
   // #VALUE! error
   FWorksheet.WriteText(0, 0, 'a');
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(1+A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(ord(errWrongType), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE #VALUE! result mismatch');
+  CheckEquals(ord(errWrongType), FWorksheet.ReadAsNumber(0, 1), 'Formula #4 ERROR.TYPE #VALUE! result mismatch');
 
   // #DIV/0! error
   FWorksheet.WriteFormula(0, 0, '=1/0');
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(ord(errDivideByZero), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE #DIV/0! result mismatch');
+  CheckEquals(ord(errDivideByZero), FWorksheet.ReadAsNumber(0, 1), 'Formula #5 ERROR.TYPE #DIV/0! result mismatch');
 
   // #NUM! error
   FWorksheet.WriteFormula(0, 0, '=SQRT(-1)');
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(ord(errOverflow), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE #NUM! result mismatch');
+  CheckEquals(ord(errOverflow), FWorksheet.ReadAsNumber(0, 1), 'Formula #6 ERROR.TYPE #NUM! result mismatch');
 
   // ToDo: Create #NAME? error node when identifier is not found. Parser always raises an exception during scanning - maybe there should be a TsErrorExprNode?
 
@@ -963,7 +999,7 @@ begin
   FWorksheet.WriteFormula(2, 0, '=MATCH(-10,A1:A2,0)');
   FWorksheet.WriteFormula(0, 1, '=ERROR.TYPE(A3)');
   FWorksheet.CalcFormulas;
-  CheckEquals(ord(errArgError), FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ERROR.TYPE #N/A result mismatch');
+  CheckEquals(ord(errArgError), FWorksheet.ReadAsNumber(0, 1), 'Formula #7 ERROR.TYPE #N/A result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_EVEN;
@@ -1295,9 +1331,11 @@ begin
   CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #2 ISBLANK(A1) with A1='' result mismatch');
 
   // No argument
+  {  In Excel the "no argument" case is not accepted (runtime error, no error code)
   cell := FWorksheet.WriteFormula(0, 1, '=ISBLANK()');
   FWorksheet.CalcFormulas;
   CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #3 ISBLANK() result mismatch');
+  }
 
   // String
   cell := FWorksheet.WriteFormula(0, 1, '=ISBLANK("abc")');
@@ -1760,6 +1798,94 @@ begin
   FWorksheet.WriteFormula(0, 1, '=LEN(A99)');
   FWorksheet.CalcFormulas;
   CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 LEN(A99) (empty cell) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_LOG;
+begin
+  // Correct formula
+  FWorksheet.WriteFormula(0, 1, '=LOG(10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 LOG(10) result mismatch');
+
+  // Argument is zero
+  FWorksheet.WriteFormula(0, 1, '=LOG(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #2 LOG(0) result mismatch');
+
+  // Negative argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(-10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #3 LOG(-10) result mismatch');
+
+  // Non-numeric argument
+  FWorksheet.WriteFormula(0, 1, '=LOG("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #4 LOG("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #5 LOG(#REF!) result mismatch');
+
+  // Two argument cases
+
+  // Correct formula
+  FWorksheet.WriteFormula(0, 1, '=LOG(8,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 1), 'Formula #6 LOG(8, 2) result mismatch');
+
+  //  2nd argument negative
+  FWorksheet.WriteFormula(0, 1, '=LOG(8,-2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #7 LOG(8,-2) result mismatch');
+
+  // Non-numeric 2nd argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(8,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #8 LOG(8,"abc") result mismatch');
+
+  // Missing 1st argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #9 LOG(,2) result mismatch');
+
+  // Missing 2nd argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(10,)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #10 LOG(10,) result mismatch');
+
+  // Error in 2nd argument
+  FWorksheet.WriteFormula(0, 1, '=LOG(8,#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #11 LOG(8,#REF!) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_LOG10;
+begin
+  // Correct formula
+  FWorksheet.WriteFormula(0, 1, '=LOG10(10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 LOG10(10) result mismatch');
+
+  // Argument is zero
+  FWorksheet.WriteFormula(0, 1, '=LOG10(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #2 LOG10(0) result mismatch');
+
+  // Negative argument
+  FWorksheet.WriteFormula(0, 1, '=LOG10(-10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #3 LOG10(-10) result mismatch');
+
+  // Non-numeric argument
+  FWorksheet.WriteFormula(0, 1, '=LOG10("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #4 LOG10("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=LOG10(#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #5 LOG10(#REF!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_LOWER;
@@ -2354,6 +2480,32 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 ROUND(123.456, 1/0) result mismatch');
 end;
 
+procedure TCalcFormulaTests.Test_ROW;
+begin
+  // Get row of specified cell
+  FWorksheet.WriteFormula(0, 1, '=ROW(B2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ROW(B2) result mismatch');
+
+  // Get row of the formula cell --- NOT CORRECTLY IMPLEMENTED IN FPS
+  FWorksheet.WriteFormula(0, 1, '=ROW()');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 ROW() result mismatch');   // This would be the Excel result!
+  //CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #2 ROW() result mismatch');
+
+  // Error value as argument
+  FWorksheet.WriteFormula(0, 1, '=ROW(#REF!)');
+  FWorksheet.CalcFormulas;
+  //CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 ROW() result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #3 ROW(#REF!) result mismatch');
+
+  // Cell containing an error as argument
+  FWorksheet.WriteFormula(1, 1, '=1/0');
+  FWorksheet.WriteFormula(0, 1, '=ROW(B2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 ROW(B2) (B2 contains error) result mismatch');
+end;
+
 procedure TCalcFormulaTests.Test_STDEV;
 const
   EPS = 1E-8;
@@ -2635,7 +2787,6 @@ begin
   FWorksheet.WriteText   (10, 0, '400');       FWorksheet.WriteText   (10, 1, '-500');
   FWorksheet.WriteText   (11, 0, 'xyz');       FWorksheet.WriteText   (11, 1, 'XYZ');
 
-
   // *** Range contains numbers only ***
 
   // Calculate sum of the elements in A1:B3 which are equal to 0
@@ -2725,7 +2876,6 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(400, FWorksheet.ReadAsNumber(0, 2), 'Formula #15 SUMIF(A1:B5,-40,A8:B12) result mismatch');
 
-
   // *** Range contains also error cells ***
 
   // Calculate sum of the elements in A1:B5 which are equal to -40  --> error cell must be ignored
@@ -2735,7 +2885,7 @@ begin
   CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #16 SUMIF(A1:B5,-40) result mismatch');
 
   // Calculate sum of the elements in A8:B13 for which the elements in A1:B6 are equal to 40
-  FWorksheet.WriteErrorValue(9, 0, errIllegalRef);   // The value corresponding to 40 is an error now
+  FWorksheet.WriteErrorValue(9, 0, errIllegalRef);   // The value in A10 corresponding to 40 is an error now
   FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,40,A8:B12)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #17 SUMIF(A1:B5,40,A8:B12) result mismatch');
@@ -2758,13 +2908,21 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #20 SUMIF(A1:A9,"=",#DIV/0) result mismatch');
 
   // Write compare cell to contain an error (A15)
-  FWorksheet.WriteFormula( 14, 0, '=1/0');
+  FWorksheet.WriteFormula( 14, 0, '=1/0');   // A15
 
   // Calculate sum of the elements in A1:B5 which are equal to cell A15 (containing #DIV/0!)
-  // but this error does not exist in A1:B5
+  // but this error does not exist in any cell of A1:B5
   FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #21 SUMIF(A1:B5,A15) (A15=#DIV/0!) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 2), 'Formula #21 SUMIF(A1:B5,A15) (A15=#DIV/0!) result mismatch');
+
+  // Calculate sum of the elements in A1:B5 which are equal to cell A15 (containing #DIV/0!)
+  // Cell A1 does have this error, so we expect the result to be 1 (1 cell with #DIV/0! error)
+  FWorksheet.WriteFormula(0, 0, '=1/0');
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #22 SUMIF(A1:B5,A15) (A1=A15=#DIV/0!) result mismatch');
+  //CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #21 SUMIF(A1:B5,A15) (A15=#DIV/0!) result mismatch');
 
 end;
 

@@ -3008,7 +3008,7 @@ begin
     // ... and store in cell's FormulaValue field. Convert from ODS to ExcelA1 dialect.
     try
       formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
-      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet, ARow, ACol);
       TsSpreadsheetParser(formula^.Parser).AddDefinedNames;
       formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
       formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
@@ -9821,7 +9821,7 @@ begin
   begin
     valueStr := '';
     if formula^.Parser = nil then begin
-      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet, ARow, ACol);
       formula^.Parser.Expression[fdExcelA1] := formula^.Text;  // the formula text is in ExcelA1 dialect
     end;
     // Convert string formula to the format needed by ods

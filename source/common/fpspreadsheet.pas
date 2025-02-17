@@ -444,7 +444,7 @@ type
     procedure CalcFormulas;
     procedure CalcSheet;
     function ConvertFormulaDialect(ACell: PCell; ADialect: TsFormulaDialect): String;
-    function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
+//    function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
     function GetFormula(ACell: PCell): PsFormula;
 
     { Data manipulation methods - For Cells }
@@ -1369,7 +1369,7 @@ begin
 
   AFormula^.CalcState := csCalculating;
   if AFormula^.Parser = nil then begin
-    parser := TsSpreadsheetParser.Create(self);
+    parser := TsSpreadsheetParser.Create(self, AFormula^.Row, AFormula^.Col);
     try
       parser.AddDefinedNames;
       parser.Expression[fdExcelA1] := AFormula^.Text;
@@ -1964,7 +1964,7 @@ begin
 
   srcFormula := srcSheet.Formulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
   destFormula := destSheet.Formulas.AddFormula(AToCell^.Row, AToCell^.Col);
-  destFormula.Parser := TsSpreadsheetParser.Create(destSheet);
+  destFormula.Parser := TsSpreadsheetParser.Create(destSheet, destFormula^.Row, destFormula^.Col);
 
   srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
   try
@@ -3036,7 +3036,7 @@ begin
   else
     Result := formula^.Parser.Expression[ADialect];
 end;
-
+                          (*
 {@@ ----------------------------------------------------------------------------
   Converts an RPN formula (as read from an xls biff file, for example) to a
   string formula.
@@ -3050,7 +3050,7 @@ var
 begin
   Result := '';
 
-  parser := TsSpreadsheetParser.Create(self);
+  parser := TsSpreadsheetParser.Create(self, AFormula.Row, AFormula.Col);
   try
     parser.RPNFormula := AFormula;
     Result := parser.Expression[fdExcelA1];
@@ -3058,7 +3058,7 @@ begin
     parser.Free;
   end;
 end;
-
+                    *)
 {@@ ----------------------------------------------------------------------------
   Returns a pointer to the formula record assigned to a cell, or nil if the
   cell has no formula
@@ -5069,7 +5069,7 @@ begin
     formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula)
   else
   begin
-    parser := TsSpreadsheetParser.Create(self);
+    parser := TsSpreadsheetParser.Create(self, ACell^.Row, ACell^.Col);
     try
       parser.AddDefinedNames;
       if ALocalized then
@@ -5160,7 +5160,7 @@ begin
   formula := FFormulas.FindFormula(ACell);
   if formula = nil then begin
     formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col);
-    formula^.Parser := TsSpreadsheetParser.Create(self);
+    formula^.Parser := TsSpreadsheetParser.Create(self, ACell^.Row, ACell^.Col);
   end;
   formula^.Parser.RPNFormula := ARPNFormula;
   formula^.Text := formula^.Parser.Expression[fdExcelA1];
@@ -7708,7 +7708,7 @@ begin
         formula^.CalcState := csNotCalculated;
     end;
 
-    // Step 2 - calculate formulas. If the formula calculted requires another
+    // Step 2 - calculate formulas. If the formula calculated requires another
     // the result of another formula not yet calculated this formula is
     // calculated immediately.
     for p in FWorksheets do begin
