@@ -7324,7 +7324,7 @@ begin
   Result := true;
   if Assigned(Worksheet) and (AExpression <> '') and (AExpression[1] = '=') then
   begin
-    parser := TsSpreadsheetParser.Create(Worksheet);
+    parser := TsSpreadsheetParser.Create(Worksheet, Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
     try
       try
         parser.Expression[fdLocalized] := AExpression;

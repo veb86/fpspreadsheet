@@ -21,6 +21,7 @@ type
   published
     procedure Test_ABS;
     procedure Test_ACOS;
+    procedure Test_ADDRESS;
     procedure Test_AND;
     procedure Test_AVEDEV;
     procedure Test_AVERAGE;
@@ -195,6 +196,89 @@ begin
   FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #10 ACOS(A1) (A1: #REF!) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_ADDRESS;
+begin
+  // Default values only
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$A$1', FWorksheet.ReadAsText(0, 1), 'Formula #1 ADDRESS(1,1) result mismatch');
+
+  // 3rd parameter --> absolute address
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #2 ADDRESS(1,2,1) result mismatch');
+
+  // 3rd parameter --> absolute row
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('B$1', FWorksheet.ReadAsText(0, 1), 'Formula #3 ADDRESS(1,2,2) result mismatch');
+
+  // 3rd parameter --> absolute col
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,3)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B1', FWorksheet.ReadAsText(0, 1), 'Formula 43 ADDRESS(1,2,3) result mismatch');
+
+  // 3rd parameter --> relative address
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,4)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('B1', FWorksheet.ReadAsText(0, 1), 'Formula #5 ADDRESS(1,2,4) result mismatch');
+
+  // missing 3rd parameter --> absolute address
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #6 ADDRESS(1,2,) result mismatch');
+
+  // Combined with ROW() and COLUMN() formulas
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(ROW(),COLUMN())');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #7 ADDRESS(ROW(), COLUMN()) result mismatch');
+
+  // A1 dialect
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1,TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #8 ADDRESS(1,2,1,TRUE) result mismatch');
+
+  // R1C1 dialect
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1,FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('R1C2', FWorksheet.ReadAsText(0, 1), 'Formula #9 ADDRESS(1,2,1,FALSE) result mismatch');
+
+  // Missing dialect argument (must use A1 then)
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1,)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #10 ADDRESS(1,2,1,) result mismatch');
+
+  // Sheet name
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1,TRUE,"Sheet1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('Sheet1!$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #11 ADDRESS(1,2,1,TRUE,"Sheet1") result mismatch');
+
+  // Quoted sheet name
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(1,2,1,TRUE,"Sheet 1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('''Sheet 1''!$B$1', FWorksheet.ReadAsText(0, 1), 'Formula #12 ADDRESS(1,2,1,TRUE,"Sheet 1") result mismatch');
+
+  // Elements of address in cells
+  FWorksheet.WriteNumber(0, 0, 1);   // Row (1)
+  FWorksheet.WriteNumber(1, 0, 2);   // Column (2)
+  FWorksheet.WriteNumber(2, 0, 4);   // Flags (relative)
+  FWorksheet.WriteBoolValue(3, 0, FALSE);  // Dialect (R1C1)
+  FWorksheet.WriteText(4, 0, 'Sheet 1');   // Worksheet
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(A1,A2,A3,A4,A5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('''Sheet 1''!R[1]C[2]', FWorksheet.ReadAsText(0, 1), 'Formula #13 ADDRESS(A1,A2,A3,A4,A5) result mismatch');
+
+  // dto., Sheetname cell empty
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(A1,A2,A3,A4,A10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('R[1]C[2]', FWorksheet.ReadAsText(0, 1), 'Formula #13 ADDRESS(A1,A2,A3,A4,A10) (A10 blank) result mismatch');
+
+  // dto., Dialect cell empty (--> is assume to be 0 --> RC dialect)
+  FWorksheet.WriteFormula(0, 1, '=ADDRESS(A1,A2,A3,A9,A10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('R[1]C[2]', FWorksheet.ReadAsText(0, 1), 'Formula #13 ADDRESS(A1,A2,A3,A9,A11) (A9,A10 blank) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_AND;

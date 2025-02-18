@@ -215,7 +215,7 @@ function CombineTextAndRichTextParams(AText: String;
 procedure SplitTextAndRichTextParams(AValue: String;
   out AText: String; out ARichText: TsRichTextParams);
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
-function SafeQuoteStr(AString: String): String;
+function SafeQuoteStr(AString: String; QuoteChar: Char = '"'): String;
 function UnquoteStr(AString: String): String;
 
 function StringToBytes(const AString: String): TBytes;
@@ -2602,18 +2602,18 @@ end;
   Makes sure that the string is encloed by quotes (").
   Avoids duplicate quotation.
 -------------------------------------------------------------------------------}
-function SafeQuoteStr(AString: String): String;
+function SafeQuoteStr(AString: String; QuoteChar: Char = '"'): String;
 begin
   if AString = '' then
-    Result := '""'
+    Result := QuoteChar + QuoteChar
   else
   if Length(AString) = 1 then
-    Result := '"' + AString + '"'
+    Result := QuoteChar + AString + QuoteChar
   else
   begin
     Result := AString;
-    if AString[1] <> '"' then Result := '"' + Result;
-    if AString[Length(AString)] <> '"' then Result := Result + '"';
+    if AString[1] <> QuoteChar then Result := QuoteChar + Result;
+    if AString[Length(AString)] <> QuoteChar then Result := Result + QuoteChar;
   end;
 end;
 

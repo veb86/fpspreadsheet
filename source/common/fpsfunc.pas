@@ -3154,7 +3154,11 @@ begin
 
   sheet := '';
   if Length(Args) > 4 then
+  begin
     sheet := ArgToString(Args[4]);
+    if SheetNameNeedsQuotes(sheet) then
+      sheet := SafeQuoteStr(sheet, '''');
+  end;
 
   if A1Dialect then
     resStr := GetCellString(r, c, flags)

@@ -2597,13 +2597,15 @@ end;
 function TsCellEdit.ValidFormula(AFormula: String; out AErrMsg: String): Boolean;
 var
   parser: TsSpreadsheetParser;
+  cell: PCell;
 begin
   Result := true;
   AErrMsg := '';
 
   if Assigned(Worksheet) and (AFormula <> '') and (AFormula[1] = '=') then
   begin
-    parser := TsSpreadsheetParser.Create(Worksheet);
+    cell := GetSelectedCell;
+    parser := TsSpreadsheetParser.Create(Worksheet, cell^.Row, cell^.Col);
     try
       try
         parser.Expression[fdLocalized] := AFormula;
