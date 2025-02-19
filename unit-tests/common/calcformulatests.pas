@@ -14,6 +14,7 @@ type
   private
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
+    FOtherWorksheet: TsWorksheet;
   protected
     // Set up expected values:
     procedure SetUp; override;
@@ -82,6 +83,7 @@ procedure TCalcFormulaTests.Setup;
 begin
   FWorkbook := TsWorkbook.Create;
   FWorksheet := FWorkbook.AddWorksheet('Sheet1');
+  FOtherWorksheet := FWorkbook.AddWorksheet('Sheet2');
 end;
 
 procedure TCalcFormulaTests.TearDown;
@@ -1470,7 +1472,7 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(42, FWorksheet.ReadAsNumber(10,0), 'Formula #1 INDEX(B2:F3,3,1) result mismatch');
 
-  // Sample similar to that in unit formulattests:
+  // Sample similar to that in unit formulatests:
 
   FWorksheet.Clear;
   FWorksheet.WriteText  (0, 0, 'A');     // A1
@@ -1485,27 +1487,52 @@ begin
 
   FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C3,1,1)');
   FWorksheet.CalcFormulas;
-  CheckEquals('A', FWorksheet.ReadAsText(0, 5), 'Formula #1 INDEX(A1:C3,1,1) result mismatch');
+  CheckEquals('A', FWorksheet.ReadAsText(0, 5), 'Formula #2 INDEX(A1:C3,1,1) result mismatch');
 
   FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C1,3)');
   FWorksheet.CalcFormulas;
-  CheckEquals('C', FWorksheet.ReadAsText(0, 5), 'Formula #2 INDEX(A1:C1,3) result mismatch');
+  CheckEquals('C', FWorksheet.ReadAsText(0, 5), 'Formula #3 INDEX(A1:C1,3) result mismatch');
 
   FWorksheet.WriteFormula(0, 5, 'INDEX(A1:A3,2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(0, 5), 'Formula #3 INDEX(A1:A3,3) result mismatch');
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 5), 'Formula #4 INDEX(A1:A3,3) result mismatch');
 
   FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C2,1,10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 5), 'Formula #4 INDEX(A1:C2,1,10) result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 5), 'Formula #5 INDEX(A1:C2,1,10) result mismatch');
 
   FWorksheet.WriteFormula(0, 5, 'SUM(INDEX(A1:C3,0,2))');  // Sum of numbers in 2nd column of A1:C3
   FWorksheet.CalcFormulas;
-  CheckEquals(42, FWorksheet.ReadAsNumber(0, 5), 'Formula #5 SUM(INDEX(A1:C3,0,2)) result mismatch');
+  CheckEquals(42, FWorksheet.ReadAsNumber(0, 5), 'Formula #6 SUM(INDEX(A1:C3,0,2)) result mismatch');
 
   FWorksheet.WriteFormula(0, 5, 'SUM(INDEX(A1:C3,2,0))');  // Sum of numbers in 2nd row of A1:C3
   FWorksheet.CalcFormulas;
-  CheckEquals(60, FWorksheet.ReadAsNumber(0, 5), 'Formula #5 SUM(INDEX(A1:C3,2,0)) result mismatch');
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 5), 'Formula #7 SUM(INDEX(A1:C3,2,0)) result mismatch');
+
+  // Now the same tests, but across sheets
+  FOtherWorksheet.WriteFormula(0, 5, 'INDEX(Sheet1!A1:C3,1,1)');
+  FWorkbook.CalcFormulas;
+  CheckEquals('A', FOtherWorksheet.ReadAsText(0, 5), 'Formula #8 INDEX(Sheet1!A1:C3,1,1) result mismatch');
+
+  FOtherWorksheet.WriteFormula(0, 5, 'INDEX(Sheet1!A1:C1,3)');
+  FWorkbook.CalcFormulas;
+  CheckEquals('C', FOtherWorksheet.ReadAsText(0, 5), 'Formula #9 INDEX(Sheet1!A1:C1,3) result mismatch');
+
+  FOtherWorksheet.WriteFormula(0, 5, 'INDEX(Sheet1!A1:A3,2)');
+  FWorkbook.CalcFormulas;
+  CheckEquals(10, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #10 INDEX(Sheet1!A1:A3,3) result mismatch');
+
+  FOtherWorksheet.WriteFormula(0, 5, 'INDEX(Sheet1!A1:C2,1,10)');
+  FWorkbook.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FOtherWorksheet.ReadAsText(0, 5), 'Formula #11 INDEX(Sheet1!A1:C2,1,10) result mismatch');
+
+  FOtherWorksheet.WriteFormula(0, 5, 'SUM(INDEX(Sheet1!A1:C3,0,2))');  // Sum of numbers in 2nd column of A1:C3
+  FWorkbook.CalcFormulas;
+  CheckEquals(42, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #6 SUM(Sheet1!INDEX(A1:C3,0,2)) result mismatch');
+
+  FOtherWorksheet.WriteFormula(0, 5, 'SUM(INDEX(Sheet1!A1:C3,2,0))');  // Sum of numbers in 2nd row of A1:C3
+  FWorkbook.CalcFormulas;
+  CheckEquals(60, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #7 SUM(Sheet1!INDEX(A1:C3,2,0)) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_ISBLANK;
@@ -2283,6 +2310,48 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #22 MATCH mismatch, match_type 0, error in search range');
     // ArgError because search value is not found
+
+
+  // **** Partial text
+
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteText(1, 0, 'axy');
+  FWorksheet.WriteText(2, 0, 'xxy');
+  FWorksheet.WriteText(3, 0, 'ayc');
+  FWorksheet.WriteText(4, 0, 'äbc');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("a*",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #23 MATCH mismatch, partial text "a*"');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("z*",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #24 MATCH mismatch, partial text "z*"');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("*y",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #25 MATCH mismatch, partial text "*y"');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("*z",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #26 MATCH mismatch, partial text "*z"');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("*z*",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #27 MATCH mismatch, partial text "*z*"');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("ay?",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 2), 'Formula #28 MATCH mismatch, partial text "ay?');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("a?",A1:A4,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #29 MATCH mismatch, partial text "a?');
+
+  FWorksheet.WriteFormula(0, 2, '=MATCH("Ä*",A1:A5,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(5, FWorksheet.ReadAsNumber(0, 2), 'Formula #30 MATCH mismatch, partial text "Ä*');
+
 end;
 
 procedure TCalcFormulaTests.Test_MAX;

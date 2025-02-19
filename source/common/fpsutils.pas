@@ -217,6 +217,7 @@ procedure SplitTextAndRichTextParams(AValue: String;
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function SafeQuoteStr(AString: String; QuoteChar: Char = '"'): String;
 function UnquoteStr(AString: String): String;
+function MatchesWild(InputStr, WildStr: String; IgnoreCase: Boolean): Boolean;
 
 function StringToBytes(const AString: String): TBytes;
 
@@ -286,7 +287,8 @@ var
 implementation
 
 uses
-  Math, lazutf8, lazfileutils,
+  Math, LazUTF8, LazFileUtils,
+ {$IFNDEF FPS_NO_MASKS}Masks, {$ENDIF}
   fpsStrings, fpsReaderWriter;
 
 const
@@ -2629,6 +2631,22 @@ begin
   begin
     Delete(Result, 1, 1);
     Delete(Result, Length(Result), 1);
+  end;
+end;
+
+{@ -----------------------------------------------------------------------------
+  Returns TRUE whether the InputStr is matched by the WildStr which may contain
+  wildcards, '*', '?'.
+-------------------------------------------------------------------------------}
+function MatchesWild(InputStr, WildStr: String; IgnoreCase: Boolean): Boolean;
+var
+  msk: TMask;
+begin
+  msk := TMask.Create(WildStr);
+  try
+    Result := msk.matches(InputStr);
+  finally
+    msk.Free;
   end;
 end;
 

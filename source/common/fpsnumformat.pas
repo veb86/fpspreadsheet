@@ -3721,7 +3721,7 @@ begin
       '_':  // Excel: Leave width of next character empty
         begin
           FToken := NextToken;
-          {$IFDEF DEFINE FPS_NO_NEW_UTF8_ROUTINES}
+          {$IFDEF FPS_NO_NEW_UTF8_ROUTINES}
           uch := UTF8CharacterToUnicode(FCurrent, n);                           // wp: Why Unicode ???
           {$ELSE}
           uch := UTF8CodePointToUnicode(FCurrent, n);
@@ -3766,7 +3766,7 @@ begin
           Exit;
         end;
       else
-        {$IFDEF DEFINE FPS_NO_NEW_UTF8_ROUTINES}
+        {$IFDEF FPS_NO_NEW_UTF8_ROUTINES}
         uch := UTF8CharacterToUnicode(FCurrent, n);
         {$ELSE}
         uch := UTF8CodePointToUnicode(FCurrent, n);

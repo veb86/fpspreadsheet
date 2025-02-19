@@ -3351,12 +3351,7 @@ var
     if ACell = nil then exit;
     if ACell^.ContentType = cctUTF8String then begin
       s := ACell^.UTF8StringValue;
-      if IsWild(searchString, '*?', false) then
-        Result := FindPart(searchString, s) > 0
-        // NOTE: FindPart currently supports only the wildcard '?'
-      else
-        Result := CompareStr(s, searchString) = 0;
-        //Result := SameStr(s, searchString);
+      Result := MatchesWild(s, searchString, true);
     end else
     begin
       case ACell^.ContentType of
@@ -3651,10 +3646,6 @@ begin
     AddFunction(cat, 'INDIRECT',  'C', 'Sb',   INT_EXCEL_SHEET_FUNC_INDIRECT,   @fpsINDIRECT);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
     AddFunction(cat, 'ROW',       'I', 'r',    INT_EXCEL_SHEET_FUNC_ROW,        @fpsROW);
-
-    (*
-    AddFunction(cat, 'COLUMN',    'I', 'R',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
-                  *)
 
   end;
 end;
