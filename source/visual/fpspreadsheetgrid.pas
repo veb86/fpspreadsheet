@@ -706,7 +706,7 @@ type
     {@@ inherited from ancestors}
     property Anchors;
     {@@ inherited from ancestors}
-    property AutoAdvance;
+    property AutoAdvance default aaDown;
     {@@ inherited from ancestors}
     property AutoEdit;
     {@@ inherited from ancestors}
