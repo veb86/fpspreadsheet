@@ -93,6 +93,7 @@ type
   TsResultTypes = set of TsResultType;
 
   TsExpressionResult = record
+    Parser          : TsExpressionParser;
     Worksheet       : TsBasicWorksheet;  // Worksheet containing the calculated cell
     ResString       : String;
     case ResultType : TsResultType of
@@ -765,6 +766,7 @@ type
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(out AResult: TsExpressionResult);
     function Has3DLinks: Boolean;
+    function IsFormulaCell(ASheetName: String; ARow, ACol: Cardinal): Boolean;
     function IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer): boolean;
     procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
@@ -872,6 +874,7 @@ procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boole
 function BooleanResult(AValue: Boolean): TsExpressionResult;
 function CellRangeResult(AWorksheet: TsBasicWorksheet; ASheet1Index, ASheet2Index: Integer;
   ARow1, ACol1, ARow2, ACol2: Cardinal): TsExpressionResult; overload;
+function CellRangeResult(AWorksheet: TsBasicWorksheet; AValue: String): TsExpressionResult;
 function CellResult(AValue: String): TsExpressionResult; overload;
 function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult; overload;
 function DateTimeResult(AValue: TDateTime): TsExpressionResult;
@@ -2137,6 +2140,11 @@ begin
   Result := FExprNode.Has3DLink;
 end;
 
+function TsExpressionParser.IsFormulaCell(ASheetName: String; ARow, ACol: Cardinal): Boolean;
+begin
+  Result := (ARow = FRow) and (ACol = FCol) and ((ASheetName = '') or (ASheetName = FWorksheet.Name));
+end;
+
 function TsExpressionParser.IterateNodes(AProc: TsExprNodeProc;
   AData1, AData2: Pointer): Boolean;
 begin
@@ -3219,6 +3227,7 @@ end;
 procedure TsConstExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
   AResult := FValue;
+  AResult.Parser := FParser;
 end;
 
 function TsConstExprNode.AsString: string;
@@ -3266,6 +3275,7 @@ begin
   AResult.Worksheet := FParser.FWorksheet;
   AResult.ResRow := FParser.FRow;
   AResult.ResCol := FParser.FCol;
+  AResult.Parser := FParser;
 end;
 
 function TsMissingArgExprNode.NodeType: TsResultType;
@@ -3327,6 +3337,7 @@ begin
     else
       AResult := ErrorResult(errWrongType);
   end;
+  AResult.Parser := FParser;
 end;
 
 function TsUPlusExprNode.NodeType: TsResultType;
@@ -3397,6 +3408,7 @@ begin
     else
       AResult := ErrorResult(errWrongType);
   end;
+  AResult.Parser := FParser;
 end;
 
 function TsUMinusExprNode.NodeType: TsResultType;
@@ -3440,6 +3452,7 @@ begin
     else
       AResult := ErrorResult(errWrongType);
   end;
+  AResult.Parser := FParser;
 end;
 
 function TsPercentExprNode.NodeType: TsResultType;
@@ -3559,6 +3572,7 @@ begin
     else
       AResult := BooleanResult(fL = fR);
   end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -3623,6 +3637,7 @@ begin
     else
       AResult := BooleanResult(fL < fR);
   end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -3647,6 +3662,8 @@ var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  AResult.Parser := FParser;
+
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
@@ -3710,6 +3727,7 @@ begin
     else
       AResult := BooleanResult(fL >= fR);
   end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -3754,6 +3772,7 @@ begin
     else
       AResult := BooleanResult(fL <= fR);
   end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -3783,6 +3802,7 @@ begin
   Right.GetNodeValue(RRes);
 
   AResult := StringResult(ArgToString(LRes) + ArgToString(RRes));
+  AResult.Parser := FParser;
 end;
 
 function TsConcatExprNode.NodeType: TsResultType;
@@ -3832,6 +3852,7 @@ begin
     AResult := ErrorResult(errWrongType)
   else
     AResult := FloatResult(fL + fR);
+  AResult.Parser := FParser;
 end;
 
 
@@ -3868,6 +3889,7 @@ begin
     AResult := ErrorResult(errWrongType)
   else
     AResult := FloatResult(fL - fR);
+  AResult.Parser := FParser;
 end;
 
 
@@ -3904,9 +3926,10 @@ begin
   else
     try
       AResult := FloatResult(fL * fR);
-  except
-    on EInvalidArgument do AResult := ErrorResult(errOverflow);
-  end;
+    except
+      on EInvalidArgument do AResult := ErrorResult(errOverflow);
+    end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -3950,6 +3973,7 @@ begin
     except
       on EInvalidArgument do AResult := ErrorResult(errOverflow);
     end;
+  AResult.Parser := FParser;
 end;
 
 function TsDivideExprNode.NodeType: TsResultType;
@@ -3994,6 +4018,7 @@ begin
     except
       on E: EInvalidArgument do AResult := ErrorResult(errOverflow);
     end;
+  AResult.Parser := FParser;
 end;
 
 function TsPowerExprNode.NodeType: TsResultType;
@@ -4044,6 +4069,8 @@ var
   r1, c1, r2, c2: Cardinal;
   cell: PCell;
 begin
+  AResult.Parser := FParser;
+
   book := TsWorkbook(TsWorksheet(Parser.Worksheet).Workbook);
   if PResult^.ResultType = rtCellRange then
   begin
@@ -4060,6 +4087,7 @@ begin
     if r1 = UNASSIGNED_ROW_COL_INDEX then
     begin
       AResult := ErrorResult(errIllegalRef);
+      AResult.Parser := FParser;
       exit;
     end;
 
@@ -4080,6 +4108,7 @@ begin
     AResult := PResult^;
     AResult.ResultType := FResultType;
   end;
+  AResult.Parser := FParser;
 end;
 
 
@@ -4227,9 +4256,11 @@ end;
 procedure TsFunctionCallBackExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
   AResult.ResultType := NodeType;
+  AResult.Parser := FParser;
   if Length(FArgumentParams) > 0 then
     CalcParams;
-  FCallBack(AResult, FArgumentParams)
+  FCallBack(AResult, FArgumentParams);
+  AResult.Parser := FParser;
 end;
 
 
@@ -4245,9 +4276,11 @@ end;
 procedure TFPFunctionEventHandlerExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
   AResult.ResultType := NodeType;
+  AResult.Parser := FParser;
   if Length(FArgumentParams) > 0 then
     CalcParams;
-  FCallBack(AResult, FArgumentParams)
+  FCallBack(AResult, FArgumentParams);
+  AResult.Parser := FParser;
 end;
 
 
@@ -4375,6 +4408,8 @@ var
   sheet: TsWorksheet;
   msg: String;
 begin
+  AResult.Parser := FParser;
+
   if FError <> errOK then begin
     AResult := ErrorResult(FError);
     exit;
@@ -4430,6 +4465,7 @@ begin
     AResult.ResSheetname := sheet.Name;
     AResult.ResSheetIndex := sheet.Workbook.GetWorkSheetIndex(sheet);
 //  end;
+  AResult.Parser := FParser;
 end;
 
 function TsCellExprNode.GetQuotedSheetName: String;
@@ -4686,6 +4722,8 @@ var
   formula: PsFormula;
   msg: String;
 begin
+  AResult.Parser := FParser;
+
   if FError <> errOK then begin
     AResult := ErrorResult(FError);
     exit;
@@ -5246,6 +5284,31 @@ begin
   Result.ResCellRange.Col1 := ACol1;
   Result.ResCellRange.Row2 := ARow2;
   Result.ResCellRange.Col2 := ACol2;
+end;
+
+function CellRangeResult(AWorksheet: TsBasicWorksheet; AValue: String): TsExpressionResult;
+var
+  workbook: TsWorkbook;
+  worksheet: TsWorksheet;
+  sh1, sh2: String;
+  idxSh1, idxSh2: Integer;
+  r1,c1,r2,c2: Cardinal;
+  flags: TsRelFlags;
+begin
+  worksheet := TsWorksheet(AWorksheet);
+  workbook := TsWorkbook(worksheet.Workbook);
+  if ParseCellRangeString(AValue, sh1, sh2, r1, c1, r2, c2, flags) then
+  begin
+    if sh1 = '' then
+      sh1 := UnquoteStr(worksheet.Name);
+    if sh2 = '' then
+      sh2 := sh1;
+    idxSh1 := workbook.GetWorksheetByName(sh1).Index;
+    idxSh2 := workbook.GetWorksheetByName(sh2).Index;
+    Result := CellRangeResult(AWorksheet, idxSh1, idxSh2, r1, c1, r2, c2)
+  end
+  else
+    Result := ErrorResult(errIllegalRef);
 end;
 
 function CellResult(AValue: String): TsExpressionResult;

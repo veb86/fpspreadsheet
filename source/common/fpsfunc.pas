@@ -3311,9 +3311,28 @@ begin
   Result := ErrorResult(errArgError);
   if Length(Args) > 0 then
     case Args[0].ResultType of
-      rtCell   : Result := CellResult(ArgToString(Args[0]));
-      rtString : Result := CellResult(Args[0].ResString);
-      rtError  : Result := ErrorResult(Args[0].ResError);
+      rtCell:
+      {
+        if Args[0].Parser.IsFormulacell(Args[0].ResSheetName, Args[0].ResRow, Args[0].ResCol) then
+          Result := ErrorResult(errIllegalRef)    // circular reference
+        else
+        }
+        if pos(':', ArgToString(Args[0])) > 0 then
+          Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]))
+        else
+          Result := CellResult(ArgToString(Args[0]));
+          {
+        Result := CellResult(ArgToString(Args[0]));
+        }
+      rtCellRange:
+        Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]));
+      rtString:
+        if pos(':', ArgToString(Args[0])) > 0 then
+          Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]))
+        else
+          Result := CellResult(Args[0].ResString);
+      rtError:
+        Result := ErrorResult(Args[0].ResError);
     end;
 end;
 

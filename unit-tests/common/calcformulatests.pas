@@ -42,6 +42,7 @@ type
     procedure Test_IF;
     procedure Test_IFERROR;
     procedure Test_INDEX;
+    procedure Test_INDIRECT;
     procedure Test_ISBLANK;
     procedure Test_ISERR;
     procedure Test_ISERROR;
@@ -1533,6 +1534,84 @@ begin
   FOtherWorksheet.WriteFormula(0, 5, 'SUM(INDEX(Sheet1!A1:C3,2,0))');  // Sum of numbers in 2nd row of A1:C3
   FWorkbook.CalcFormulas;
   CheckEquals(60, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #7 SUM(Sheet1!INDEX(A1:C3,2,0)) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_INDIRECT;
+begin
+  // *** Test data ***
+  FWorksheet.WriteNumber(0, 0, 10);                    // A1
+  FWorksheet.WriteNumber(1, 0, 20);                    // A2
+  FWorksheet.WriteNumber(2, 0, 30);                    // A3
+  FWorksheet.WriteText  (3, 0, 'A1');                  // A4
+  FWorksheet.WriteErrorValue(4, 0, errDivideByZero);   // A5
+  FWorksheet.WriteText  (5, 0, 'A');                   // A6
+  FWorksheet.WriteNumber(6, 0, 1);                     // A7
+  FWorksheet.WriteText  (7, 0, 'Sheet2');              // A8
+  FWorksheet.WriteText  (8, 0, 'Sheet2!A1:A3');        // A9
+  FOtherWorksheet.WriteNumber(0, 0, 1000);             // Sheet2!A1
+  FOtherWorksheet.WriteNumber(1, 0, 2000);             // Sheet2!A2
+  FOtherWorksheet.WriteNumber(2, 0, 3000);             // Sheet2!A3
+
+  // *** Single cell references ***
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT("A1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 INDIRECT("A1") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT("A4")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('A1', FWorksheet.ReadAsText(0, 1), 'Formula #2 INDIRECT("A4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A4)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 INDIRECT(A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT("Sheet2!A1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1000, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 INDIRECT("Sheet2!A1") result mismatch');
+
+  // Constructing cell address from other cells
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A6&A7)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #5 INDIRECT(A6&A7) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A8&"!"&A6&A7)');     // --> "Sheet2!A1"
+  FWorksheet.CalcFormulas;
+  CheckEquals(1000, FWorksheet.ReadAsNumber(0, 1), 'Formula #6 INDIRECT(A8&"!"&A6&A7) result mismatch');
+
+  // Constructing cell address from other cells and constant
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A6&"1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 INDIRECT(A6&"1") result mismatch');
+
+  // Error in indirectly addressed cell
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 INDIRECT(A5) result mismatch');
+
+  {  --- not working ! ---
+  // Circular reference
+  FWorksheet.WriteFormula(0, 1, '=INDIRECT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #9 INDIRECT(A1) result mismatch');
+  }
+
+  // *** Cell range references ***
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(INDIRECT("A1:A3"))');
+  FWorksheet.CalcFormulas;
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUM(INDIRECT("A1:A3")) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(INDIRECT("Sheet2!A1:A3"))');
+  FWorksheet.CalcFormulas;
+  CheckEquals(6000, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUM(INDIRECT("Sheet2!A1:A3")) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(INDIRECT(A9))');
+  FWorksheet.CalcFormulas;
+  CheckEquals(6000, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUM(INDIRECT(A9)) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(INDIRECT(A8&"!"&A4&":A3"))');
+  FWorksheet.CalcFormulas;
+  CheckEquals(6000, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUM(INDIRECT(A8&"!"&A4&":A3")) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_ISBLANK;
