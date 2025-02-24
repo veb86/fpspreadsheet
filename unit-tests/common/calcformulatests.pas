@@ -2243,42 +2243,84 @@ begin
   FWorksheet.WriteNumber(3, 1, 15);
   FWorksheet.WriteNumber(4, 1, 20);
 
+  // Search range in other sheet
+  FOtherWorksheet.WriteNumber(0, 1, 100);
+  FOtherWorksheet.WriteNumber(1, 1, 200);
+  FOtherWorksheet.WriteNumber(2, 1, 300);
+  FOtherWorksheet.WriteNumber(3, 1, 150);
+  FOtherWorksheet.WriteNumber(4, 1, 200);
+
   // Search for constant, contained in search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(10, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 MATCH(10,B1_B5,0) mismatch, value in range');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 MATCH(10,B1:B5,0) mismatch, value in range');
+
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(100, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 MATCH(100,Sheet2!B1:B5,0) mismatch, value in range');
 
   // Search for constant, contained several times in search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(20, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 MATCH(20,B1:B5,0) mismatch, value above range');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #3 MATCH(20,B1:B5,0) mismatch, value above range');
+
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(200, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 MATCH(200,Sheet2!B1:B5,0) mismatch, value above range');
 
   // Search for constant, below search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(0, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #3 MATCH(0,B1:B5,0) mismatch, value below range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #5 MATCH(0,B1:B5,0) mismatch, value below range');
+
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(0, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #6 MATCH(0,Sheet2!B1:B5,0) mismatch, value below range');
 
   // Search for constant, above search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(90, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #4 MATCH(90,B1:B5,0) mismatch, value above range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #7 MATCH(90,B1:B5,0) mismatch, value above range');
+
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(900, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #8 MATCH(900,Sheet2!B1:B5,0) mismatch, value above range');
 
   // Search for cell with value in range
   FWorksheet.WriteNumber(0, 0, 20);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #5 MATCH(A1,B1:B5,0) mismatch, cell value in range');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 MATCH(A1,B1:B5,0) mismatch, cell value in range');
+
+  // dto, but in other sheet
+  FWorksheet.WriteNumber(0, 0, 200);
+  FWorksheet.WriteFormula(0, 2, '=MATCH(A1, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 MATCH(A1,Sheet2!B1:B5,0) mismatch, cell value in range');
 
   // Search for cell, but cell is empty
   FWorksheet.WriteFormula(0, 2, '=MATCH(A99, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #6 MATCH(A99,B1:B5,0) mismatch, empty cell');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #11 MATCH(A99,B1:B5,0) mismatch, empty cell');
+
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(A99, Sheet2!B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #12 MATCH(A99,Sheet2!B1:B5,0) mismatch, empty cell');
 
   // Search range is empty
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, D1:D3, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #7 MATCH mismatch, match_type -1, empty search range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #13 MATCH mismatch, match_type -1, empty search range');
 
+  // dto., but in other sheet
+  FWorksheet.WriteFormula(0, 2, '=MATCH(28, Sheet2!D1:D3, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #14 MATCH mismatch, match_type -1, empty search range');
 
   // *** Match_Type 1 (find largest value in range <= value), ascending values in search range
 
