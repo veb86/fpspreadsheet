@@ -24,6 +24,8 @@ type
     procedure Test_ACOS;
     procedure Test_ADDRESS;
     procedure Test_AND;
+    procedure Test_ASIN;
+    procedure Test_ATAN;
     procedure Test_AVEDEV;
     procedure Test_AVERAGE;
     procedure Test_AVERAGEIF;
@@ -67,6 +69,7 @@ type
     procedure Test_RADIANS;
     procedure Test_ROUND;
     procedure Test_ROW;
+    procedure Test_SQRT;
     procedure Test_STDEV;
     procedure Test_STDEVP;
     procedure Test_SUM;
@@ -198,7 +201,7 @@ begin
   FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
   FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #10 ACOS(A1) (A1: #REF!) result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #16 ACOS(A1) (A1: #REF!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_ADDRESS;
@@ -332,6 +335,168 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(cell), 'Formula #11 AND(#REF!,#DIV/0!) result mismatch');
 end;
+
+procedure TCalcFormulaTests.Test_ASIN;
+begin
+  FWorksheet.WriteFormula(0, 1, '=ASIN(0.5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/6, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #1 ASIN(0.5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ASIN(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #2 ASIN(0) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ASIN(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #3 ASIN(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ASIN(-1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #4 ASIN(-1) result mismatch');
+
+  // Out-of-domain
+  FWorksheet.WriteFormula(0, 1, '=ASIN(2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #5 ASIN(2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ASIN(-2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #6 ASIN(-2) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=ASIN(FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #7 ASIN(FALSE) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ASIN(TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #8 ASIN(TRUE) result mismatch');
+
+  // Numeric string
+  FWorksheet.WriteFormula(0, 1, '=ASIN("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #9 ASIN("1") result mismatch');
+
+  // Non-numeric string
+  FWorksheet.WriteFormula(0, 1, '=ASIN("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #10 ASIN("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=ASIN(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #11 ASIN(1/0) result mismatch');
+
+  // Cell with boolean value
+  FWorksheet.WriteFormula(0, 0, '=(1=1)');
+  FWorksheet.WriteFormula(0, 1, '=ASIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #12 ASIN(A1) (A1: (1=1)) result mismatch');
+
+  // Cell with numeric string
+  FWorksheet.WriteText(0, 0, '1');
+  FWorksheet.WriteFormula(0, 1, '=ASIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #13 ASIN(A1) (A1: "1") result mismatch');
+
+  // Cell with non-numeric string
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteFormula(0, 1, '=ASIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #14 ASIN(A1) (A1: "abc") result mismatch');
+
+  // Empty cell
+  FWorksheet.WriteBlank(0, 0);                    // Empty A1
+  FWorksheet.WriteFormula(0, 1, '=ASIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 ASIN(A1) (A1: empty) result mismatch');
+
+  // Cell with error
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=ASIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #16 ASIN(A1) (A1: #REF!) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_ATAN;
+begin
+  FWorksheet.WriteFormula(0, 1, '=ATAN(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #1 ATAN(0) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ATAN(1)');
+  FWorksheet.CalcFormulas;
+  // Soll result from Wolfram Alpha
+  CheckEquals(0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #2 ATAN(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ATAN(-1)');
+  FWorksheet.CalcFormulas;
+  // Soll result from Wolfram Alpha
+  CheckEquals(-0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #3 ATAN(-1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ATAN(1E300)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #4 ATAN(1E300) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ATAN(-1E300)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #5 ATAN(-1E300) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=ATAN(FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #6 ATAN(FALSE) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ATAN(TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #7 ATAN(TRUE) result mismatch');
+
+  // Numeric string
+  FWorksheet.WriteFormula(0, 1, '=ATAN("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #8 ATAN("1") result mismatch');
+
+  // Non-numeric string
+  FWorksheet.WriteFormula(0, 1, '=ATAN("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #9 ATAN("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=ATAN(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #10 ATAN(1/0) result mismatch');
+
+  // Cell with boolean value
+  FWorksheet.WriteFormula(0, 0, '=(1=1)');
+  FWorksheet.WriteFormula(0, 1, '=ATAN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #11 ATAN(A1) (A1: (1=1)) result mismatch');
+
+  // Cell with numeric string
+  FWorksheet.WriteText(0, 0, '1');
+  FWorksheet.WriteFormula(0, 1, '=ATAN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.78539816339744830961566084, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #12 ATAN(A1) (A1: "1") result mismatch');
+
+  // Cell with non-numeric string
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteFormula(0, 1, '=ATAN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #13 ATAN(A1) (A1: "abc") result mismatch');
+
+  // Empty cell
+  FWorksheet.WriteBlank(0, 0);                    // Empty A1
+  FWorksheet.WriteFormula(0, 1, '=ATAN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 ATAN(A1) (A1: empty) result mismatch');
+
+  // Cell with error
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=ATAN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #15 ATAN(A1) (A1: #REF!) result mismatch');
+end;
+
 
 procedure TCalcFormulaTests.Test_AVEDEV;
 const
@@ -3035,6 +3200,80 @@ begin
   FWorksheet.WriteFormula(0, 1, '=ROW(B2)');
   FWorksheet.CalcFormulas;
   CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 ROW(B2) (B2 contains error) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_SQRT;
+begin
+  FWorksheet.WriteFormula(0, 1, '=SQRT(0.0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #1 SQRT(0.0) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SQRT(1.0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #2 SQRT(1.0) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SQRT(16.0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(4.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #3 SQRT(16.0) result mismatch');
+
+  // Out-of-domain
+  FWorksheet.WriteFormula(0, 1, '=SQRT(-1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #4 SQRT(-1) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=SQRT(FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #5 SQRT(FALSE) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SQRT(TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #6 SQRTS(TRUE) result mismatch');
+
+  // Numeric string
+  FWorksheet.WriteFormula(0, 1, '=SQRT("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #7 SQRT("1") result mismatch');
+
+  // Non-numeric string
+  FWorksheet.WriteFormula(0, 1, '=SQRT("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #8 SQRT("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=SQRT(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #9 SQRT(1/0) result mismatch');
+
+  // Cell with boolean value
+  FWorksheet.WriteFormula(0, 0, '=(1=1)');
+  FWorksheet.WriteFormula(0, 1, '=SQRT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #10 SQRT(A1) (A1: (1=1)) result mismatch');
+
+  // Cell with numeric string
+  FWorksheet.WriteText(0, 0, '1');
+  FWorksheet.WriteFormula(0, 1, '=SQRT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #11 SQRTS(A1) (A1: "1") result mismatch');
+
+  // Cell with non-numeric string
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteFormula(0, 1, '=SQRT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #12 SQRT(A1) (A1: "abc") result mismatch');
+
+  // Empty cell
+  FWorksheet.WriteBlank(0, 0);                    // Empty A1
+  FWorksheet.WriteFormula(0, 1, '=SQRT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SQRT(A1) (A1: empty) result mismatch');
+
+  // Cell with error
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=SQRT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #14 SQRT(A1) (A1: #REF!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_STDEV;
