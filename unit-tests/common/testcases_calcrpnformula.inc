@@ -4,15 +4,15 @@
   // Setting up some test numbers
 
   // Test range  M1:O2
-  MyWorksheet.WriteText(0, 12, 'A');         // M1
-  MyWorksheet.WriteText(0, 13, 'A');         // N1
-  MyWorksheet.WriteText(0, 14, 'B');         // O1
-  MyWorksheet.WriteNumber  (1, 12,  1);      // M2
-  MyWorksheet.WriteNumber  (1, 13,  2);      // N2
-  MyWorksheet.WriteNumber  (1, 14,  3);      // O2
+  MyWorksheet.WriteText  (0, 12, 'A');     // M1
+  MyWorksheet.WriteText  (0, 13, 'A');     // N1
+  MyWorksheet.WriteText  (0, 14, 'B');     // O1
+  MyWorksheet.WriteNumber(1, 12,  1);      // M2
+  MyWorksheet.WriteNumber(1, 13,  2);      // N2
+  MyWorksheet.WriteNumber(1, 14,  3);      // O2
 
   // Test cells for "INDIRECT"
-  MyWorksheet.WriteText(0, 15, 'M1');        // P1
+  MyWorksheet.WriteText(0, 15, 'M1');      // P1
 
   // Create an error in H2
   MyWorksheet.WriteFormula (1, 7, '1/0');
@@ -2658,7 +2658,6 @@
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(SumOfSquares(STATS_NUMBERS));
 
-   //                   {   ---- SUMIF currently not supported
     // SUMIF
     inc(Row);
     formula := 'SUMIF(M1:N3,1)';
@@ -2708,7 +2707,7 @@
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
         RPNCellRange('M1:N3',
-        RPNString('<>2',                    // N2=2, 6 other cells --> 5
+        RPNString('<>2',                    // M2=1 (N2=2, O2=3)  --> 1
         RPNFunc('SUMIF', 2, nil)))))
     else
       MyWorksheet.WriteFormula(Row, 1, formula);
@@ -2743,7 +2742,6 @@
     MyWorksheet.WriteNumber(Row, 2, 1);
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(1);
-
   end;
 
   // VAR

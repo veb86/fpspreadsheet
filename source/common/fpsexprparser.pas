@@ -3275,6 +3275,7 @@ begin
   AResult.Worksheet := FParser.FWorksheet;
   AResult.ResRow := FParser.FRow;
   AResult.ResCol := FParser.FCol;
+  AResult.ResSheetName := FParser.Worksheet.Name;
   AResult.Parser := FParser;
 end;
 
@@ -3793,15 +3794,15 @@ end;
 
 procedure TsConcatExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  LRes, RRes : TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
+  LStr, RStr: String;
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
-
-  AResult := StringResult(ArgToString(LRes) + ArgToString(RRes));
+  LStr := ArgToString(LRes);
+  RStr := ArgToString(RRes);
+  AResult := StringResult(LStr + RStr);
   AResult.Parser := FParser;
 end;
 
@@ -4892,9 +4893,21 @@ begin
 end;
 
 function ArgToCell(Arg: TsExpressionResult): PCell;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
   if Arg.ResultType = rtCell then
-    Result := (Arg.Worksheet as TsWorksheet).FindCell(Arg.ResRow, Arg.ResCol)
+  begin
+    sheet := Arg.Worksheet as TsWorksheet;
+    if Arg.ResSheetName <> '' then
+    begin
+      book := sheet.Workbook;
+      sheet := book.GetWorksheetByName(Arg.ResSheetName);
+    end;
+    Result := sheet.FindCell(Arg.ResRow, Arg.ResCol)
+  end
+//    Result := (Arg.Worksheet as TsWorksheet).FindCell(Arg.ResRow, Arg.ResCol)
   else
     Result := nil;
 end;

@@ -364,7 +364,7 @@ begin
               // as the criteria cell we have extracted a criteria value.
               // Since a match had been found before the formula must use the
               // error value as search criterion.
-              if IsNaN(val) and (FValueRangeIndex = FCriteriaRangeIndex) then
+              if IsNaN(val) and (FValueRangeIndex = FCriteriaRangeIndex) and (FCompareType = ctError) then
               begin;
                 val := 1;
                 FError := errOK;
@@ -3302,6 +3302,12 @@ end;
   NOTE: ref_style and mixing of A1 and R1C1 notation is not supported. }
 procedure fpsINDIRECT(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
+var
+  arg: TsExpressionResult;
+  argStr, arg0Str: String;
+  sh1, sh2: String;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
 begin
   if IsError(Args[0], Result) then
     exit;
@@ -3310,30 +3316,35 @@ begin
 
   Result := ErrorResult(errArgError);
   if Length(Args) > 0 then
+  begin
+    argStr := ArgToString(Args[0]);
     case Args[0].ResultType of
       rtCell:
-      {
-        if Args[0].Parser.IsFormulacell(Args[0].ResSheetName, Args[0].ResRow, Args[0].ResCol) then
-          Result := ErrorResult(errIllegalRef)    // circular reference
-        else
-        }
-        if pos(':', ArgToString(Args[0])) > 0 then
-          Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]))
-        else
-          Result := CellResult(ArgToString(Args[0]));
-          {
-        Result := CellResult(ArgToString(Args[0]));
-        }
+        begin
+          // Can only contain valid cell reference or cell range reference strings.
+          // Otherwise it is an illegal reference error.
+          if not (ParseSheetCellString(argStr, sh1, r1, c1) or
+            ParseCellRangeString(argStr, sh1, sh2, r1, c1, r2, c2, flags)) then
+          begin
+            Result := ErrorResult(errIllegalRef);
+            exit;
+          end;
+          if pos(':', argStr) > 0 then
+            Result := CellRangeResult(Args[0].Parser.Worksheet, argStr)
+          else
+            Result := CellResult(argStr);
+        end;
       rtCellRange:
-        Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]));
+        Result := CellRangeResult(Args[0].Parser.Worksheet, argStr);
       rtString:
         if pos(':', ArgToString(Args[0])) > 0 then
-          Result := CellRangeResult(Args[0].Parser.Worksheet, ArgToString(Args[0]))
+          Result := CellRangeResult(Args[0].Parser.Worksheet, argStr)
         else
-          Result := CellResult(Args[0].ResString);
+          Result := CellResult(argStr);
       rtError:
         Result := ErrorResult(Args[0].ResError);
     end;
+  end;
 end;
 
 { MATCH( value, array, [match_type]
