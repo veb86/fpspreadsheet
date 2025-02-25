@@ -74,7 +74,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="37">
+    <Units Count="44">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -225,6 +225,34 @@
         <Filename Value="testcases_calcrpnformula.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit36>
+      <Unit37>
+        <Filename Value="testcases_calcmathformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit37>
+      <Unit38>
+        <Filename Value="testcases_calctextformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit38>
+      <Unit39>
+        <Filename Value="testcases_calcstatsformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit39>
+      <Unit40>
+        <Filename Value="testcases_calcdatetimeformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit40>
+      <Unit41>
+        <Filename Value="testcases_calclogicalformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit41>
+      <Unit42>
+        <Filename Value="testcases_calcinfoformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit42>
+      <Unit43>
+        <Filename Value="testcases_calclookupformulas.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit43>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
