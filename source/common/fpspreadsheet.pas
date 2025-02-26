@@ -487,6 +487,8 @@ type
     function  GetLastOccupiedRowIndex: Cardinal;
     function  GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
+    procedure GetSheetDim(out AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
+      AForceCalculation: Boolean = false);
 
     { Data manipulation methods - For Rows and Cols }
     function  AddCol(ACol: Cardinal): PCol;
@@ -2744,7 +2746,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Deprecated, use GetLastColIndex instead
+  Deprecated, use GetLastRowIndex instead
 
   @seeAlso GetLastColIndex
 -------------------------------------------------------------------------------}
@@ -2752,6 +2754,44 @@ function TsWorksheet.GetLastRowNumber: Cardinal;
 begin
   Result := GetLastRowIndex;
 end;
+
+procedure TsWorksheet.GetSheetDim(out AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
+  AForceCalculation: Boolean = false);
+var
+  cell: PCell;
+begin
+  if AForceCalculation then
+  begin
+    cell := FCells.GetFirstCell;
+    if cell <> nil then
+    begin
+      AFirstRow := cell^.Row;
+      AFirstCol := cell^.Col;
+    end else
+    begin
+      AFirstRow := 0;
+      AfirstCol := 0;
+    end;
+
+    cell := FCells.GetLastCell;
+    if cell <> nil then
+    begin
+      ALastRow := cell^.Row;
+      ALastCol := cell^.Col;
+    end else
+    begin
+      ALastRow := AFirstRow;
+      ALastCol := AFirstCol;
+    end;
+  end else
+  begin
+    AFirstRow := FFirstRowIndex;
+    AFirstCol := FFirstColIndex;
+    ALastRow := FLastRowIndex;
+    ALastCol := FLastColIndex;
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Reads the contents of a cell and returns an user readable text

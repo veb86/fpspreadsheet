@@ -255,6 +255,9 @@ function Range(ARow, ACol: Cardinal): TsCellRange; overload;
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange; overload;
 function Range3D(ASheetIdx1, ASheetIdx2: Integer; ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange3D;
 
+procedure TrimCellRange(ARange: TsCellRange; var ARow1, ACol1, ARow2, ACol2: Cardinal);
+procedure TrimCellRange(ARange: TsCellRange3D; var ARow1, ACol1, ARow2, ACol2: Cardinal);
+
 {$IF FPC_FullVersion < 30200}
 function FMod(const a, b: Double): Double; inline; overload;
 {$IFEND}
@@ -3058,6 +3061,22 @@ begin
   Result.Col2 := rng.Col2;
   Result.Sheet1 := ASheetIdx1;
   Result.Sheet2 := ASheetIdx2;
+end;
+
+procedure TrimCellRange(ARange: TsCellRange; var ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  if ARange.Row1 > ARow1 then ARow1 := ARange.Row1;
+  if ARange.Col1 > ACol1 then ACol1 := ARange.Col1;
+  if ARange.Row2 < ARow2 then ARow2 := ARange.Row2;
+  if ARange.Col2 < ACol2 then ACol2 := ARange.Col2;
+end;
+
+procedure TrimCellRange(ARange: TsCellRange3D; var ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  if ARange.Row1 > ARow1 then ARow1 := ARange.Row1;
+  if ARange.Col1 > ACol1 then ACol1 := ARange.Col1;
+  if ARange.Row2 < ARow2 then ARow2 := ARange.Row2;
+  if ARange.Col2 < ACol2 then ACol2 := ARange.Col2;
 end;
 
 {$IF FPC_FullVersion < 30200}

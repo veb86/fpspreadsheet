@@ -238,7 +238,7 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #8 AVERAGEIF(A1:A10,"abc",B1:B10) result mismatch');
 
-  // ToDo: CompareStringsWithWildcards does not handle a mask such as "*b" like Excel
+  // ToDo: CompareStringsWithWildcards does not handle a mask such as "*b" like Excel            // wp: really?  I thought this was fixed!
   {
   // Search for text cells by wildcards
   FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,"*bc",B1:B8)');
@@ -461,13 +461,15 @@ begin
 end;
 
 procedure TCalcStatsFormulaTests.Test_COUNTIF;
+var
+  t: TDateTime;
 begin
   // Test data, range A1:B5
-  FWorksheet.WriteNumber (0, 0, 10);          FWorksheet.WriteFormula(0, 1, '=SQRT(-1)');   // --> #NUM!
-  FWorksheet.WriteNumber (1, 0, -20);         FWorksheet.WriteBlank  (1, 1);
-  FWorksheet.WriteFormula(2, 0, '=(1=1)');    FWorksheet.WriteNumber (2, 1,  0);
-  FWorksheet.WriteText   (3, 0, '');          FWorksheet.WriteText   (3, 1, '5');
-  FWorksheet.WriteText   (4, 0, 'abc');       FWorksheet.WriteText   (4, 1, 'ABC');
+  FWorksheet.WriteNumber   (0, 0, 10);        FWorksheet.WriteFormula   (0, 1, '=SQRT(-1)');   // --> #NUM!
+  FWorksheet.WriteNumber   (1, 0, -20);       FWorksheet.WriteBlank     (1, 1);
+  FWorksheet.WriteFormula  (2, 0, '=(1=1)');  FWorksheet.WriteNumber    (2, 1,  0);
+  FWorksheet.WriteText     (3, 0, '');        FWorksheet.WriteText      (3, 1, '5');
+  FWorksheet.WriteText     (4, 0, 'abc');     FWorksheet.WriteText      (4, 1, 'ABC');
   FWorksheet.WriteBoolValue(5, 0, false);     FWorksheet.WriteErrorValue(5, 1, errOverflow);   // --> #NUM!
 
   // Counts the elements in A1:B6 which are equal to "abc" (case-insensitive)
@@ -498,44 +500,52 @@ begin
   // Counts the elements in A1:B6 which are FALSE
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,FALSE)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 COUNTIF(A1:B6,FALSE) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 COUNTIF(A1:B6,FALSE) result mismatch');
 
   // Counts the elements in A1:B5 which are #NUM!
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,#NUM!)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 COUNTIF(A1:B6,#NUM!) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 COUNTIF(A1:B6,#NUM!) result mismatch');
 
   // Error in 1st argument
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(#REF!,1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #7 COUNTIF(#REF!,1) result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #8 COUNTIF(#REF!,1) result mismatch');
 
   // Error in both arguments
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(#REF!,#REF!)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #8 COUNTIF(#REF!,#REF!) result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #9 COUNTIF(#REF!,#REF!) result mismatch');
 
   // Count the elements in A1:B6 which are equal to cell A15 (empty)
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 COUNTIF(A1:B6,A15) (A15 empty) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 COUNTIF(A1:B6,A15) (A15 empty) result mismatch');
 
   // Count the elements in A1:B6 which are equal to cell A15 (value 10)
   FWorksheet.WriteNumber(14, 0, 10);
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 COUNTIF(A1:B6,A15) (A15 = 10) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #11 COUNTIF(A1:B6,A15) (A15 = 10) result mismatch');
 
   // Count the elements in A1:B6 which are < cell A15 (value 10)
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"<"&A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #11 COUNTIF(A1:B6,"<"&A15) (A15 = 10) result mismatch');
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #12 COUNTIF(A1:B6,"<"&A15) (A15 = 10) result mismatch');
 
   // Count the elements in A1:B6 which are equal to cell A15 (error value #NUM!)
   FWorksheet.WriteErrorValue(14, 0, errOverflow);
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #12 COUNTIF(A1:B6,A15) (A15 = #NUM!) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 COUNTIF(A1:B6,A15) (A15 = #NUM!) result mismatch');
+
+  // Huge range
+  FWorksheet.WriteFormula(0, 1, '=COUNTIF(A2:AZ999999,"abc")');   // A2: do not include formula cell in range
+  t := Now;
+  FWorksheet.CalcFormulas;
+  t := Now-t;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 COUNTIF(A2:AZ999999,"abc") result mismatch');
+  CheckEquals(true, t < 0.1/(24*60*60), 'Formula #14 COUNTIF(A2:AZ999999,"abc") takes too long');
 end;
 
 procedure TCalcStatsFormulaTests.Test_MAX;
@@ -978,6 +988,8 @@ begin
 end;
 
 procedure TCalcStatsFormulaTests.Test_SUM;
+var
+  t: TDateTime;
 begin
   // Test data
   FWorksheet.WriteNumber (0, 0, 10);
@@ -1021,50 +1033,63 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 SUM(1/0) result mismatch');
 
   // Count in cell references
+
   FWorksheet.WriteFormula(0, 1, '=SUM(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 SUM(A1) result mismatch');
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUM(A1) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUM(A10)');     // empty cell
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 SUM(A10) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUM(A10) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUM(A1,A2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUM(A1,A2) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUM(A1,A2) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A3)');   // "real" numeric values
+  // "real" numeric values
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A3)');
   FWorksheet.CalcFormulas;
-  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUM(A1:A3) result mismatch');
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUM(A1:A3) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=SUM(A1,A2:A3)');    // several ranges
+  // Several ranges
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1,A2:A3)');
   FWorksheet.CalcFormulas;
-  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUM(A1,A2:A3) result mismatch');
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUM(A1,A2:A3) result mismatch');
+
+  // Huge range
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A3,A10:A999999)');
+  t := Now;
+  FWorksheet.CalcFormulas;
+  t := Now-t;
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUM(A1:A3,A10:A999999) result mismatch');
+  CheckEquals(true, t < 0.1/(24*60*60), 'Formula #14 SUM(A1:A3,A10:A999999) takes too long');
 
   // Cell references pointing to string cells
   FWorksheet.WriteFormula(0, 1, '=SUM(A1:A4)');   // real and string numeric values
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUM(A1:A4) result mismatch');
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 SUM(A1:A4) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUM(A1:A5)');   // real and string values --> ignore string
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUM(A1:A5) result mismatch');
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #16 SUM(A1:A5) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUM(A1:A4,A8:A10)');   // real and string values and blanks
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUM(A1:A4,A8:A10) result mismatch');
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #17 SUM(A1:A4,A8:A10) result mismatch');
 
   // Error propagation
   FWorksheet.WriteFormula(0, 1, '=SUM(A1, 1/0, A2)');     // error in argument
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 SUM(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #18 SUM(A1, 1/0, A2) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUM(A1:A6)');     // error in cell
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 SUM(A:A6) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #19 SUM(A:A6) result mismatch');
 end;
 
 procedure TCalcStatsFormulaTests.Test_SUMIF;
+var
+  t: TDateTime;
 begin
   // Test data, range A1:B5
   FWorksheet.WriteNumber (0, 0, 10);          FWorksheet.WriteNumber (0, 1, -1);
@@ -1217,6 +1242,14 @@ begin
   CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #22 SUMIF(A1:B5,A15) (A1=A15=#DIV/0!) result mismatch');
   //CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #21 SUMIF(A1:B5,A15) (A15=#DIV/0!) result mismatch');
 
+  // Huge range
+  FWorksheet.WriteFormula(0, 1, '=SUMIF(A2:Z999999,0)');   // A2: do not include formula cell in range
+  t := Now;
+  FWorksheet.CalcFormulas;
+  t := Now-t;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #22 SUMIF(A2:Z999999,0) result mismatch');
+  CheckEquals(true, t < 0.1/(24*60*60), 'Formula #22 SUMIF(A2:Z999999,0) takes too long');
+
 end;
 
 procedure TCalcStatsFormulaTests.Test_SUMSQ;
@@ -1265,50 +1298,52 @@ begin
   // Count in cell references
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 SUMSQ(A1) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUMSQ(A1) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A10)');     // empty cell
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 SUMSQ(A10) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUMSQ(A10) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1,A2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(5, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUMSQ(A1,A2) result mismatch');
+  CheckEquals(5, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUMSQ(A1,A2) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A3)');   // "real" numeric values
   FWorksheet.CalcFormulas;
-  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUMSQ(A1:A3) result mismatch');
+  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUMSQ(A1:A3) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1,A2:A3)');    // several ranges
   FWorksheet.CalcFormulas;
-  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUMSQ(A1,A2:A3) result mismatch');
+  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUMSQ(A1,A2:A3) result mismatch');
 
   // Cell references pointing to string cells
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A4)');   // "real" and string numeric values
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUMSQ(A1:A4) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUMSQ(A1:A4) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A5)');   // "real" and string values --> ignore string
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUMSQ(A1:A5) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 SUMSQ(A1:A5) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A4,A8:A10)');   // real and string values and blanks
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUMSQ(A1:A4,A8:A10) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #16 SUMSQ(A1:A4,A8:A10) result mismatch');
 
   // Error propagation
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A5,1/0)');     // error in argument --> error in result
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 SUMSQ(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #17 SUMSQ(A1, 1/0, A2) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A6)');        // error in cell --> error in result
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 SUMSQ(A1:A6) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #18 SUMSQ(A1:A6) result mismatch');
 end;
 
 procedure TCalcStatsFormulaTests.Test_VAR;
 const
   EPS = 1E-8;
+var
+  t: TDateTime;
 begin
   // Test data
   FWorksheet.WriteNumber (0, 0, 1);
@@ -1393,6 +1428,14 @@ begin
   FWorksheet.WriteFormula(0, 1, '=VAR(A1:A6)');     // error in cell
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 VAR(A:A6) result mismatch');
+
+  // Huge range
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A3,A10:A9999999)');
+  t := Now();
+  FWorksheet.CalcFormulas;
+  t := Now() - t;
+  CheckEquals(4.333333333, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #17 VAR(A1:A3,A10:9999999) result mismatch');
+  CheckEquals(true, t < 0.1/(24*60*60), 'Formula #17 VAR(A1:A3,A10:A9999999) takes too long');
 end;
 
 procedure TCalcStatsFormulaTests.Test_VARP;

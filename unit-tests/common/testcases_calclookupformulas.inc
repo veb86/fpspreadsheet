@@ -109,7 +109,7 @@ begin
   CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 COLUMN(B2) (B2 contains error) result mismatch');
 end;
 
-procedure TCalcLookupFormulaTests.Test_INDEX;
+procedure TCalcLookupFormulaTests.Test_INDEX_1;
 var
   sh: TsWorksheet;
 begin
@@ -126,9 +126,11 @@ begin
   FWorksheet.WriteFormula(10, 0, '=INDEX(B2:C6,3,1)');
   FWorksheet.CalcFormulas;
   CheckEquals(42, FWorksheet.ReadAsNumber(10,0), 'Formula #1 INDEX(B2:F3,3,1) result mismatch');
+end;
 
+procedure TCalcLookupFormulaTests.Test_INDEX_2;
+begin
   // Sample similar to that in unit formulatests:
-
   FWorksheet.Clear;
   FWorksheet.WriteText  (0, 0, 'A');     // A1
   FWorksheet.WriteText  (0, 1, 'B');     // B1
@@ -183,11 +185,11 @@ begin
 
   FOtherWorksheet.WriteFormula(0, 5, 'SUM(INDEX(Sheet1!A1:C3,0,2))');  // Sum of numbers in 2nd column of A1:C3
   FWorkbook.CalcFormulas;
-  CheckEquals(42, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #6 SUM(Sheet1!INDEX(A1:C3,0,2)) result mismatch');
+  CheckEquals(42, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #12 SUM(Sheet1!INDEX(A1:C3,0,2)) result mismatch');
 
   FOtherWorksheet.WriteFormula(0, 5, 'SUM(INDEX(Sheet1!A1:C3,2,0))');  // Sum of numbers in 2nd row of A1:C3
   FWorkbook.CalcFormulas;
-  CheckEquals(60, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #7 SUM(Sheet1!INDEX(A1:C3,2,0)) result mismatch');
+  CheckEquals(60, FOtherWorksheet.ReadAsNumber(0, 5), 'Formula #13 SUM(Sheet1!INDEX(A1:C3,2,0)) result mismatch');
 end;
 
 procedure TCalcLookupFormulaTests.Test_INDIRECT;

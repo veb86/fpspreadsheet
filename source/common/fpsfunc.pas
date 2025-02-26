@@ -117,7 +117,8 @@ type
     function GetArgValue(ArgIndex: Integer): Double;
     function GetCellValue(ASheet: TsBasicWorksheet; ARow, ACol: Integer): Double;
     procedure GetCompareParams(ArgIndex: Integer);
-    procedure GetRangeLimits(ArgIndex: Integer; out ARow1, ACol1, ARow2, ACol2: Integer);
+    procedure GetRangeLimits(ArgIndex: Integer; ASheet: TsBasicWorksheet;
+      out ARow1, ACol1, ARow2, ACol2: Cardinal);
     function GetWorkbook: TsBasicWorkbook;
     function GetWorksheet(ArgIndex: Integer): TsBasicWorksheet;
     function SameRangeSize(ARange1, ARange2: TsCellRange3D): Boolean;
@@ -276,7 +277,8 @@ end;
   returns the result to be used by the formula engine. }
 function TsFuncComparer.Execute: TsExpressionResult;
 var
-  r, r1, r2, c, c1, c2, rIdx, cIdx: Integer;
+  r, r1, r2, c, c1, c2: Cardinal;
+  rIdx, cIdx: Integer;
   critIdx: Integer;
   critRangeIdx: Integer;
   critSheet: TsBasicWorksheet;
@@ -302,7 +304,7 @@ begin
   sum := 0.0;
 
   // Iterate over all value range cells
-  GetRangeLimits(FValueRangeIndex, r1, c1, r2, c2);
+  GetRangeLimits(FValueRangeIndex, valueSheet, r1, c1, r2, c2);
   for r := r1 to r2 do
   begin
     for c := c1 to c2 do
@@ -522,7 +524,8 @@ begin
   end;
 end;
 
-procedure TsFuncComparer.GetRangeLimits(ArgIndex: Integer; out ARow1, ACol1, ARow2, ACol2: Integer);
+procedure TsFuncComparer.GetRangeLimits(ArgIndex: Integer; ASheet: TsBasicWorksheet;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   case FArgs[ArgIndex].ResultType of
   rtCell:
@@ -532,10 +535,8 @@ begin
     end;
   rtCellRange:
     begin
-      ARow1 := FArgs[ArgIndex].ResCellRange.Row1;
-      ARow2 := FArgs[ArgIndex].ResCellRange.Row2;
-      ACol1 := FArgs[ArgIndex].ResCellRange.Col1;
-      ACol2 := FArgs[ArgIndex].ResCellRange.Col2;
+      TsWorksheet(ASheet).GetSheetDim(ARow1, ACol1, ARow2, ACol2);
+      TrimCellRange(FArgs[ArgIndex].ResCellRange, ARow1, ACol1, ARow2, ACol2);
     end;
   end;
 end;

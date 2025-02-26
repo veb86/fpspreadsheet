@@ -5153,6 +5153,7 @@ const
 var
   i, n: Integer;
   r, c: Cardinal;
+  r1, c1, r2, c2: Cardinal;
   cell: PCell;
   sheet: TsWorksheet;
   book: TsWorkbook;
@@ -5215,8 +5216,11 @@ begin
       for idx := idx1 to idx2 do
       begin
         sheet := (arg.Worksheet as TsWorksheet).Workbook.GetWorksheetByIndex(idx);
-        for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
-          for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
+        r2 := sheet.GetLastOccupiedRowIndex;
+        sheet.GetSheetDim(r1, c1, r2, c2);
+        TrimCellRange(arg.ResCellRange, r1, c1, r2, c2);
+        for r := r1 to r2 do
+          for c := c1 to c2 do
           begin
             cell := sheet.FindCell(r, c);
             if (cell <> nil) then

@@ -71,7 +71,8 @@ type
     procedure Test_ADDRESS;
     procedure Test_COLUMN;
     // procedure Test_HYPERLINK  -- to be written
-    procedure Test_INDEX;
+    procedure Test_INDEX_1;
+    procedure Test_INDEX_2;
     procedure Test_INDIRECT;
     procedure Test_MATCH;
     procedure Test_ROW;
