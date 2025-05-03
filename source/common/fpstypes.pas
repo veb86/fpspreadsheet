@@ -575,12 +575,12 @@ const
   {@@ Mask for the rgb components contained in the TsColor }
   scRGBMask = $00FFFFFF;
 
-  // aliases for LCL colors, deprecated
-  scAqua = scCyan deprecated;
-  scFuchsia = scMagenta deprecated;
-  scLime = scGreen deprecated;
-  scMaroon = scDarkRed deprecated;
-  scNavy = scDarkBlue deprecated;
+  // aliases for LCL colors
+  scAqua = scCyan;
+  scFuchsia = scMagenta;
+  scLime = scGreen;
+  scMaroon = scDarkRed;
+  scNavy = scDarkBlue;
 
   { These color constants are deprecated, they will be removed in the long term }
   scPink = $00FE00FE deprecated;

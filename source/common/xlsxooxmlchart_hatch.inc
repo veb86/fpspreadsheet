@@ -2,7 +2,7 @@
 // (used by xlsxooxmlchart.pas)
 
 const
-  OOXML_GRAY5_PATTERN =
+  OOXML_GRAY05_PATTERN =
     'x       '+
     '        '+
     '        '+
@@ -312,7 +312,7 @@ const
     '  xx  xx'+
     '  xx  xx';
 
-  OOXML_LARGE_CHECKBOARD_PATTERN =
+  OOXML_LARGE_CHECKERBOARD_PATTERN =
     'xxxx    '+
     'xxxx    '+
     'xxxx    '+

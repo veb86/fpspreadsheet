@@ -101,9 +101,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);      // series 1, x labels in A4:A11
     ser.SetYRange(3, 1, 10, 1);          // series 1, y values in B4:B11
     ser.Line.Color := ChartColor(scDarkRed);
-    ser.Fill.Style := cfsSolidHatched;
-    ser.Fill.Hatch := ch.Hatches.AddLineHatch('Crossed', chsDouble, ChartColor(scDarkRed, 0.5), 2, 0.1, 45);
-    ser.Fill.Color := ChartColor(scRed, 0.5);
+    ser.Fill.Style := cfsSolidPattern;
+    ser.Fill.Pattern := ch.FillPatterns.AddPattern('Crossed', fpsHatchThick, ChartColor(scDarkRed), ChartColor(scRed));
     ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
 
     // Add 2nd bar series ("Student 2")
@@ -112,9 +111,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);      // series 2, x labels in A4:A11
     ser.SetYRange(3, 2, 10, 2);          // series 2, y values in C4:C11
     ser.Line.Color := ChartColor(scDarkBlue);
-    ser.Fill.Style := cfsSolidHatched;
-    ser.Fill.Hatch := ch.Hatches.AddLineHatch('Forward', chsSingle, ChartColor(scWhite, 0.5), 1.5, 0.1, 45);
-    ser.Fill.Color := ChartColor(scBlue, 0.5);
+    ser.Fill.Style := cfsSolidPattern;
+    ser.Fill.Pattern := ch.FillPatterns.AddPattern('Forward', fpsDiagUpThin, ChartColor(scWhite), ChartColor(scBlue));
     ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
 
     book.WriteToFile(dir + fn + '.xlsx', true);

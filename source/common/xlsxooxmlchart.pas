@@ -153,7 +153,7 @@ implementation
 {$IFDEF FPS_CHARTS}
 
 uses
-  xlsxooxml;
+  fpsPatterns, xlsxooxml;
 
 const
   MIME_DRAWINGML_CHART        = 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml';
@@ -804,8 +804,9 @@ var
   nodeName: String;
   hatch: String;
   color: TsChartColor;
+  pattern: Integer;
 begin
-  AFill.Style := cfsSolidHatched;
+  AFill.Style := cfsSolidPattern;
   hatch := GetAttrValue(ANode, 'prst');
 
   ANode := ANode.FirstChild;
@@ -823,104 +824,163 @@ begin
 
   case hatch of
     'pct5':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY5_PATTERN);
+      pattern := fpsGray06;
+      //AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY05_PATTERN);
     'pct10':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY10_PATTERN);
+      pattern := fpsGray12;
+      //AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY10_PATTERN);
     'pct20':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY20_PATTERN);
+      pattern := RegisterFillPattern('Gray20', StringToDotPattern(OOXML_GRAY20_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY20_PATTERN);
     'pct25':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY25_PATTERN);
+      pattern := fpsGray25;
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY25_PATTERN);
     'pct30':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY30_PATTERN);
+      pattern := RegisterFillPattern('Gray30', StringToDotPattern(OOXML_GRAY30_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY30_PATTERN);
     'pct40':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY40_PATTERN);
+      pattern := RegisterFillPattern('Gray40', StringToDotPattern(OOXML_GRAY40_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY40_PATTERN);
     'pct50':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY50_PATTERN);
+      pattern := fpsGray50;
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY50_PATTERN);
     'pct60':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY60_PATTERN);
+      pattern := RegisterFillPattern('Gray60', StringToDotPattern(OOXML_GRAY60_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY60_PATTERN);
     'pct70':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY70_PATTERN);
+      pattern := RegisterFillPattern('Gray70', StringToDotPattern(OOXML_GRAY70_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY70_PATTERN);
     'pct75':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY75_PATTERN);
+      pattern := fpsGray75;
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY75_PATTERN);
     'pct80':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY80_PATTERN);
+      pattern := RegisterFillPattern('Gray80', StringToDotPattern(OOXML_GRAY80_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY80_PATTERN);
     'pct90':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY90_PATTERN);
+      pattern := RegisterFillPattern('Gray90', StringToDotPattern(OOXML_GRAY90_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY90_PATTERN);
     'dashDnDiag':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_DNDIAG_PATTERN);
+      pattern := RegisterFillPattern('DiagDownDash', StringToDotPattern(OOXML_DASH_DNDIAG_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_DNDIAG_PATTERN);
     'dashUpDiag':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_UPDIAG_PATTERN);
+      pattern := RegisterFillPattern('DiagUpDash', StringToDotPattern(OOXML_DASH_UPDIAG_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_UPDIAG_PATTERN);
     'dashHorz':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_HORZ_PATTERN);
+      pattern := RegisterFillPattern('HorDash', StringToDotPattern(OOXML_DASH_HORZ_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_HORZ_PATTERN);
     'dashVert':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_VERT_PATTERN);
+      pattern := RegisterFillPattern('VertDash', StringToDotPattern(OOXML_DASH_VERT_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_VERT_PATTERN);
     'smConfetti':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CONFETTI_PATTERN);
+      pattern := RegisterFillPattern('SmallConfetti', StringToDotPattern(OOXML_SMALL_CONFETTI_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CONFETTI_PATTERN);
     'lgConfetti':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CONFETTI_PATTERN);
+      pattern := RegisterFillPattern('LargeConfetti', StringToDotPattern(OOXML_LARGE_CONFETTI_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CONFETTI_PATTERN);
     'zigZag':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_ZIGZAG_PATTERN);
+      pattern := fpsZigZag;
+//      pattern := RegisterFillPattern('ZigZag', StringToDotPattern(OOXML_ZIGZAG_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_ZIGZAG_PATTERN);
     'wave':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WAVE_PATTERN);
+      pattern := fpsWave;
+//      pattern := RegisterFillPattern('Wave', StringToDotPattern(OOXML_WAVE_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WAVE_PATTERN);
     'diagBrick':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIAG_BRICK_PATTERN);
+      pattern := fpsBrickDiag;
+//      pattern := RegisterFillPattern('DiagBrick', StringToDotPattern(OOXML_DIAG_BRICK_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIAG_BRICK_PATTERN);
     'horzBrick':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_HORZ_BRICK_PATTERN);
+      pattern := fpsBrickHor;
+//      pattern := RegisterFillPattern('HorBrick', StringToDotPattern(OOXML_HORZ_BRICK_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_HORZ_BRICK_PATTERN);
     'weave':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WEAVE_PATTERN);
+      pattern := RegisterFillPattern('Weave', StringToDotPattern(OOXML_WEAVE_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WEAVE_PATTERN);
     'plaid':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_PLAID_PATTERN);
+      pattern := RegisterFillPattern('Plaid', StringToDotPattern(OOXML_PLAID_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_PLAID_PATTERN);
     'divot':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIVOT_PATTERN);
+      pattern := RegisterFillPattern('Divot', StringToDotPattern(OOXML_DIVOT_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIVOT_PATTERN);
     'dotGrid':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_GRID_PATTERN);
+      pattern := fpsCrossDot;
+//      pattern := RegisterFillPattern('DotGrid', StringToDotPattern(OOXML_DOT_GRID_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_GRID_PATTERN);
     'dotDmnd':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_DIAMOND_PATTERN);
+      pattern := fpsHatchDot;
+//      pattern := RegisterFillPattern('DotDiamond', StringToDotPattern(OOXML_DOT_DIAMOND_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_DIAMOND_PATTERN);
     'shingle':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SHINGLE_PATTERN);
+      pattern := fpsShingle;
+//      pattern := RegisterFillPattern('Shingle', StringToDotPattern(OOXML_SHINGLE_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SHINGLE_PATTERN);
     'trellis':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_TRELLIS_PATTERN);
+      pattern := RegisterFillPattern('Trellis', StringToDotPattern(OOXML_TRELLIS_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_TRELLIS_PATTERN);
     'sphere':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SPHERE_PATTERN);
+      pattern := RegisterFillPattern('Sphere', StringToDotPattern(OOXML_SPHERE_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SPHERE_PATTERN);
     'smCheck':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CHECKERBOARD_PATTERN);
+      pattern := fpsCheckerboardSmall;
+      //RegisterFillPattern('SmallCheckerboard', StringToDotPattern(OOXML_SMALL_CHECKERBOARD_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CHECKERBOARD_PATTERN);
     'lgCheck':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CHECKBOARD_PATTERN);
+      pattern := fpsCheckerboardLarge;
+      //RegisterFillPattern('LargeCheckerboard', StringToDotPattern(OOXML_LARGE_CHECKERBOARD_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CHECKBOARD_PATTERN);
     'solidDmnd':
-      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SOLID_DIAMOND_PATTERN);
+      pattern := fpsDiamond;
+//      pattern := RegisterFillPattern('SolidDiamond', StringToDotPattern(OOXML_SOLID_DIAMOND_PATTERN));
+//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SOLID_DIAMOND_PATTERN);
 
-    // The following patterns are line patterns to simplify interfacing with ODS.
+    // The following patterns are combined line+dot patterns to simplify interfacing with ODS.
     'ltDnDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, -45);
+      pattern := fpsDiagDownNarrow;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, -45);
     'ltUpDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, +45);
+      pattern := fpsDiagUpNarrow;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, +45);
     'dkDnDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, -45);
+      pattern := fpsDiagDownThick;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, -45);
     'dkUpDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, +45);
+      pattern := fpsDiagUpThick;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, +45);
     'wdDnDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, -45);
+      pattern := fpsDiagDownThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, -45);
     'wdUpDiag':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, +45);
+      pattern := fpsDiagUpThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, +45);
     'ltHorz':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 0);
+      pattern := fpsHorThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 0);
     'ltVert':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 90);
+      pattern := fpsVertThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 90);
     'narVert':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 90);
+      pattern := fpsVertNarrow;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 90);
     'narHorz':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 0);
+      pattern := fpsHorNarrow;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 0);
     'dkHorz':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 0);
+      pattern := fpsHorThick;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 0);
     'dkVert':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 90);
+      pattern := fpsVertThick;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 90);
     'smGrid':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 1.0, 0.1, 0);
+      pattern := fpsCrossNarrow;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 1.0, 0.1, 0);
     'lgGrid':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 0);
+      pattern := fpsCrossThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 0);
     'openDmnd':
-      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 45);
+      pattern := fpsHatchThin;
+//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 45);
   end;
+  AFill.Pattern := AChart.FillPatterns.AddPattern(hatch, pattern, color, AFill.Color);
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartFillAndLineProps(ANode: TDOMNode;
@@ -944,7 +1004,7 @@ begin
       // Solid fill
       'a:solidFill':
         begin
-          AFill.Style := cfsSolid;
+          AFill.Style := cfsSolidFill;
           ReadChartColor(ANode.FirstChild, AFill.Color);
         end;
 
@@ -1526,7 +1586,7 @@ begin
   end;
 
   AChart.PlotArea.Background.Color := ChartColor(scWhite);
-  AChart.PlotArea.Background.Style := cfsSolid;
+  AChart.PlotArea.Background.Style := cfsSolidFill;
   SetAxisDefaults(AChart.XAxis);
   SetAxisDefaults(AChart.YAxis);
   SetAxisDefaults(AChart.X2Axis);
@@ -2604,7 +2664,7 @@ end;
 procedure TsSpreadOOXMLChartReader.SetDefaultSeriesColor(ASeries: TsChartSeries);
 begin
   ASeries.Fill.Color := CalcDefaultSeriesColor(ASeries.Order);
-  ASeries.Fill.Style := cfsSolid;
+  ASeries.Fill.Style := cfsSolidFill;
   ASeries.Line.Style := clsNoLine;
 end;
 
@@ -3495,7 +3555,7 @@ end;
 function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
   AChart: TsChart; AFill: TsChartFill): String;
 const
-  HATCH_NAMES: array[0..47] of string = (
+  OOXML_PATTERN_NAMES: array[0..47] of string = (
     'pct5', 'pct10', 'pct20', 'pct25', 'pct30',                 // 0..4
     'pct40', 'pct50', 'pct60', 'pct70', 'pct75',                // 5..9
     'pct80', 'pct90', 'dashDnDiag', 'dashUpDiag', 'dashHorz',   // 10..14
@@ -3507,9 +3567,23 @@ const
     'ltVert', 'narVert', 'narHorz', 'dkHorz', 'dkVert',         // 40..44
     'smGrid', 'lgGrid', 'openDmnd'                              // 45..47
   );
+  FPS_PATTERN_NAMES: array[0..47] of string = (
+    FPS_GRAY06, FPS_GRAY12, '', FPS_GRAY25, '',                 // pct5 ...
+    '', FPS_GRAY50, '', '', FPS_GRAY75,                         // ptc40 ...
+    '', '', '', '', '',                                         // pct80 ...
+    '', '', '', FPS_ZIGZAG, FPS_WAVE,                           // dashVert ...
+    FPS_BRICK_DIAG, FPS_BRICK_HOR, '', '', '',                  // diagBrick ...
+    FPS_CROSS_DOT, FPS_HATCH_DOT, FPS_SHINGLE, '', '',          // dotGrid ...
+    FPS_CHECKERBOARD_SMALL, FPS_CHECKERBOARD_LARGE, FPS_DIAMOND, FPS_DIAG_DOWN_NARROW, FPS_DIAG_UP_NARROW,  //smCheck ...
+    FPS_DIAG_DOWN_THIN, FPS_DIAG_UP_THIN, FPS_DIAG_DOWN_THICK, FPS_DIAG_UP_THICK, FPS_HOR_THIN,  // dkDnDiag
+    FPS_VERT_THIN, FPS_VERT_NARROW, FPS_HOR_NARROW, FPS_HOR_THICK, FPS_VERT_NARROW,              // ltVert
+    FPS_CROSS_NARROW, FPS_CROSS_THIN, FPS_HATCH_THIN            // smGrid ...
+  );
+
 var
   indent: String;
-  hatch: TsChartHatch;
+  pattern: TsFillPattern;
+  coloredPattern: TsChartFillPattern;
   gradient: TsChartGradient;
   step: TsChartGradientStep;
   gSteps: String = '';
@@ -3530,7 +3604,7 @@ begin
   else
     case AFill.Style of
       // Solid fills
-      cfsSolid:
+      cfsSolidFill:
         Result := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
 
       // Gradient fills
@@ -3586,27 +3660,37 @@ begin
         end;
 
       // Hatched and pattern fills
-      cfsHatched, cfsSolidHatched:
+      cfsPattern, cfsSolidPattern:
         begin
-          hatch := AChart.Hatches[AFill.Hatch];
+          coloredPattern := AChart.FillPatterns[AFill.Pattern];
+          pattern := GetFillPattern(coloredPattern.Index);
+         // hatch := AChart.Hatches[AFill.Hatch];
           presetIdx := -1;
-          for i := 0 to High(HATCH_NAMES) do
-            if hatch.Name = HATCH_NAMES[i] then
+          for i := 0 to High(OOXML_PATTERN_NAMES) do
+            if SameText(pattern.Name, OOXML_PATTERN_NAMES[i]) then
             begin
               presetIdx := i;
               break;
             end;
           if presetIdx = -1 then
-            case Lowercase(hatch.Name) of
-              'crossed': presetIdx := 47;   // openDmnd
-              'forward': presetIdx := 34;   // ltUpDiag
-              'backward': presetIdx := 33;  // ltDnDiag
+            for i := 0 to High(FPS_PATTERN_NAMES) do
+              if SameText(pattern.Name, FPS_PATTERN_NAMES[i]) then
+              begin
+                presetIdx := i;
+                break;
+              end;
+          if presetIdx = -1 then
+            case Uppercase(pattern.Name) of
+              'BACKWARD': presetIdx := 33;  // ltDnDiag
+              'FORWARD': presetIdx := 36;   // ltUpDiag
+              'CROSSED',
+              'HATCH_THICK': presetIdx := 47;   // openDmnd
             end;
           if presetIdx > -1 then
             Result :=
-              indent + '<a:pattFill prst="' + HATCH_NAMES[presetIdx] + '">' + LE +
-                       GetChartColorXML(AIndent + 2, 'a:fgClr', hatch.PatternColor) + LE +
-                       GetChartColorXML(AIndent + 2, 'a:bgClr', AFill.Color) + LE +
+              indent + '<a:pattFill prst="' + OOXML_PATTERN_NAMES[presetIdx] + '">' + LE +
+                       GetChartColorXML(AIndent + 2, 'a:fgClr', coloredPattern.Color) + LE +
+                       GetChartColorXML(AIndent + 2, 'a:bgClr', coloredPattern.BgColor) + LE +
               indent + '</a:pattFill>'
           else
             // unknown pattern - use a solid fill

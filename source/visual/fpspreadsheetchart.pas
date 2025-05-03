@@ -214,7 +214,7 @@ implementation
 {$ifdef FPS_CHARTS}
 
 uses
-  Math;
+  Math, fpsPatterns;
 
 const
   POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
@@ -1081,7 +1081,7 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
       else
         fill := ASeries.Fill;
       case fill.Style of
-        cfsSolid, cfsSolidHatched:
+        cfsSolidFill, cfsSolidPattern:
           c := fill.Color;
         cfsGradient:
           begin
@@ -1526,39 +1526,84 @@ end;
 procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
-  hatch: TsChartHatch;
+  coloredPattern: TsChartFillPattern;
+  pattern: TsFillPattern;
 begin
   ABrush.Style := bsSolid;   // Fall-back style
 
-  hatch := AWorkbookChart.Hatches[AFill.Hatch];
-  ABrush.Color := Convert_sColor_to_Color(hatch.PatternColor.Color);
-  case hatch.Style of
-    chsSingle:
-      if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
-        ABrush.Style := bsHorizontal
-      else
-      if InRange(FMod(hatch.PatternAngle - 90, 180.0), -22.5, 22.5) then  // vertical
-        ABrush.Style := bsVertical
-      else
-      if Inrange(FMod(hatch.PatternAngle - 45, 180.0), -22.5, 22.5) then  // diagonal up
-        ABrush.Style := bsBDiagonal
-      else
-      if InRange(FMod(hatch.PatternAngle + 45, 180.0), -22.5, 22.5) then  // diagonal down
-        ABrush.Style := bsFDiagonal;
-    chsDouble,
-    chsTriple:   // no triple hatches in LCL - fall-back to double hatch
-      if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then   // +++
-        ABrush.Style := bsCross
-      else
-      if InRange(FMod(hatch.PatternAngle - 45, 180.0), -22.5, 22.5) then // xxx
-        ABrush.Style := bsDiagCross;
-  end;
+  coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
+  pattern := GetFillPattern(coloredPattern.Index);
+//  hatch := AWorkbookChart.Hatches[AFill.Hatch];
+  ABrush.Color := Convert_sColor_to_Color(coloredpattern.Color.Color);
+  if pattern.LinePattern <> nil then
+    case pattern.LinePattern.Multiplier of
+      lfpmSingle:
+        if InRange(FMod(pattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
+          ABrush.Style := bsHorizontal
+        else
+        if InRange(FMod(pattern.LinePattern.Angle - 90, 180.0), -22.5, 22.5) then  // vertical
+          ABrush.Style := bsVertical
+        else
+        if Inrange(FMod(pattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then  // diagonal up
+          ABrush.Style := bsBDiagonal
+        else
+        if InRange(FMod(pattern.linePattern.Angle + 45, 180.0), -22.5, 22.5) then  // diagonal down
+          ABrush.Style := bsFDiagonal;
+      lfpmDouble,
+      lfpmTriple:   // no triple hatches in LCL - fall-back to double hatch
+        if InRange(FMod(pattern.LinePattern.Angle, 180.0), -22.5, 22.5) then   // +++
+          ABrush.Style := bsCross
+        else
+        if InRange(FMod(pattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
+          ABrush.Style := bsDiagCross;
+    end;
 end;
 
 { Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
   a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
   FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
   style. }
+procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  rawPattern: TsFillPattern;
+  coloredPattern: TsChartFillPattern;
+  png: TPortableNetworkGraphic;
+  bkCol, fgCol: TColor;
+  x, y: Integer;
+  b: byte;
+begin
+  ABrush.Style := bsSolid;   // Fall-back pattern
+
+  coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
+  rawPattern := GetFillPattern(coloredPattern.Index);
+
+  // Pattern color
+  fgCol := Convert_sColor_to_Color(coloredPattern.Color.Color);
+  // Background color
+  if rawPattern.LinePattern <> nil then
+    bkCol := Convert_sColor_to_Color(AFill.Color.Color)
+  else
+    bkCol := Convert_sColor_to_Color(coloredPattern.BgColor.Color);
+
+  png := TPortableNetworkGraphic.Create;
+  png.SetSize(8, 8);
+  png.Canvas.Brush.Color := bkCol;
+  png.Canvas.FillRect(0, 0, 8, 8);
+  for y := 0 to png.Height-1 do
+    for x := 0 to png.Width-1 do
+    begin
+      b := 1 shl x;
+      if rawPattern.DotPattern[y] and b <> 0 then
+        png.Canvas.Pixels[x, y] := fgCol;
+    end;
+  FBrushBitmaps.Add(png);
+
+  // ... and assign the pattern to the brush
+  ABrush.Style := bsImage;
+  ABrush.Bitmap := png;
+end;
+(*
 procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
@@ -1692,7 +1737,7 @@ begin
   ABrush.Style := bsImage;
   ABrush.Bitmap := png;
 end;
-
+     *)
 {@@ ----------------------------------------------------------------------------
   Constructs the format strings for the series marks allowing: multiple items
   separated by the WorkbookSeries.LabelSeparator, formatting of numbers as
@@ -2450,13 +2495,13 @@ begin
     case AWorkbookFill.Style of
       cfsNoFill:
         ABrush.Style := bsClear;
-      cfsSolid:
+      cfsSolidFill:
         ABrush.Style := bsSolid;
       cfsGradient:
         ABrush.Style := bsSolid;  // NOTE: TAChart cannot display gradients
-      cfsHatched:
+      cfsPattern:
         ConstructHatchPattern(AWorkbookChart, AWorkbookFill, ABrush);
-      cfsSolidHatched:
+      cfsSolidPattern:
         ConstructHatchPatternSolid(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
         begin

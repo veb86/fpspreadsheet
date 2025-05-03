@@ -98,7 +98,7 @@ begin
     ser.Line.Color := ChartColor(scRed);
     ser.ShowSymbols := true;
     ser.SymbolFill.Color := ChartColor(scRed, 0.5);
-    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Style := cfsSolidFill;
     ser.SymbolBorder.Color := ChartColor(scBlack);
     ser.Interpolation := ciCubicSpline;
 //    ser.GroupIndex := -1;
@@ -110,7 +110,7 @@ begin
     ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
     ser.Line.Color := chartColor(scBlue);
     ser.SymbolFill.Color := ChartColor(scBlue, 0.5);
-    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Style := cfsSolidFill;
     ser.SymbolBorder.Color := ChartColor(scBlack, 0.5);
     //ser.Smooth := true;
     ser.ShowSymbols := true;

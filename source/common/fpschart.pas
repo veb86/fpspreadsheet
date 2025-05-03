@@ -12,10 +12,52 @@ const
   clsNoLine = -2;
   clsSolid = -1;
 
-{@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
-  list. Get their value in the constructor of TsChart. Default here to -1
-  which is the code for a solid line, just in case that something goes wrong }
 var
+  {@@ Pre-defined chart fill patterns given as indices into the global
+    FillPatternsList. When this list is create the pattern indices will get
+    their values. }
+  fpsGray75: Integer = -1;
+  fpsGray50: Integer = -1;
+  fpsGray25: Integer = -1;
+  fpsGray12: Integer = -1;
+  fpsGray06: Integer = -1;
+
+  fpsHorThick: Integer = -1;
+  fpsVertThick: Integer = -1;
+  fpsDiagUpThick: Integer = -1;
+  fpsDiagDownThick: Integer = -1;
+  fpsHatchThick: Integer = -1;
+  fpsCrossThick: Integer = -1;
+
+  fpsHorThin: Integer = -1;
+  fpsVertThin: Integer = -1;
+  fpsDiagUpThin: Integer = -1;
+  fpsDiagDownThin: Integer = -1;
+  fpsHatchThin: Integer = -1;
+  fpsCrossThin: Integer = -1;
+
+  fpsHorNarrow: Integer = -1;
+  fpsVertNarrow: Integer = -1;
+  fpsDiagUpNarrow: Integer = -1;
+  fpsDiagDownNarrow: Integer = -1;
+  fpsHatchNarrow: Integer = -1;
+  fpsCrossNarrow: Integer = -1;
+
+  fpsHatchDot: Integer = -1;
+  fpsCrossDot: Integer = -1;
+
+  fpsBrickDiag: Integer = -1;
+  fpsBrickHor: Integer = -1;
+  fpsCheckerBoardLarge: Integer = -1;
+  fpsCheckerBoardSmall: Integer = -1;
+  fpsDiamond: Integer = -1;
+  fpsShingle: Integer = -1;
+  fpsWave: Integer = -1;
+  fpsZigZag: Integer = -1;
+
+  {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
+    list. Get their value in the constructor of TsChart. Default here to -1
+    which is the code for a solid line, just in case that something goes wrong }
   clsFineDot: Integer = -1;
   clsDot: Integer = -1;
   clsDash: Integer = -1;
@@ -122,37 +164,27 @@ type
 
   TSngPoint = record X, Y: Single; end;
 
-  TsChartHatch = class
+  // A combination of pattern (taken from global FillPatternList) and color
+  TsChartFillPattern = class
     Name: String;
-    Style: TsChartHatchStyle;
-    PatternColor: TsChartColor;
-    PatternWidth: Double;         // Width of pattern (square), in mm if > 0, in px if < 0
-    PatternHeight: Double;        // Height of pattern
-    PatternAngle: Double;         // Rotation angle of pattern, in degrees
-    NumDots: Integer;             // Number of dots within pattern
-    DotPos: Array of TSngPoint;   // fraction of dot coordinates in pattern cell
-    LineWidth: Single;            // Line width of line pattern, in mm
+    Index: Integer;           // Index into fpsPatterns.FillPatternList
+    Color: TsChartColor;      // Color of pattern
+    BgColor: TsChartColor;    // Color of background (needed by ODS)
     destructor Destroy; override;
-    procedure CopyFrom(ASource: TsChartHatch);
+    procedure CopyFrom(ASource: TsChartFillPattern);
   end;
 
-  TsChartHatchList = class(TFPObjectList)
+  TsChartFillPatternList = class(TFPObjectList)
   private
-    function GetItem(AIndex: Integer): TsChartHatch;
-    procedure SetItem(AIndex: Integer; AValue: TsChartHatch);
+    function GetItem(AIndex: Integer): TsChartFillPattern;
+    procedure SetItem(AIndex: Integer; AValue: TsChartFillPattern);
   protected
     function NewPattern(AName: String): Integer;
   public
-    function AddDotHatch(AName: String; ADotColor: TsChartColor;
-      APatternWidth, APatternHeight: Double;
-      ANumDots: Integer; const ADots: array of single): Integer;
-    function AddDotHatch(AName: String; ADotColor: TsChartColor;
-      APatternWidth, APatternHeight: Integer; ADots: String): Integer;
-    function AddLineHatch(AName: String; AStyle: TsChartHatchStyle;
-      ALineColor: TsChartColor; ALineDistance, ALineWidth, ALineAngle: Double): Integer;
-    function FindByName(AName: String): TsChartHatch;
+    function AddPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
+    function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
-    property Items[AIndex: Integer]: TsChartHatch read GetItem write SetItem; default;
+    property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
   end;
 
   TsChartImage = class
@@ -174,17 +206,17 @@ type
     property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
   end;
 
-  TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient, cfsHatched, cfsSolidHatched, cfsImage);
+  TsChartFillStyle = (cfsNoFill, cfsSolidFill, cfsGradient, cfsPattern, cfsSolidPattern, cfsImage);
 
   TsChartFill = class
   public
     Style: TsChartFillStyle;
-    Color: TsChartColor;
+    Color: TsChartColor;   // Background color of the fill pattern
     Gradient: Integer;     // Index into chart's Gradients list
-    Hatch: Integer;        // Index into chart's Hatches list
+    Pattern: Integer;      // Index into chart's FillPatterns list
     Image: Integer;        // Index into chart's Images list
     constructor CreateSolidFill(AColor: TsChartColor);
-    constructor CreateHatchFill(AHatchIndex: Integer; ABkColor: TsChartColor);
+    constructor CreatePatternFill(APatternIndex: Integer; ATransparent: Boolean);
     procedure CopyFrom(AFill: TsChartFill);
   end;
 
@@ -810,7 +842,7 @@ type
 
     FLineStyles: TsChartLineStyleList;
     FGradients: TsChartGradientList;
-    FHatches: TsChartHatchList;
+    FFillPatterns: TsChartFillPatternList;
     FImages: TsChartImageList;
 
     function GetCategoryLabelRange: TsChartRange;
@@ -900,7 +932,7 @@ type
     { Style lists }
     property LineStyles: TsChartLineStyleList read FLineStyles;
     property Gradients: TsChartGradientList read FGradients;
-    property Hatches: TsChartHatchList read FHatches;
+    property FillPatterns: TsChartFillPatternList read FFillPatterns;
     property Images: TsChartImageList read FImages;
   end;
 
@@ -920,7 +952,7 @@ function ChartColor(AColor: TsColor; ATransparency: Single = 0.0): TsChartColor;
 implementation
 
 uses
-  Math, fpSpreadsheet;
+  Math, fpSpreadsheet, fpsPatterns;
 
 { TsChartColor }
 
@@ -1285,118 +1317,42 @@ begin
 end;
 
 
-{ TsChartHatch }
+{ TsChartFillPattern}
 
-destructor TsChartHatch.Destroy;
+destructor TsChartFillPattern.Destroy;
 begin
   Name := '';
   inherited;
 end;
 
-procedure TsChartHatch.CopyFrom(ASource: TsChartHatch);
+procedure TsChartFillPattern.CopyFrom(ASource: TsChartFillPattern);
 var
   i: Integer;
 begin
   Name := ASource.Name;
-  Style := ASource.Style;
-  PatternColor := ASource.PatternColor;
-  PatternWidth := ASource.PatternWidth;
-  PatternHeight := ASource.PatternHeight;
-  PatternAngle := ASource.PatternAngle;
-  NumDots := ASource.NumDots;
-  SetLength(DotPos, Length(ASource.DotPos));
-  for i := 0 to High(DotPos) do DotPos[i] := ASource.DotPos[i];
-  LineWidth := ASource.LineWidth;
+  Index := ASource.Index;
+  Color := ASource.Color;
+  BgColor := ASource.BgColor;
 end;
 
 
-{ TsChartHatchList }
+{ TsChartFillPatternList }
 
-function TsChartHatchList.AddDotHatch(AName: String; ADotColor: TsChartColor;
-  APatternWidth, APatternHeight: Double;
-  ANumDots: Integer; const ADots: array of single): Integer;
+function TsChartFillPatternList.AddPattern(AName: String;
+  APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
-  item: TsChartHatch;
+  pattern: TsChartFillPattern;
   i, j: Integer;
 begin
   Result := NewPattern(AName);
-  item := Items[Result];
-  item.Name := AName;
-  item.Style := chsDot;
-  item.PatternColor := ADotColor;
-  item.PatternWidth := APatternWidth;  // in millimeters (> 0), in px (< 0)
-  item.PatternHeight := APatternHeight;
-  item.PatternAngle:= 0.0;
-  item.NumDots := ANumDots;
-  j := 0;
-  SetLength(item.DotPos, Length(ADots) div 2);
-  for i := 0 to High(item.DotPos) do
-  begin
-    item.DotPos[i].X := ADots[j];
-    item.DotPos[i].Y := ADots[j+1];
-    inc(j, 2);
-  end;
+  pattern := Items[Result];
+  pattern.Name := AName;
+  pattern.Index := APatternIndex;
+  pattern.Color := APatternColor;
+  pattern.BgColor := ABackColor;
 end;
 
-function TsChartHatchList.AddDotHatch(AName: String; ADotColor: TsChartColor;
-  APatternWidth, APatternHeight: Integer; ADots: String): Integer;
-var
-  i, x, y: Integer;
-  w, h: Integer;
-  dots: array of single = nil;
-  nDots: Integer;
-begin
-  w := APatternWidth;
-  if w < 0 then w := -w;
-
-  h := APatternHeight;
-  if h < 0 then h := -h;
-
-  if Length(ADots) <> w*h then
-    raise Exception.Create('Hatch pattern error.');
-
-  x := 0;
-  y := 0;
-  nDots := 0;
-  SetLength(dots, Length(ADots)*2);
-  for i := 1 to Length(ADots) do
-  begin
-    if ADots[i] in ['x', 'X', '*'] then
-    begin
-      dots[nDots] := -1.0 * x;
-      dots[nDots+1] := -1.0 * y;
-      inc(nDots, 2);
-    end;
-    inc(x);
-    if x = w then
-    begin
-      inc(y);
-      x := 0;
-    end;
-  end;
-  SetLength(dots, nDots);
-  Result := AddDotHatch(AName, ADotColor, -w, -h, nDots div 2, dots);
-end;
-
-function TsChartHatchList.AddLineHatch(AName: String; AStyle: TsChartHatchStyle;
-  ALineColor: TsChartColor; ALineDistance, ALineWidth, ALineAngle: Double): Integer;
-var
-  item: TsChartHatch;
-begin
-  if not (AStyle in [chsSingle, chsDouble, chsTriple]) then
-    exit(-1);
-
-  Result := NewPattern(AName);
-  item := Items[Result];
-  item.Name := AName;
-  item.Style := AStyle;
-  item.PatternColor := ALineColor;
-  item.PatternWidth := ALineDistance;
-  item.PatternAngle := ALineAngle;
-  item.LineWidth := ALineWidth;
-end;
-
-function TsChartHatchList.FindByName(AName: String): TsChartHatch;
+function TsChartFillPatternList.FindByName(AName: String): TsChartFillPattern;
 var
   idx: Integer;
 begin
@@ -1407,12 +1363,12 @@ begin
     Result := nil;
 end;
 
-function TsChartHatchList.GetItem(AIndex: Integer): TsChartHatch;
+function TsChartFillPatternList.GetItem(AIndex: Integer): TsChartFillPattern;
 begin
-  Result := TsChartHatch(inherited Items[AIndex]);
+  Result := TsChartFillPattern(inherited Items[AIndex]);
 end;
 
-function TsChartHatchList.IndexOfName(AName: String): Integer;
+function TsChartFillPatternList.IndexOfName(AName: String): Integer;
 begin
   for Result := 0 to Count-1 do
     if SameText(Items[Result].Name, AName) then
@@ -1420,23 +1376,23 @@ begin
   Result := -1;
 end;
 
-function TsChartHatchList.NewPattern(AName: String): integer;
+function TsChartFillPatternList.NewPattern(AName: String): integer;
 var
-  item: TsChartHatch;
+  pattern: TsChartFillPattern;
 begin
   if AName = '' then
-    AName := 'Hatch' + IntToStr(Count+1);
+    AName := 'Pattern' + IntToStr(Count+1);
   Result := IndexOfName(AName);
   if Result = -1 then
   begin
-    item := TsChartHatch.Create;
-    Result := inherited Add(item);
+    pattern := TsChartFillPattern.Create;
+    Result := inherited Add(pattern);
   end;
 end;
 
-procedure TsChartHatchList.SetItem(AIndex: Integer; AValue: TsChartHatch);
+procedure TsChartFillPatternList.SetItem(AIndex: Integer; AValue: TsChartFillPattern);
 begin
-  TsChartHatch(inherited Items[AIndex]).CopyFrom(AValue);
+  TsChartFillPattern(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 
@@ -1511,19 +1467,22 @@ end;
 constructor TsChartFill.CreateSolidFill(AColor: TsChartColor);
 begin
   inherited Create;
-  Style := cfsSolid;
+  Style := cfsSolidFill;
   Color := AColor;
 end;
 
-constructor TsChartFill.CreateHatchFill(AHatchIndex: Integer; ABkColor: TsChartColor);
+// APatternIndex is the index of the pattern in the chart's FillPatterns list
+// Pattern color and background color are already contained in the pattern
+// referred to by APatternIndex.
+constructor TsChartFill.CreatePatternFill(APatternIndex: Integer;
+  ATransparent: Boolean);
 begin
   inherited Create;
-  if aBkColor.Transparency = 1.0 then
-    Style := cfsHatched
+  if ATransparent then
+    Style := cfsPattern
   else
-    Style := cfsSolidHatched;
-  Hatch := AHatchIndex;
-  Color := ABkColor;
+    Style := cfsSolidPattern;
+  Pattern := APatternIndex;
 end;
 
 procedure TsChartFill.CopyFrom(AFill: TsChartFill);
@@ -1533,7 +1492,7 @@ begin
     Style := AFill.Style;
     Color := AFill.Color;
     Gradient := AFill.Gradient;
-    Hatch := AFill.Hatch;
+    Pattern := AFill.Pattern;
     Image := AFill.Image;
   end;
 end;
@@ -1737,10 +1696,10 @@ constructor TsChartFillElement.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FBackground := TsChartFill.Create;
-  FBackground.Style := cfsSolid;
+  FBackground.Style := cfsSolidFill;
   FBackground.Color := ChartColor(scWhite);
   FBackground.Gradient := -1;
-  FBackground.Hatch := -1;
+  FBackground.Pattern := -1;
   FBorder := TsChartLine.Create;
   FBorder.Style := clsSolid;
   FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
@@ -2100,8 +2059,8 @@ begin
   FChart := AChart;
 end;
 
-{ Note: You have the responsibility to destroy the AFill and ALine instances
-  after calling AddFillAndLine ! }
+{ IMPORTANT NOTE: You have the responsibility to destroy the AFill and ALine
+  instances after calling AddFillAndLine ! }
 function TsChartDataPointStyleList.AddFillAndLine(ADatapointIndex: Integer;
   AFill: TsChartFill; ALine: TsChartLine; APieOffset: Integer = 0): Integer;
 var
@@ -2137,7 +2096,7 @@ var
 begin
   fill := TsChartFill.Create;
   try
-    fill.Style := cfsSolid;
+    fill.Style := cfsSolidFill;
     fill.Color := AColor;
     Result := AddFillAndLine(ADataPointIndex, fill, ALine, APieOffset);
   finally
@@ -2315,10 +2274,10 @@ begin
   FGroupIndex := -1;
 
   FFill := TsChartFill.Create;
-  FFill.Style := cfsSolid;
+  FFill.Style := cfsSolidFill;
   FFill.Color := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
   FFill.Gradient := -1;
-  FFill.Hatch := -1;
+  FFill.Pattern := -1;
 
   FLine := TsChartLine.Create;
   FLine.Style := clsSolid;
@@ -2710,7 +2669,7 @@ constructor TsFilledRadarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctFilledRadar;
-  Fill.Style := cfsSolid;
+  Fill.Style := cfsSolidFill;
 end;
 
 
@@ -2909,6 +2868,8 @@ constructor TsChart.Create;
 begin
   inherited Create(nil);
 
+  CreateFillPatterns(true);
+
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
   clsDot := FLineStyles.Add('dot', 400, 1, 0, 0, 400, true);
@@ -2927,7 +2888,7 @@ begin
   clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 500, 1, 100, 2, 200, true);
   }
   FGradients := TsChartGradientList.Create;
-  FHatches := TsChartHatchList.Create;
+  FFillPatterns := TsChartFillPatternList.Create;
   FImages := TsChartImageList.Create;
 
   FWorksheet := nil;
@@ -2999,7 +2960,7 @@ begin
   FFloor.Free;
   FPlotArea.Free;
   FImages.Free;
-  FHatches.Free;
+  FFillPatterns.Free;
   FGradients.Free;
   FLineStyles.Free;
   inherited;

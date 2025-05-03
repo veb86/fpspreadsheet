@@ -132,7 +132,7 @@ begin
     ser.ShowLines := true;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
-    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Style := cfsSolidFill;
     ser.SymbolFill.Color := ChartColor(scRed);
     ser.SymbolBorder.Style := clsNoLine;
 //    ser.Line.Style := clsDash;

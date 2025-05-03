@@ -79,7 +79,7 @@ begin
     ser.SetTitleAddr(2, 1);
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 1, 8, 1);
-    ser.Fill.Style := cfsSolid;
+    ser.Fill.Style := cfsSolidFill;
     ser.Fill.Color := ChartColor($0075ea);
     ser.Line.Style := clsNoLine;
 
@@ -89,7 +89,7 @@ begin
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 2, 8, 2);
-    ser.Fill.Style := cfsSolid;
+    ser.Fill.Style := cfsSolidFill;
     ser.Fill.Color := ChartColor($b08359);
     ser.Line.Style := clsNoLine;
 

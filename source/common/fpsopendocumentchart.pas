@@ -84,8 +84,10 @@ type
   private
     FSCharts: array of TStream;
     FSObjectStyles: array of TStream;
+    FSPictures: TFPObjectList;
     FNumberFormatList: TStrings;
     FPointSeparatorSettings: TFormatSettings;
+    FChartIndex: Integer;
     function GetChartAxisStyleAsXML(Axis: TsChartAxis; AIndent, AStyleID: Integer): String;
     function GetChartBackgroundStyleAsXML(AChart: TsChart;
       AFill: TsChartFill; ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
@@ -168,7 +170,7 @@ implementation
 {$IFDEF FPS_CHARTS}
 
 uses
-  fpsOpenDocument;
+  FPWritePNG, fpsPatterns, fpsOpenDocument;
 
 type
   TAxisKind = 3..6;
@@ -187,6 +189,7 @@ const
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
   OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
   OPENDOC_PATH_CHART_STYLES     = 'Object %d/styles.xml';
+  OPENDOC_PATH_CHART_PICTURES   = 'Object %d/Pictures/%s';
 
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
@@ -205,8 +208,8 @@ const
     'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular', 'radial'
   );
 
-  HATCH_STYLES: array[TsChartHatchStyle] of string = (
-    '', 'single', 'double', 'triple'
+  PATTERN_MULTIPLIER: array[TsLineFillPatternMultiplier] of string = (
+    'single', 'double', 'triple'
   );
 
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
@@ -316,6 +319,16 @@ begin
   AColor2 := tmp;
 end;
 
+function sColorToFPColor(const c: TsColor): TFPColor;
+begin
+  Result.Red:= c and $ff;
+  Result.Red := Result.Red + (Result.Red shl 8);
+  Result.Green := c and $ff00;
+  Result.Green := Result.Green + (Result.Green shr 8);
+  Result.Blue := (c and $ff0000) shr 8;
+  Result.Blue := Result.Blue + (Result.Blue shr 8);
+  Result.Alpha := FPImage.alphaOpaque;
+end;
 
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
@@ -399,8 +412,19 @@ type
   TStreamItem = class
     Name: String;
     Stream: TStream;
+    ChartIndex: Integer;
+    constructor Create(AName: String; AStream: TStream; AChartIndex: Integer);
     destructor Destroy; override;
   end;
+
+constructor TStreamItem.Create(AName: String; AStream: TStream;
+  AChartIndex: Integer);
+begin
+  inherited Create;
+  Name := AName;
+  Stream := AStream;
+  ChartIndex := AChartIndex;
+end;
 
 destructor TStreamItem.Destroy;
 begin
@@ -510,7 +534,7 @@ begin
       AFill.Style := cfsNoFill;
     '', 'solid':
       begin
-        AFill.Style := cfsSolid;
+        AFill.Style := cfsSolidFill;
         sc := GetAttrValue(ANode, 'draw:fill-color');
         if sc <> '' then
           AFill.Color := ChartColor(HTMLColorStrToColor(sc));
@@ -526,15 +550,23 @@ begin
       begin
         sc := GetAttrValue(ANode, 'draw:fill-hatch-solid');
         if sc = 'true' then
-          AFill.Style := cfsSolidHatched
+          AFill.Style := cfsSolidPattern
         else
-          AFill.Style := cfsHatched;
-        sn := GetAttrValue(ANode, 'draw:fill-hatch-name');
-        if sn <> '' then
-          AFill.Hatch := AChart.Hatches.IndexOfName(UnASCIIName(sn));
+          AFill.Style := cfsPattern;
+        AFill.Pattern := -1;
         sc := GetAttrValue(ANode, 'draw:fill-color');
         if sc <> '' then
           AFill.Color := ChartColor(HTMLColorStrToColor(sc));
+        sn := GetAttrValue(ANode, 'draw:fill-hatch-name');
+        if sn <> '' then
+        begin
+          AFill.Pattern := AChart.FillPatterns.IndexOfName(UnASCIIName(sn));
+          if AFill.Pattern <> -1 then
+            AChart.FillPatterns[AFill.Pattern].BgColor := AFill.Color;
+        end;
+        if AFill.Pattern = -1 then
+          AFill.Style := cfsSolidFill;
+
       end;
     'bitmap':
       begin
@@ -555,7 +587,7 @@ begin
           else
             img.Height := -1;
         end else
-          AFill.Style := cfsSolid;
+          AFill.Style := cfsSolidFill;
       end;
   end;
 
@@ -1052,13 +1084,13 @@ begin
         if FChartType = ctStock then
         begin
           FStockSeries := TsStockSeries.Create(AChart);
-          FStockSeries.Fill.Style := cfsSolid;
+          FStockSeries.Fill.Style := cfsSolidFill;
           FStockSeries.Fill.Color := ChartColor(scWhite);
           FStockSeries.Line.Style := clsSolid;
           FStockSeries.Line.Color := ChartColor(scBlack);
           FStockSeries.RangeLine.Style := clsSolid;
           FStockSeries.RangeLine.Color := ChartColor(scBlack);
-          FStockSeries.CandleStickDownFill.Style := cfsSolid;
+          FStockSeries.CandleStickDownFill.Style := cfsSolidFill;
           FStockSeries.CandleStickDownFill.Color := ChartColor(scBlack);
         end;
       end;
@@ -1692,7 +1724,7 @@ begin
           if ((ASeries is TsRadarSeries) and (ASeries.ChartType = ctRadar)) then //or (ASeries is TsCustomLineSeries) then
           begin
             // In ods, symbols and lines have the same color
-            TsRadarSeries(ASeries).SymbolFill.Style := cfsSolid;
+            TsRadarSeries(ASeries).SymbolFill.Style := cfsSolidFill;
             TsRadarSeries(ASeries).SymbolFill.Color := ASeries.Line.Color;
             TsRadarSeries(ASeries).SymbolBorder.Style := clsNoLine;
           end else
@@ -2084,8 +2116,9 @@ procedure TsSpreadOpenDocChartReader.ReadObjectHatchStyles(ANode: TDOMNode; ACha
 var
   s: String;
   styleName: String;
-  hs, hatchStyle: TsChartHatchStyle;
-  hatchColor: TsChartColor;
+  pm, patternMultiplier: TsLineFillPatternMultiplier;
+  fillPatternIdx: Integer;
+  hatchColor, bgColor: TsChartColor;
   hatchDist: Double;
   hatchAngle: Double;
   rel: Boolean;
@@ -2095,16 +2128,17 @@ begin
     styleName := GetAttrValue(ANode, 'draw:name');
 
   s := GetAttrValue(ANode, 'draw:style');
-  hatchStyle := chsSingle;
-  for hs in TsChartHatchStyle do
-    if HATCH_STYLES[hs] = s then
+  patternMultiplier := lfpmSingle;
+  for pm in TsLineFillPatternMultiplier do
+    if PATTERN_MULTIPLIER[pm] = s then
     begin
-      hatchStyle := hs;
+      patternMultiplier := pm;
       break;
     end;
 
   s := GetAttrValue(ANode, 'draw:color');
   hatchColor := ChartColor(IfThen(s <> '', HTMLColorStrToColor(s), scBlack));
+  //bgColor := ChartColor(scWhite);  // not needed here (only for bitmap patterns)
 
   s := GetAttrValue(ANode, 'draw:distance');
   if not EvalLengthStr(s, hatchDist, rel) then
@@ -2116,7 +2150,10 @@ begin
   else
     hatchAngle := 0;
 
-  AChart.Hatches.AddLineHatch(styleName, hatchStyle, hatchColor, hatchdist, 0.1, hatchAngle);
+  fillPatternIdx := FindLineFillPatternIndex(hatchDist, hatchAngle, 0.1, patternMultiplier);
+  if fillPatternIdx = -1 then
+    fillPatternIdx := RegisterFillPattern('', hatchDist, hatchAngle, 0.1, patternMultiplier);
+  AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor, bgColor);
 end;
 
 { Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
@@ -2161,6 +2198,8 @@ end;
 
 procedure TsSpreadOpenDocChartReader.ReadPictureFile(AStream: TStream;
   AFileName: String);
+const
+  NOT_USED = -1;
 var
   memStream: TMemoryStream;
   img: TFPCustomImage;
@@ -2171,9 +2210,7 @@ begin
     if UnzipToStream(AStream, AFileName, memStream) then
     begin
       memstream.Position := 0;
-      item := TStreamItem.Create;
-      item.Name := AFileName;
-      item.Stream := TMemoryStream.Create;
+      item := TStreamItem.Create(AFileName, TMemoryStream.Create, NOT_USED);
       item.Stream.CopyFrom(memStream, memStream.Size);
       item.Stream.Position := 0;
       FStreamList.Add(item);
@@ -2206,7 +2243,7 @@ end;
 
 procedure TsSpreadOpenDocChartWriter.AddChartsToZip(AZip: TZipper);
 var
-  i: Integer;
+  i, j: Integer;
 begin
   for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount-1 do
   begin
@@ -2215,12 +2252,17 @@ begin
     AZip.Entries.AddFileEntry(
       FSObjectStyles[i], Format(OPENDOC_PATH_CHART_STYLES, [i+1]));
   end;
+
+  for i := 0 to FSPictures.Count-1 do
+    with TStreamItem(FSPictures[i]) do
+      AZip.Entries.AddFileEntry(
+        Stream, Format(OPENDOC_PATH_CHART_PICTURES, [ChartIndex+1, Name]));
 end;
 
 { Writes the chart entries needed in the META-INF/manifest.xml file }
 procedure TsSpreadOpenDocChartWriter.AddToMetaInfManifest(AStream: TStream);
 var
-  i: Integer;
+  i, j: Integer;
 begin
   for i:=0 to TsWorkbook(Writer.Workbook).GetChartCount-1 do
   begin
@@ -2237,6 +2279,12 @@ begin
       [i+1]
     ));
 
+    for j := 0 to FSPictures.Count-1 do
+      with TStreamItem(FSPictures[j]) do
+        AppendToStream(AStream, Format(
+          ' <manifest:file-entry manifest:media-type="image/png" manifest:full-path="Object %d/Pictures/%s" />' + LE,
+          [i+1, Name]
+        ));
     // Object X/meta.xml and ObjectReplacement/Object X are not necessarily needed.
   end;
 end;
@@ -2253,6 +2301,7 @@ begin
     FSCharts[i] := CreateTempStream(Writer.Workbook, 'fpsCh');
     FSObjectStyles[i] := CreateTempStream(Writer.Workbook, 'fpsOS');
   end;
+  FSPictures := TStreamList.Create;
 end;
 
 procedure TsSpreadOpenDocChartWriter.DestroyStreams;
@@ -2266,6 +2315,7 @@ begin
   end;
   Setlength(FSCharts, 0);
   SetLength(FSObjectStyles, 0);
+  FSPictures.Free;
 end;
 
 function TsSpreadOpenDocChartWriter.GetChartAxisStyleAsXML(
@@ -2528,14 +2578,15 @@ function TsSpreadOpenDocChartWriter.GetChartFillStyleGraphicPropsAsXML(AChart: T
   AFill: TsChartFill): String;
 var
   gradient: TsChartGradient;
-  hatch: TsChartHatch;
+  coloredFillPattern: TsChartFillPattern;
+  fillPattern: TsFillPattern;
   fillStr: String = '';
   opacityStr: String = '';
 begin
   case AFill.Style of
     cfsNoFill:
       Result := 'draw:fill="none" ';
-    cfsSolid:
+    cfsSolidFill:
       begin
         if (AFill.Color.Transparency > 0) then
           opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
@@ -2557,21 +2608,35 @@ begin
           [ ASCIIName(gradient.Name), opacityStr ]
         );
       end;
-    cfsHatched, cfsSolidHatched:
+    cfsPattern, cfsSolidPattern:
       begin
-        hatch := AChart.Hatches[AFill.Hatch];
-        if (hatch.PatternColor.Transparency > 0) then
-          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - hatch.PatternColor.Transparency))]);
-        if AFill.Style = cfsSolidHatched then
-          fillStr := 'draw:fill-hatch-solid="true" ';
-        Result := Format(
-          'draw:fill="hatch" draw:fill-color="%s" %s' +
-          'draw:fill-hatch-name="%s" %s',
-          [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr,
-            ASCIIName(hatch.Name), fillStr
-          ]
-        );
+        coloredFillPattern := AChart.FillPatterns[AFill.Pattern];
+        fillPattern := GetFillPattern(coloredFillPattern.Index);
+        if Assigned(fillPattern.LinePattern) then
+        begin
+          if (AFill.Color.Transparency > 0) then
+            opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
+          if AFill.Style = cfsSolidPattern then
+            fillStr := 'draw:fill-hatch-solid="true" ';
+          Result := Format(
+            'draw:fill="hatch" draw:fill-color="%s" %s' +
+            'draw:fill-hatch-name="%s" %s',
+            [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr,
+              ASCIIName(coloredFillPattern.Name), fillStr
+            ]
+          );
+        end else
+        begin
+          Result := Format(
+            'draw:fill="bitmap" draw:fill-color="%s" draw:fill-image-name="%s" ',
+            [ ColorToHTMLColorStr(AFill.Color.Color),
+              ASCIIName(coloredFillPattern.Name)
+            ]
+          );
+        end;
       end;
+    cfsImage:
+      ; // FIX ME
   end;
 end;
 
@@ -3297,6 +3362,8 @@ begin
     FSCharts[i].Position := 0;
     FSObjectStyles[i].Position := 0;
   end;
+  for i := 0 to FSPictures.Count-1 do
+    TStreamItem(FSPictures[i]).Stream.Position := 0;
 end;
 
 { Writes the chart to the specified stream.
@@ -3626,27 +3693,67 @@ var
   indent: String;
   style: String;
   i: Integer;
-  hatch: TsChartHatch;
+  fillPattern: TsFillPattern;
+  coloredFillPattern: TsChartFillPattern;
+  img: TFPMemoryImage;
+  imgWriter: TFPWriterPNG;
+  stream: TMemoryStream;
+  x, y: Integer;
+  fgCol, bgCol: TFPColor;
+  picName: String;
 begin
   indent := DupeString(' ', AIndent);
-  for i := 0 to AChart.Hatches.Count-1 do
+  for i := 0 to AChart.FillPatterns.Count-1 do
   begin
-    hatch := AChart.Hatches[i];
-    style := Format(indent +
-      '<draw:hatch draw:name="%s" draw:display-name="%s" ' +
-        'draw:style="%s" ' +
-        'draw:color="%s" ' +
-        'draw:distance="%.2fmm" ' +
-        'draw:rotation="%.0f" />',
-      [ ASCIIName(hatch.Name), hatch.Name,
-        HATCH_STYLES[hatch.Style],
-        ColorToHTMLColorStr(hatch.PatternColor.Color),
-        hatch.PatternWidth,
-        hatch.PatternAngle*10
-      ],
-      FPointSeparatorSettings
-    );
-    AppendToStream(AStream, style);
+    coloredFillPattern := AChart.FillPatterns[i];
+    fillPattern := GetFillPattern(coloredFillPattern.Index);
+    if Assigned(fillPattern.linePattern) then
+    begin
+      style := Format(indent +
+        '<draw:hatch draw:name="%s" draw:display-name="%s" ' +
+          'draw:style="%s" ' +
+          'draw:color="%s" ' +
+          'draw:distance="%.2fmm" ' +
+          'draw:rotation="%.0f" />',
+        [ ASCIIName(coloredFillPattern.Name), coloredFillPattern.Name,
+          PATTERN_MULTIPLIER[fillPattern.LinePattern.Multiplier],
+          ColorToHTMLColorStr(coloredFillPattern.Color.Color),
+          fillPattern.LinePattern.Distance,
+          fillPattern.LinePattern.Angle*10
+        ],
+        FPointSeparatorSettings
+      );
+      AppendToStream(AStream, style);
+    end else
+    begin
+      picName := Format('Fill-Image%d.png', [FSPictures.Count+1]); //ASCIIName(coloredFillPattern.Name + fillpattern.Name) + '.png';
+      fgCol := sColorToFPColor(coloredFillPattern.Color.Color);
+      bgCol := sColorToFPColor(coloredFillPattern.BgColor.Color);
+      img := TFPMemoryImage.Create(8, 8);
+      for y := 0 to 7 do
+        for x := 0 to 7 do
+          if fillPattern.DotPattern[y] and (1 shl x) <> 0 then  // bit set
+            img.Colors[x, y] := fgCol
+          else
+            img.Colors[x, y] := bgCol;
+      stream := TMemoryStream.Create;
+      imgWriter := TFPWriterPNG.Create;
+      try
+        imgWriter.UseAlpha := true;
+        img.SaveToStream(stream, imgWriter);
+      finally
+        imgWriter.Free;
+      end;
+      FSPictures.Add(TStreamItem.Create(picName, stream, FChartIndex));
+      style := Format(indent +
+        '<draw:fill-image draw:name="%s" draw:display-name="%s" ' +
+        'xlink:href="Pictures/%s" xlink:type="simple" ' +
+        'xlink:show="embed" xlink:actuate="onLoad"/>', [
+        ASCIIName(coloredFillPattern.Name), coloredFillPattern.Name,
+        picName
+      ]);
+      AppendToStream(AStream, style);
+    end;
   end;
 end;
 
@@ -4295,11 +4402,12 @@ var
   chart: TsChart;
 begin
   for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount - 1 do
-    begin
-      chart := TsWorkbook(Writer.Workbook).GetChartByIndex(i);
-      WriteChart(FSCharts[i], chart);
-      WriteObjectStyles(FSObjectStyles[i], chart);
-    end;
+  begin
+    FChartIndex := i;
+    chart := TsWorkbook(Writer.Workbook).GetChartByIndex(i);
+    WriteChart(FSCharts[i], chart);
+    WriteObjectStyles(FSObjectStyles[i], chart);
+  end;
 end;
 
 (* wp:

@@ -60,7 +60,7 @@ begin
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
     ser.SymbolFill.Color := ChartColor(scRed);
-    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Style := cfsSolidFill;
     ser.Trendline.Title := 'Fit curve';
     ser.Trendline.TrendlineType := tltPolynomial; //tltLinear;
     ser.Trendline.ExtrapolateForwardBy := 10;
@@ -76,7 +76,7 @@ begin
     ser.Trendline.Equation.YName := 'Y';
     ser.Trendline.Equation.Border.Style := clsSolid;
     ser.Trendline.Equation.Border.Color := ChartColor(scGray);
-    ser.Trendline.Equation.Fill.Style := cfsSolid;
+    ser.Trendline.Equation.Fill.Style := cfsSolidFill;
     ser.Trendline.Equation.Fill.Color := ChartColor(scSilver);
     ser.Trendline.Equation.NumberFormat := '0.000';
 

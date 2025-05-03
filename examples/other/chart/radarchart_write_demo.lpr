@@ -59,7 +59,7 @@ begin
     //ser.Fill.Style := cfsNoFill;    // --> non-filled radar chrt
     ser.ShowSymbols := true;
     ser.Symbol := cssDiamond;
-    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Style := cfsSolidFill;
     ser.SymbolFill.Color := ChartColor(scYellow, 0.5);
     // in ods the symbol color is always equal to the line color
     ser.SymbolWidth := 12; //3;

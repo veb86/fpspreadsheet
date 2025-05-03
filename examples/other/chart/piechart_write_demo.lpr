@@ -78,7 +78,10 @@ begin
     ser.DataPointStyles.AddSolidFill(1, ChartColor($317DED), line, 20);  // with explode offset, as percentage
     ser.DataPointStyles.AddSolidFill(2, ChartColor($A5A5A5), line);
     {$if Laz_FullVersion >= 3990000}
-    fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, ChartColor($00C0FF), 1, 0.1, 0), ChartColor(scWhite));
+    fill := TsChartFill.CreatePatternFill(
+      ch.FillPatterns.AddPattern('hor_thin', fpsHorThin, ChartColor($00C0FF), ChartColor(scWhite)),
+      false
+    );
     ser.DataPointStyles.AddFillAndLine(3, fill, line);
     fill.Free;
     {$else}

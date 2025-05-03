@@ -6072,7 +6072,7 @@ begin
 
   { Fill the strings with the contents of the files }
   WriteMimetype();
-  WriteMetaInfManifest();
+//  WriteMetaInfManifest();
   WriteMeta();
   WriteSettings();
   WriteStyles();
@@ -6080,6 +6080,7 @@ begin
  {$IFDEF FPS_CHARTS}
   FChartWriter.WriteCharts;
  {$ENDIF}
+  WriteMetaInfManifest();
 
   { Now compress the files }
   FZip := TZipper.Create;
