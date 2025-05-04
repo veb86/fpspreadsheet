@@ -1099,21 +1099,27 @@ end;
 -------------------------------------------------------------------------------}
 procedure ScaleImg(AImage: TCustomBitmap; AWidth, AHeight: Integer);
 var
-  srcImg: TLazIntfImage = nil;
-  destCanvas: TLazCanvas = nil;
+  srcImg, destImg: TLazIntfImage;
+  destCanvas: TLazCanvas;
 begin
+  // Create the source LazIntfImage
+  srcImg := AImage.CreateIntfImage;
+  // Create the destination LazIntfImage;
+  destImg := AImage.CreateIntfImage;
   try
-    // Create the source LazIntfImage
-    srcImg := AImage.CreateIntfImage;
+    destImg.SetSize(AWidth, AHeight);
     // Create the destination LazCanvas
-    destCanvas := TLazCanvas.Create(srcImg);
-    // Execute the canvas.StretchDraw
-    destCanvas.StretchDraw(0, 0, AWidth, AHeight, srcImg);
-    // Reload the stretched image into the CustomBitmap
-    AImage.LoadFromIntfImage(srcImg);
-    AImage.SetSize(AWidth, AHeight);
+    destCanvas := TLazCanvas.Create(destImg);
+    try
+      // Execute the canvas.StretchDraw
+      destCanvas.StretchDraw(0, 0, AWidth, AHeight, srcImg);
+      // Reload the stretched image into the CustomBitmap
+      AImage.LoadFromIntfImage(destImg);
+    finally
+      destCanvas.Free;
+    end;
   finally
-    destCanvas.Free;
+    destImg.Free;
     srcImg.Free;
   end;
 end;

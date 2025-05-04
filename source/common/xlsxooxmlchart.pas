@@ -7,8 +7,8 @@ interface
 
 {$ifdef FPS_CHARTS}
 
-uses                                                  //LazLoggerBase,
-  Classes, SysUtils, StrUtils, Contnrs, FPImage,
+uses
+  Classes, SysUtils, StrUtils, Contnrs, Math, FPImage,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
   fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
@@ -1152,8 +1152,8 @@ begin
       img.LoadFromStream(stream);
       AFill.Image := AChart.Images.AddImage('', img);
       sImg := AChart.Images[AFill.Image];
-      sImg.Width := InToMM(imgWidthInches) * widthFactor;
-      sImg.Height := InToMM(imgHeightInches) * heightFactor;
+      sImg.Width := IfThen(widthFactor = 1.0, -1, InToMM(imgWidthInches) * widthFactor);
+      sImg.Height := IfThen(heightFactor = 1.0, -1, InToMM(imgHeightInches) * heightFactor);
     end;
   end;
 end;
@@ -4637,11 +4637,9 @@ procedure TsSpreadOOXMLChartWriter.WritePieSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsPieSeries);
 var
   indent: String;
-  chart: TsChart;
   nodeName: String;
 begin
   indent := DupeString(' ', AIndent);
-  chart := ASeries.Chart;
 
   if ASeries.InnerRadiusPercent > 0 then
     nodeName := 'c:doughnutChart'
