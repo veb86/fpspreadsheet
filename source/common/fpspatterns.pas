@@ -118,8 +118,8 @@ function ClonePattern(AIndex: Integer; AName: String): Integer;
 function FindLineFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 function GetFillPattern(AIndex: Integer): TsFillPattern;
-function IndexOfPattern(AName: String): Integer;
-function NumPatterns: Integer;
+function IndexOfFillPattern(AName: String): Integer;
+function NumFillPatterns: Integer;
 
 implementation
 
@@ -137,50 +137,26 @@ const
   w = 8;
   h = 8;
 var
-//  L: TStrings;
-  i, j, n, x, y: Integer;
+  i, j, n, b: Integer;
 begin
   n := Length(APattern);
-  if n > 64 then
-    n := 64;
+  if n > w*h then
+    n := w*h;
 
   FillChar(Result, Sizeof(Result), 0);
-  x := 0;
-  y := 0;
+  b := 0;
   i := 0;
   for j := 1 to n do
   begin
     if APattern[j] in ['x', 'X'] then
-      Result[i] := Result[i] or (1 shl x);
-    inc(x);
-    if x = 8 then
+      Result[i] := Result[i] or (1 shl b);
+    inc(b);
+    if b = w then
     begin
       inc(i);
-      x := 0;
+      b := 0;
     end;
   end;
-  (*
-  y := 0;
-  i := 0;
-  j := 1;
-  while y < h do
-  begin
-    x := 0;
-    while x < w do
-    begin
-      if (APattern[j] in ['x', 'X']) then
-        Result[i] := Result[i] or (1 shl x);
-      inc(x);
-      inc(j);
-    end;
-    inc(y);
-    inc(i);
-    end;
-
-  finally
-    L.Free;
-  end;
-  *)
 end;
 
 { TsFillPattern }
@@ -788,6 +764,9 @@ const
 
 procedure CreateFillPatterns(WithDefaultPatterns: Boolean);
 begin
+  if (FillPatternList <> nil) and (FillPatternList.Count > 0) and WithDefaultPatterns then
+    exit;
+
   if FillPatternList = nil then
     FillPatternList := TsFillPatternList.Create;
 
@@ -944,7 +923,7 @@ begin
     Result := nil;
 end;
 
-function IndexOfPattern(AName: String): Integer;
+function IndexOfFillPattern(AName: String): Integer;
 begin
   if Assigned(FillPatternList) then
     Result := FillPatternList.IndexOfName(AName)
@@ -952,7 +931,7 @@ begin
     Result := -1;
 end;
 
-function NumPatterns: Integer;
+function NumFillPatterns: Integer;
 begin
   if Assigned(FillPatternList) then
     Result := FillPatternList.Count
