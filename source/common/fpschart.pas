@@ -6,21 +6,28 @@ unit fpsChart;
 interface
 
 uses
-  Classes, SysUtils, Types, Contnrs, FPImage, fpsTypes, fpsUtils;
+  Classes, SysUtils, Contnrs, FPImage, fpsTypes, fpsUtils;
 
 const
   clsNoLine = -2;
   clsSolid = -1;
 
 var
-  {@@ Pre-defined chart fill patterns given as indices into the global
-    FillPatternsList. When this list is create the pattern indices will get
+  {@@ Pre-defined chart fill patterns given as indices into the workbook's
+    RawFillPatternList. When this list is created the pattern indices will get
     their values. }
-  fpsGray75: Integer = -1;
-  fpsGray50: Integer = -1;
-  fpsGray25: Integer = -1;
-  fpsGray12: Integer = -1;
   fpsGray06: Integer = -1;
+  fpsGray12: Integer = -1;
+  fpsGray20: Integer = -1;
+  fpsGray25: Integer = -1;
+  fpsGray30: Integer = -1;
+  fpsGray40: Integer = -1;
+  fpsGray50: Integer = -1;
+  fpsGray60: Integer = -1;
+  fpsGray70: Integer = -1;
+  fpsGray75: Integer = -1;
+  fpsGray80: Integer = -1;
+  fpsGray90: Integer = -1;
 
   fpsHorThick: Integer = -1;
   fpsVertThick: Integer = -1;
@@ -43,6 +50,10 @@ var
   fpsHatchNarrow: Integer = -1;
   fpsCrossNarrow: Integer = -1;
 
+  fpsHorDash: Integer = -1;
+  fpsVertDash: Integer = -1;
+  fpsDiagUpDash: Integer = -1;
+  fpsDiagDownDash: Integer = -1;
   fpsHatchDot: Integer = -1;
   fpsCrossDot: Integer = -1;
 
@@ -50,9 +61,16 @@ var
   fpsBrickHor: Integer = -1;
   fpsCheckerBoardLarge: Integer = -1;
   fpsCheckerBoardSmall: Integer = -1;
+  fpsConfettiLarge: Integer = -1;
+  fpsConfettiSmall: Integer = -1;
   fpsDiamond: Integer = -1;
+  fpsDivot: Integer = -1;
+  fpsPlaid: Integer = -1;
   fpsShingle: Integer = -1;
+  fpsSphere: Integer = -1;
+  fpsTrellis: Integer = -1;
   fpsWave: Integer = -1;
+  fpsWeave: Integer = -1;
   fpsZigZag: Integer = -1;
 
   {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
@@ -2867,8 +2885,6 @@ procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
 constructor TsChart.Create;
 begin
   inherited Create(nil);
-
-  CreateFillPatterns(true);
 
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);

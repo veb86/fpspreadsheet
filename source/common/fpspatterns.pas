@@ -11,9 +11,16 @@ uses
 const
   FPS_GRAY06 = 'GRAY06';
   FPS_GRAY12 = 'GRAY12';
+  FPS_GRAY20 = 'GRAY20';
   FPS_GRAY25 = 'GRAY25';
+  FPS_GRAY30 = 'GRAY30';
+  FPS_GRAY40 = 'GRAY40';
   FPS_GRAY50 = 'GRAY50';
+  FPS_GRAY60 = 'GRAY60';
+  FPS_GRAY70 = 'GRAY70';
   FPS_GRAY75 = 'GRAY75';
+  FPS_GRAY80 = 'GRAY80';
+  FPS_GRAY90 = 'GRAY90';
 
   FPS_HOR_THICK = 'HOR_THICK';
   FPS_VERT_THICK = 'VERT_THICK';
@@ -36,6 +43,10 @@ const
   FPS_HATCH_NARROW = 'HATCH_NARROW';
   FPS_CROSS_NARROW = 'CROSS_NARROW';
 
+  FPS_HOR_DASH = 'HOR_DASH';
+  FPS_VERT_DASH = 'VERT_DASH';
+  FPS_DIAG_UP_DASH = 'DIAG_UP_DASH';
+  FPS_DIAG_DOWN_DASH = 'DIAG_DOWN_DASH';
   FPS_CROSS_DOT = 'CROSS_DOT';
   FPS_HATCH_DOT = 'HATCH_DOT';
 
@@ -43,9 +54,16 @@ const
   FPS_BRICK_DIAG = 'BRICK_DIAG';
   FPS_CHECKERBOARD_LARGE = 'CHECKERBOARD_LARGE';
   FPS_CHECKERBOARD_SMALL = 'CHECKERBOARD_SMALL';
+  FPS_CONFETTI_LARGE = 'CONFETTI_LARGE';
+  FPS_CONFETTI_SMALL = 'CONFETTI_SMALL';
   FPS_DIAMOND = 'DIAMOND';
+  FPS_DIVOT = 'DIVOT';
+  FPS_PLAID = 'PLAID';
   FPS_SHINGLE = 'SHINGLE';
+  FPS_SPHERE = 'SPHERE';
+  FPS_TRELLIS = 'TRELLIS';
   FPS_WAVE = 'WAVE';
+  FPS_WEAVE = 'WEAVE';
   FPS_ZIGZAG = 'ZIGZAG';
 
 type
@@ -64,10 +82,12 @@ const
   SOLID_DOT_FILL_PATTERN: TsDotFillPattern = ($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF);
 
 type
-  { TsFillPattern
+  { TsRawFillPattern
     Combines the same visual pattern as a dot matrix and as vector strokes.
-    Vector strokes are supported only by ODS }
-  TsFillPattern = class
+    Vector strokes are supported only by ODS.
+    "Raw" patterns do not carry any color - this is added by TsChartFillPattern.
+    Used by charts only. }
+  TsRawFillPattern = class
   private
     FName: String;
     FDotPattern: TsDotFillPattern;
@@ -80,57 +100,47 @@ type
     constructor Create(AName: String;
       ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier);
     destructor Destroy; override;
-    procedure CopyFrom(ASource: TsFillPattern); virtual;
+    procedure CopyFrom(ASource: TsRawFillPattern); virtual;
     property Name: String read FName;
     property DotPattern: TsDotFillPattern read FDotPattern write FDotPattern;
     property LinePattern: TsLineFillPattern read FLinePattern write SetLinePattern;
   end;
 
-  TsFillPatternList = class(TFPObjectlist)
+  TsRawFillPatternList = class(TFPObjectlist)
   private
-    function GetItem(AIndex: Integer): TsFillPattern;
-    procedure SetItem(AIndex: Integer; AValue: TsFillPattern);
+    function GetItem(AIndex: Integer): TsRawFillPattern;
+    procedure SetItem(AIndex: Integer; AValue: TsRawFillPattern);
   protected
-    function AddOrReplace(APattern: TsFillPattern): Integer;
+    function AddOrReplace(APattern: TsRawFillPattern): Integer;
     function FindSimilarDotPattern(ALineDistance, ALineAngle, ALineWidth: Single;
       AMultiplier: TsLineFillPatternMultiplier): TsDotFillPattern;
   public
+    procedure AddBuiltinPatterns;
     function AddFillPattern(AName: String; ADotPattern: TsDotFillPattern;
       ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
     function AddDotFillPattern(AName: String; APattern: TsDotFillPattern): Integer; overload;
     function AddLineFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
       AMultiplier: TsLineFillPatternMultiplier): Integer;
-    function FindByName(AName: String): TsFillPattern;
+    function ClonePattern(AIndex: Integer; AName: String): Integer;
+    function FindByName(AName: String): TsRawFillPattern;
+    function FindLinePatternIndex(ALineDistance, ALineAngle, ALineWidth: Single;
+      AMultiplier: TsLineFillPatternMultiplier): Integer;
     function IndexOfName(AName: String): Integer;
-    property Items[AIndex: Integer]: TsFillPattern read GetItem write SetItem; default;
+    property Items[AIndex: Integer]: TsRawFillPattern read GetItem write SetItem; default;
   end;
 
-function StringToDotPattern(APattern: String): TsDotFillPattern;
+//function StringToDotPattern(APattern: String): TsDotFillPattern;
 
-procedure CreateFillPatterns(WithDefaultPatterns: Boolean);
-function RegisterFillPattern(AName: String; ADotPattern: TsDotFillPattern): Integer;
-function RegisterFillPattern(AName: String;
-  ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
-function RegisterFillPattern(AName: String; ADotPattern: TsDotFillPattern;
-  ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
-
-function ClonePattern(AIndex: Integer; AName: String): Integer;
-function FindLineFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single;
-  AMultiplier: TsLineFillPatternMultiplier): Integer;
-function GetFillPattern(AIndex: Integer): TsFillPattern;
-function IndexOfFillPattern(AName: String): Integer;
-function NumFillPatterns: Integer;
 
 implementation
-
-var
-  FillPatternList: TsFillPatternList = nil;
 
 const
   WIDE_DISTANCE = 3.0;
   NARROW_DISTANCE = 1.5;
   THIN_LINE = 0.1;
   THICK_LINE = 0.3;
+
+{$include fpspatterns_dotpatterns.inc}
 
 function StringToDotPattern(APattern: String): TsDotFillPattern;
 const
@@ -159,9 +169,9 @@ begin
   end;
 end;
 
-{ TsFillPattern }
+{ TsRawFillPattern }
 
-constructor TsFillPattern.Create(AName: String; ADotPattern: TsDotFillPattern);
+constructor TsRawFillPattern.Create(AName: String; ADotPattern: TsDotFillPattern);
 begin
   inherited Create;
   FName := AName;
@@ -169,7 +179,7 @@ begin
   FLinePattern := nil;  // no line pattern
 end;
 
-constructor TsFillPattern.Create(AName: String;
+constructor TsRawFillPattern.Create(AName: String;
   ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier);
 begin
   inherited Create;
@@ -182,7 +192,7 @@ begin
   FLinePattern.Multiplier := AMultiplier;
 end;
 
-constructor TsFillPattern.Create(AName: String; ADotPattern: TsDotFillPattern;
+constructor TsRawFillPattern.Create(AName: String; ADotPattern: TsDotFillPattern;
   ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier);
 begin
   inherited Create;
@@ -195,21 +205,21 @@ begin
   FLinePattern.Multiplier := AMultiplier;
 end;
 
-destructor TsFillPattern.Destroy;
+destructor TsRawFillPattern.Destroy;
 begin
   FName := '';
   FLinePattern.Free;
   inherited;
 end;
 
-procedure TsFillPattern.CopyFrom(ASource: TsFillPattern);
+procedure TsRawFillPattern.CopyFrom(ASource: TsRawFillPattern);
 begin
   FName := ASource.Name;
   FDotPattern := ASource.DotPattern;
   SetLinePattern(ASource.LinePattern);
 end;
 
-procedure TsFillPattern.SetLinePattern(AValue: TsLineFillPattern);
+procedure TsRawFillPattern.SetLinePattern(AValue: TsLineFillPattern);
 begin
   if AValue = nil then
   begin
@@ -334,42 +344,171 @@ begin
 end;
               *)
 
-{ TsFillPatternList }
+{ TsRawFillPatternList }
 
-function TsFillPatternList.AddDotFillPattern(AName: String;
+{ Creates the built-in dot patterns as used by Excel. Not all of them are
+  available in ODS. }
+procedure TsRawFillPatternList.AddBuiltinPatterns;
+begin
+  fpsGray06 := AddDotFillPattern(FPS_GRAY06,
+    StringToDotPattern(GRAY06_PATTERN));
+  fpsGray12 := AddDotFillPattern(FPS_GRAY12,
+    StringToDotPattern(GRAY12_PATTERN));
+  fpsGray20 := AddDotFillPattern(FPS_GRAY20,
+    StringToDotPattern(GRAY20_PATTERN));
+  fpsGray25 := AddDotFillPattern(FPS_GRAY25,
+    StringToDotPattern(GRAY25_PATTERN));
+  fpsGray30 := AddDotFillPattern(FPS_GRAY30,
+    StringToDotPattern(GRAY30_PATTERN));
+  fpsGray40 := AddDotFillPattern(FPS_GRAY40,
+    StringToDotPattern(GRAY40_PATTERN));
+  fpsGray50 := AddDotFillPattern(FPS_GRAY50,
+    StringToDotPattern(GRAY50_PATTERN));
+  fpsGray60 := AddDotFillPattern(FPS_GRAY60,
+    StringToDotPattern(GRAY60_PATTERN));
+  fpsGray75 := AddDotFillPattern(FPS_GRAY75,
+    StringToDotPattern(GRAY75_PATTERN));
+  fpsGray80 := AddDotFillPattern(FPS_GRAY80,
+    StringToDotPattern(GRAY80_PATTERN));
+  fpsGray90 := AddDotFillPattern(FPS_GRAY90,
+    StringToDotPattern(GRAY90_PATTERN));
+
+  fpsHorThick := AddFillPattern(FPS_HOR_THICK,
+    StringToDotPattern(HOR_PATTERN_THICK),
+    WIDE_DISTANCE, 0.0, THICK_LINE, lfpmSingle);
+  fpsVertThick := AddFillPattern(FPS_VERT_THICK,
+    StringToDotPattern(VERT_PATTERN_THICK),
+    WIDE_DISTANCE, 90.0, THICK_LINE, lfpmSingle);
+  fpsDiagUpThick := AddFillPattern(FPS_DIAG_UP_THICK,
+    StringToDotPattern(DIAG_UP_PATTERN_THICK),
+    WIDE_DISTANCE, 45.0, THICK_LINE, lfpmSingle);
+  fpsDiagDownThick := AddFillPattern(FPS_DIAG_DOWN_THICK,
+    StringToDotPattern(DIAG_DOWN_PATTERN_THICK),
+    WIDE_DISTANCE, -45.0, THICK_LINE, lfpmSingle);
+  fpsHatchThick := AddFillPattern(FPS_HATCH_THICK,
+    StringToDotPattern(HATCH_PATTERN_THICK),
+    WIDE_DISTANCE, 45.0, THICK_LINE, lfpmDouble);
+  fpsCrossThick := AddFillPattern(FPS_CROSS_THICK,
+    StringToDotPattern(CROSS_PATTERN_THICK),
+    WIDE_DISTANCE, 0.0, THICK_LINE, lfpmDouble);
+
+  fpsHorThin := AddFillPattern(FPS_HOR_THIN,
+    StringToDotPattern(HOR_PATTERN_THIN),
+    WIDE_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
+  fpsVertThin := AddFillPattern(FPS_VERT_THIN,
+    StringToDotPattern(VERT_PATTERN_THIN),
+    WIDE_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
+  fpsDiagUpThin := AddFillPattern(FPS_DIAG_UP_THIN,
+    StringToDotPattern(DIAG_UP_PATTERN_THIN),
+    WIDE_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
+  fpsDiagDownThin := AddFillPattern(FPS_DIAG_DOWN_THIN,
+    StringToDotPattern(DIAG_DOWN_PATTERN_THIN),
+    WIDE_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
+  fpsHatchThin := AddFillPattern(FPS_HATCH_THIN,
+    StringToDotPattern(HATCH_PATTERN_THIN),
+    WIDE_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
+  fpsCrossThin := AddFillPattern(FPS_CROSS_THIN,
+    StringToDotPattern(CROSS_PATTERN_THIN),
+    WIDE_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
+
+  fpsHorNarrow := AddFillPattern(FPS_HOR_NARROW,
+    StringToDotPattern(HOR_PATTERN_NARROW),
+    NARROW_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
+  fpsVertNarrow := AddFillPattern(FPS_VERT_NARROW,
+    StringToDotPattern(VERT_PATTERN_NARROW),
+    NARROW_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
+  fpsDiagUpNarrow := AddFillPattern(FPS_DIAG_UP_NARROW,
+    StringToDotPattern(DIAG_UP_PATTERN_NARROW),
+    NARROW_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
+  fpsDiagDownNarrow := AddFillPattern(FPS_DIAG_DOWN_NARROW,
+    StringToDotPattern(DIAG_DOWN_PATTERN_NARROW),
+    NARROW_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
+  fpsHatchNarrow := AddFillPattern(FPS_HATCH_NARROW,
+    StringToDotPattern(HATCH_PATTERN_NARROW),
+    NARROW_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
+  fpsCrossNarrow := AddFillPattern(FPS_CROSS_NARROW,
+    StringToDotPattern(CROSS_PATTERN_NARROW),
+    NARROW_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
+
+  fpsHorDash := AddDotFillPattern(FPS_HOR_DASH,
+    StringToDotPattern(HOR_DASH_PATTERN));
+  fpsVertDash := AddDotFillPattern(FPS_VERT_DASH,
+    StringToDotPattern(VERT_DASH_PATTERN));
+  fpsDiagUpDash := AddDotFillPattern(FPS_DIAG_UP_DASH,
+    StringToDotPattern(DIAG_UP_DASH_PATTERN));
+  fpsDiagDownDash := AddDotFillPattern(FPS_DIAG_DOWN_DASH,
+    StringToDotPattern(DIAG_DOWN_DASH_PATTERN));
+  fpsCrossDot := AddDotFillPattern(FPS_CROSS_DOT,
+    StringToDotPattern(CROSS_PATTERN_DOT));
+  fpsHatchDot := AddDotFillPattern(FPS_HATCH_DOT,
+    StringToDotPattern(HATCH_PATTERN_DOT));
+
+  fpsBrickHor := AddDotFillPattern(FPS_BRICK_HOR,
+    StringToDotPattern(BRICK_HOR_PATTERN));
+  fpsBrickHor := AddDotFillPattern(FPS_BRICK_DIAG,
+    StringToDotPattern(BRICK_DIAG_PATTERN));
+  fpsCheckerBoardLarge := AddDotFillPattern(FPS_CHECKERBOARD_LARGE,
+    StringToDotPattern(CHECKERBOARD_LARGE_PATTERN));
+  fpsCheckerBoardSmall := AddDotFillPattern(FPS_CHECKERBOARD_SMALL,
+    StringToDotPattern(CHECKERBOARD_SMALL_PATTERN));
+  fpsConfettiLarge := AddDotFillPattern(FPS_CONFETTI_LARGE,
+    StringToDotPattern(CONFETTI_LARGE_PATTERN));
+  fpsConfettiSmall := AddDotFillPattern(FPS_CONFETTI_SMALL,
+    StringToDotPattern(CONFETTI_SMALL_PATTERN));
+  fpsDiamond := AddDotFillPattern(FPS_DIAMOND,
+    StringToDotPattern(DIAMOND_PATTERN));
+  fpsDivot := AddDotFillPattern(FPS_DIVOT,
+    StringToDotPattern(DIVOT_PATTERN));
+  fpsPlaid := AddDotFillPattern(FPS_PLAID,
+    StringToDotPattern(PLAID_PATTERN));
+  fpsShingle := AddDotFillPattern(FPS_SHINGLE,
+    StringToDotPattern(SHINGLE_PATTERN));
+  fpsSphere := AddDotFillPattern(FPS_SPHERE,
+    StringToDotPattern(SPHERE_PATTERN));
+  fpsTrellis := AddDotFillPattern(FPS_TRELLIS,
+    StringToDotPattern(TRELLIS_PATTERN));
+  fpsWave := AddDotFillPattern(FPS_WAVE,
+    StringToDotPattern(WAVE_PATTERN));
+  fpsWeave := AddDotFillPattern(FPS_WEAVE,
+    StringToDotPattern(WEAVE_PATTERN));
+  fpsZigzag := AddDotFillPattern(FPS_ZIGZAG,
+    StringToDotPattern(ZIGZAG_PATTERN));
+end;
+
+function TsRawFillPatternList.AddDotFillPattern(AName: String;
   APattern: TsDotFillPattern): Integer;
 var
-  patt: TsFillPattern;
+  patt: TsRawFillPattern;
 begin
-  patt := TsFillPattern.Create(AName, APattern);
+  patt := TsRawFillPattern.Create(AName, APattern);
   Result := AddOrReplace(patt);
 end;
 
-function TsFillPatternList.AddFillPattern(AName: String; ADotPattern: TsDotFillPattern;
+function TsRawFillPatternList.AddFillPattern(AName: String; ADotPattern: TsDotFillPattern;
   ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 var
-  patt: TsFillPattern;
+  patt: TsRawFillPattern;
 begin
-  patt := TsFillPattern.Create(AName,
+  patt := TsRawFillPattern.Create(AName,
     ADotPattern,
     ALineDistance, ALineAngle, ALineWidth, AMultiplier
   );
   Result := AddOrReplace(patt);
 end;
 
-function TsFillPatternList.AddLineFillPattern(AName: String;
+function TsRawFillPatternList.AddLineFillPattern(AName: String;
   ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 var
-  patt: TsFillPattern;
+  patt: TsRawFillPattern;
 begin
-  patt := TsFillPattern.Create(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier);
+  patt := TsRawFillPattern.Create(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier);
   patt.DotPattern := FindSimilarDotPattern(ALineDistance, ALineAngle, ALineWidth, AMultiplier);
   Result := AddOrReplace(patt);
 end;
 
-function TsFillPatternList.AddOrReplace(APattern: TsFillPattern): Integer;
+function TsRawFillPatternList.AddOrReplace(APattern: TsRawFillPattern): Integer;
 var
   idx: Integer;
 begin
@@ -379,14 +518,24 @@ begin
   else
   begin
     Items[idx].CopyFrom(APattern);
-//    Items[idx].Free;
-//    Delete(idx);
     Insert(idx, APattern);
     Result := idx;
   end;
 end;
 
-function TsFillPatternList.FindByName(AName: String): TsFillPattern;
+{ Adds a copy of the pattern at the given index and gives it a new name. }
+function TsRawFillPatternList.ClonePattern(AIndex: Integer; AName: String): Integer;
+var
+  patt: TsRawFillPattern;
+begin
+  patt := Items[AIndex];
+  Result := AddFillPattern(AName,
+    patt.DotPattern,
+    patt.LinePattern.Distance, patt.LinePattern.Angle, patt.LinePattern.LineWidth, patt.LinePattern.Multiplier
+  );
+end;
+
+function TsRawFillPatternList.FindByName(AName: String): TsRawFillPattern;
 var
   i: Integer;
 begin
@@ -399,7 +548,31 @@ begin
   Result := nil;
 end;
 
-function TsFillPatternList.FindSimilarDotPattern(ALineDistance, ALineAngle,
+function TsRawFillPatternList.FindLinePatternIndex(
+  ALineDistance, ALineAngle, ALineWidth: Single;
+  AMultiplier: TsLineFillPatternMultiplier): Integer;
+var
+  i: Integer;
+  patt: TsRawFillPattern;
+begin
+  for i := 0 to Count-1 do
+  begin
+    patt := Items[i];
+    if patt.LinePattern = nil then
+      Continue;
+    if SameValue(ALineDistance, patt.LinePattern.Distance, 0.1) and
+       SameValue(ALineAngle, patt.LinePattern.Angle, 0.1) and
+       SameValue(ALineWidth, patt.LinePattern.LineWidth, 0.1) and
+       (AMultiplier = patt.LinePattern.Multiplier) then
+    begin
+      Result := i;
+      exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+function TsRawFillPatternList.FindSimilarDotPattern(ALineDistance, ALineAngle,
   ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): TsDotFillPattern;
 var
   sinAngle, cosAngle: Single;
@@ -442,7 +615,7 @@ begin
     Result := SOLID_DOT_FILL_PATTERN;
 end;
 
-function TsFillPatternList.IndexOfName(AName: String): Integer;
+function TsRawFillPatternList.IndexOfName(AName: String): Integer;
 begin
   for Result := 0 to Count-1 do
     if Items[Result].Name = AName then
@@ -450,497 +623,15 @@ begin
   Result := -1;
 end;
 
-function TsFillPatternList.GetItem(AIndex: Integer): TsFillPattern;
+function TsRawFillPatternList.GetItem(AIndex: Integer): TsRawFillPattern;
 begin
-  Result := TsFillPattern(inherited Items[AIndex]);
+  Result := TsRawFillPattern(inherited Items[AIndex]);
 end;
 
-procedure TsFillPatternList.SetItem(AIndex: Integer; AValue: TsFillPattern);
+procedure TsRawFillPatternList.SetItem(AIndex: Integer; AValue: TsRawFillPattern);
 begin
-  TsFillPattern(inherited Items[AIndex]).CopyFrom(AValue);
+  TsRawFillPattern(inherited Items[AIndex]).CopyFrom(AValue);
 end;
-
-
-{ Globals }
-
-const
-  GRAY75_PATTERN =
-    ' xxx xxx'+
-    'xxxxxxxx'+
-    'xx xxx x'+
-    'xxxxxxxx'+
-    ' xxx xxx'+
-    'xxxxxxxx'+
-    'xx xxx x'+
-    'xxxxxxxx';
-  GRAY50_PATTERN =
-    'x x x x '+
-    ' x x x x'+
-    'x x x x '+
-    ' x x x x'+
-    'x x x x '+
-    ' x x x x'+
-    'x x x x '+
-    ' x x x x';
-  GRAY25_PATTERN =
-    'x   x   '+
-    '  x   x '+
-    'x   x   '+
-    '  x   x '+
-    'x   x   '+
-    '  x   x '+
-    'x   x   '+
-    '  x   x ';
-  GRAY12_PATTERN =
-    'x   x   '+
-    '        '+
-    '  x   x '+
-    '        '+
-    'x   x   '+
-    '        '+
-    '  x   x '+
-    '        ';
-  GRAY06_PATTERN =
-    'x       '+
-    '        '+
-    '    x   '+
-    '        '+
-    'x       '+
-    '        '+
-    '    x   '+
-    '        ';
-  HOR_PATTERN_THIN =
-    'xxxxxxxx'+
-    '        '+
-    '        '+
-    '        '+
-    '        '+
-    '        '+
-    '        '+
-    '        ';
-  HOR_PATTERN_THICK =
-    'xxxxxxxx'+
-    'xxxxxxxx'+
-    '        '+
-    '        '+
-    '        '+
-    '        '+
-    '        '+
-    '        ';
-  HOR_PATTERN_NARROW =
-    'xxxxxxxx'+
-    '        '+
-    '        '+
-    '        '+
-    'xxxxxxxx'+
-    '        '+
-    '        '+
-    '        ';
-  VERT_PATTERN_THIN =
-    'x       '+
-    'x       '+
-    'x       '+
-    'x       '+
-    'x       '+
-    'x       '+
-    'x       '+
-    'x       ';
-  VERT_PATTERN_THICK =
-    'xx      '+
-    'xx      '+
-    'xx      '+
-    'xx      '+
-    'xx      '+
-    'xx      '+
-    'xx      '+
-    'xx      ';
-  VERT_PATTERN_NARROW =
-    'x   x   '+
-    'x   x   '+
-    'x   x   '+
-    'x   x   '+
-    'x   x   '+
-    'x   x   '+
-    'x   x   '+
-    'x   x   ';
-  DIAG_DOWN_PATTERN_THIN =
-    'x       '+
-    ' x      '+
-    '  x     '+
-    '   x    '+
-    '    x   '+
-    '     x  '+
-    '      x '+
-    '       x';
-  DIAG_DOWN_PATTERN_THICK =
-    'xx      '+
-    ' xx     '+
-    '  xx    '+
-    '   xx   '+
-    '    xx  '+
-    '     xx '+
-    '      xx'+
-    'x      x';
-  DIAG_DOWN_PATTERN_NARROW =
-    'x   x   '+
-    ' x   x  '+
-    '  x   x '+
-    '   x   x'+
-    'x   x   '+
-    ' x   x  '+
-    '  x   x '+
-    '   x   x';
-  DIAG_UP_PATTERN_THIN =
-    '       x'+
-    '      x '+
-    '     x  '+
-    '    x   '+
-    '   x    '+
-    '  x     '+
-    ' x      '+
-    'x       ';
-  DIAG_UP_PATTERN_THICK =
-    'x      x'+
-    '      xx'+
-    '     xx '+
-    '    xx  '+
-    '   xx   '+
-    '  xx    '+
-    ' xx     '+
-    'xx      ';
-  DIAG_UP_PATTERN_NARROW =
-    '   x   x'+
-    '  x   x '+
-    ' x   x  '+
-    'x   x   '+
-    '   x   x'+
-    '  x   x '+
-    ' x   x  '+
-    'x   x   ';
-  HATCH_PATTERN_THIN =
-    '       x'+
-    'x     x '+
-    ' x   x  '+
-    '  x x   '+
-    '   x    '+
-    '  x x   '+
-    ' x   x  '+
-    'x     x ';
-  HATCH_PATTERN_THICK =
-    'x      x'+
-    'xx    xx'+
-    ' xx  xx '+
-    '  xxxx  '+
-    '   xx   '+
-    '  xxxx  '+
-    ' xx  xx '+
-    'xx    xx';
-  HATCH_PATTERN_NARROW =
-    '   x   x'+
-    'x x x x '+
-    ' x   x  '+
-    'x x x x '+
-    '   x   x'+
-    'x x x  x'+
-    ' x   x  '+
-    'x x x x ';
-  HATCH_PATTERN_DOT =
-    'x       '+
-    '        '+
-    '  x   x '+
-    '        '+
-    '    x   '+
-    '        '+
-    '  x   x '+
-    '        ';
-  CROSS_PATTERN_THIN =
-    '   x    '+
-    '   x    '+
-    '   x    '+
-    'xxxxxxxx'+
-    '   x    '+
-    '   x    '+
-    '   x    '+
-    '   x    ';
-  CROSS_PATTERN_THICK =
-    '   xx   '+
-    '   xx   '+
-    '   xx   '+
-    'xxxxxxxx'+
-    'xxxxxxxx'+
-    '   xx   '+
-    '   xx   '+
-    '   xx   ';
-  CROSS_PATTERN_NARROW =
-    '  x   x '+
-    'xxxxxxxx'+
-    '  x   x '+
-    '  x   x '+
-    '  x   x '+
-    'xxxxxxxx'+
-    '  x   x '+
-    '  x   x ';
-  CROSS_PATTERN_DOT =
-    'x x x x '+
-    '        '+
-    'x       '+
-    '        '+
-    'x       '+
-    '        '+
-    'x       '+
-    '        ';
-  CHECKERBOARD_LARGE_PATTERN =
-    'xxxx    '+
-    'xxxx    '+
-    'xxxx    '+
-    'xxxx    '+
-    '    xxxx'+
-    '    xxxx'+
-    '    xxxx'+
-    '    xxxx';
-  CHECKERBOARD_SMALL_PATTERN =
-    'xx  xx  '+
-    'xx  xx  '+
-    '  xx  xx'+
-    '  xx  xx'+
-    'xx  xx  '+
-    'xx  xx  '+
-    '  xx  xx'+
-    '  xx  xx';
-  DIAMOND_PATTERN =
-    '   x    '+
-    '  xxx   '+
-    ' xxxxx  '+
-    'xxxxxxx '+
-    ' xxxxx  '+
-    '  xxx   '+
-    '   x    '+
-    '        ';
-  BRICK_HOR_PATTERN =
-    'xxxxxxxx'+
-    'x       '+
-    'x       '+
-    'x       '+
-    'xxxxxxxx'+
-    '    x   '+
-    '    x   '+
-    '    x   ';
-  BRICK_DIAG_PATTERN =
-    '       x'+
-    '      x '+
-    '     x  '+
-    '    x   '+
-    '   xx   '+
-    '  x  x  '+
-    ' x    x '+
-    'x      x';
-  SHINGLE_PATTERN =
-    '      xx'+
-    'x    x  '+
-    ' x  x   '+
-    '  xx    '+
-    '    xx  '+
-    '      x '+
-    '       x'+
-    '       x';
-  WAVE_PATTERN =
-    '        '+
-    '   xx   '+
-    '  x  x x'+
-    'xx      '+
-    '        '+
-    '   xx   '+
-    '  x  x x'+
-    'xx      ';
-  ZIGZAG_PATTERN =
-    'x      x'+
-    ' x    x '+
-    '  x  x  '+
-    '   xx   '+
-    'x      x'+
-    ' x    x '+
-    '  x  x  '+
-    '   xx   ';
-
-procedure CreateFillPatterns(WithDefaultPatterns: Boolean);
-begin
-  if (FillPatternList <> nil) and (FillPatternList.Count > 0) and WithDefaultPatterns then
-    exit;
-
-  if FillPatternList = nil then
-    FillPatternList := TsFillPatternList.Create;
-
-  if WithDefaultPatterns then
-  begin
-    fpsGray75 := RegisterFillPattern(FPS_GRAY75, StringToDotPattern(GRAY75_PATTERN));
-    fpsGray50 := RegisterFillPattern(FPS_GRAY50, StringToDotPattern(GRAY50_PATTERN));
-    fpsGray25 := RegisterFillPattern(FPS_GRAY25, StringToDotPattern(GRAY25_PATTERN));
-    fpsGray12 := RegisterFillPattern(FPS_GRAY12, StringToDotPattern(GRAY12_PATTERN));
-    fpsGray06 := RegisterFillPattern(FPS_GRAY06, StringToDotPattern(GRAY06_PATTERN));
-
-    fpsHorThick := RegisterFillPattern(FPS_HOR_THICK,
-      StringToDotPattern(HOR_PATTERN_THICK),
-      WIDE_DISTANCE, 0.0, THICK_LINE, lfpmSingle);
-    fpsVertThick := RegisterFillPattern(FPS_VERT_THICK,
-      StringToDotPattern(VERT_PATTERN_THICK),
-      WIDE_DISTANCE, 90.0, THICK_LINE, lfpmSingle);
-    fpsDiagUpThick := RegisterFillPattern(FPS_DIAG_UP_THICK,
-      StringToDotPattern(DIAG_UP_PATTERN_THICK),
-      WIDE_DISTANCE, 45.0, THICK_LINE, lfpmSingle);
-    fpsDiagDownThick := RegisterFillPattern(FPS_DIAG_DOWN_THICK,
-      StringToDotPattern(DIAG_DOWN_PATTERN_THICK),
-      WIDE_DISTANCE, -45.0, THICK_LINE, lfpmSingle);
-    fpsHatchThick := RegisterFillPattern(FPS_HATCH_THICK,
-      StringToDotPattern(HATCH_PATTERN_THICK),
-      WIDE_DISTANCE, 45.0, THICK_LINE, lfpmDouble);
-    fpsCrossThick := RegisterFillPattern(FPS_CROSS_THICK,
-      StringToDotPattern(CROSS_PATTERN_THICK),
-      WIDE_DISTANCE, 0.0, THICK_LINE, lfpmDouble);
-
-    fpsHorThin := RegisterFillPattern(FPS_HOR_THIN,
-      StringToDotPattern(HOR_PATTERN_THIN),
-      WIDE_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
-    fpsVertThin := RegisterFillPattern(FPS_VERT_THIN,
-      StringToDotPattern(VERT_PATTERN_THIN),
-      WIDE_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
-    fpsDiagUpThin := RegisterFillPattern(FPS_DIAG_UP_THIN,
-      StringToDotPattern(DIAG_UP_PATTERN_THIN),
-      WIDE_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
-    fpsDiagDownThin := RegisterFillPattern(FPS_DIAG_DOWN_THIN,
-      StringToDotPattern(DIAG_DOWN_PATTERN_THIN),
-      WIDE_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
-    fpsHatchThin := RegisterFillPattern(FPS_HATCH_THIN,
-      StringToDotPattern(HATCH_PATTERN_THIN),
-      WIDE_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
-    fpsCrossThin := RegisterFillPattern(FPS_CROSS_THIN,
-      StringToDotPattern(CROSS_PATTERN_THIN),
-      WIDE_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
-
-    fpsHorNarrow := RegisterFillPattern(FPS_HOR_NARROW,
-      StringToDotPattern(HOR_PATTERN_NARROW),
-      NARROW_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
-    fpsVertNarrow := RegisterFillPattern(FPS_VERT_NARROW,
-      StringToDotPattern(VERT_PATTERN_NARROW),
-      NARROW_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
-    fpsDiagUpNarrow := RegisterFillPattern(FPS_DIAG_UP_NARROW,
-      StringToDotPattern(DIAG_UP_PATTERN_NARROW),
-      NARROW_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
-    fpsDiagDownNarrow := RegisterFillPattern(FPS_DIAG_DOWN_NARROW,
-      StringToDotPattern(DIAG_DOWN_PATTERN_NARROW),
-      NARROW_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
-    fpsHatchNarrow := RegisterFillPattern(FPS_HATCH_NARROW,
-      StringToDotPattern(HATCH_PATTERN_NARROW),
-      NARROW_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
-    fpsCrossNarrow := RegisterFillPattern(FPS_CROSS_NARROW,
-      StringToDotPattern(CROSS_PATTERN_NARROW),
-      NARROW_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
-
-    fpsCrossDot := RegisterFillPattern(FPS_CROSS_DOT, StringToDotPattern(CROSS_PATTERN_DOT));
-    fpsHatchDot := RegisterFillPattern(FPS_HATCH_DOT, StringToDotPattern(HATCH_PATTERN_DOT));
-
-    fpsBrickHor := RegisterFillPattern(FPS_BRICK_HOR, StringToDotPattern(BRICK_HOR_PATTERN));
-    fpsBrickHor := RegisterFillPattern(FPS_BRICK_DIAG, StringToDotPattern(BRICK_DIAG_PATTERN));
-    fpsCheckerBoardLarge := RegisterFillPattern(FPS_CHECKERBOARD_LARGE, StringToDotPattern(CHECKERBOARD_LARGE_PATTERN));
-    fpsCheckerBoardSmall := RegisterFillPattern(FPS_CHECKERBOARD_SMALL, StringToDotPattern(CHECKERBOARD_SMALL_PATTERN));
-    fpsDiamond := RegisterFillPattern(FPS_DIAMOND, StringToDotPattern(DIAMOND_PATTERN));
-    fpsShingle := RegisterFillPattern(FPS_SHINGLE, StringToDotPattern(SHINGLE_PATTERN));
-    fpsWave := RegisterFillPattern(FPS_WAVE, StringToDotPattern(WAVE_PATTERN));
-    fpsZigzag := RegisterFillPattern(FPS_ZIGZAG, StringToDotPattern(ZIGZAG_PATTERN));
-
-  end;
-end;
-
-procedure EnsureFillPatternList;
-begin
-  CreateFillPatterns(false);
-end;
-
-function RegisterFillPattern(AName: String; ADotPattern: TsDotFillPattern;
-  ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
-begin
-  EnsureFillPatternList;
-  Result := FillPatternList.AddFillPattern(AName, ADotPattern,
-    ALineDistance, ALineAngle, ALineWidth, AMultiplier);
-end;
-
-function RegisterFillPattern(AName: String; ADotPattern: TsDotFillPattern): Integer;
-begin
-  EnsureFillPatternList;
-  Result := FillPatternList.AddDotFillPattern(AName, ADotPattern);
-end;
-
-function RegisterFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
-  AMultiplier: TsLineFillPatternMultiplier): Integer;
-begin
-  EnsureFillPatternList;
-  Result := FillPatternList.AddLineFillPattern(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier);
-end;
-
-function ClonePattern(AIndex: Integer; AName: String): Integer;
-var
-  patt: TsFillPattern;
-begin
-  if Assigned(FillPatternList) then
-  begin
-    patt := GetFillPattern(AIndex);
-    Result := RegisterFillPattern(AName,
-      patt.DotPattern,
-      patt.LinePattern.Distance, patt.LinePattern.Angle, patt.LinePattern.LineWidth, patt.LinePattern.Multiplier
-    );
-  end else
-    Result := -1;
-end;
-
-function FindLineFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single;
-  AMultiplier: TsLineFillPatternMultiplier): Integer;
-var
-  i: Integer;
-  patt: TsFillPattern;
-begin
-  if Assigned(FillPatternList) then
-    for i := 0 to FillPatternList.Count-1 do
-    begin
-      patt := FillPatternList[i];
-      if patt.LinePattern = nil then
-        Continue;
-      if SameValue(ALineDistance, patt.LinePattern.Distance, 0.1) and
-         SameValue(ALineAngle, patt.LinePattern.Angle, 0.1) and
-         SameValue(ALineWidth, patt.LinePattern.LineWidth, 0.1) and
-         (AMultiplier = patt.LinePattern.Multiplier) then
-      begin
-        Result := i;
-        exit;
-      end;
-    end;
-  Result := -1;
-end;
-
-function GetFillPattern(AIndex: Integer): TsFillPattern;
-begin
-  if Assigned(FillPatternList) then
-    Result := FillPatternList.Items[AIndex]
-  else
-    Result := nil;
-end;
-
-function IndexOfFillPattern(AName: String): Integer;
-begin
-  if Assigned(FillPatternList) then
-    Result := FillPatternList.IndexOfName(AName)
-  else
-    Result := -1;
-end;
-
-function NumFillPatterns: Integer;
-begin
-  if Assigned(FillPatternList) then
-    Result := FillPatternList.Count
-  else
-    Result := 0;
-end;
-
-finalization
-  FreeAndNil(FillPatternList);
 
 end.
 

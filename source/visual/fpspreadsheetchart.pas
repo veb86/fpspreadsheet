@@ -1526,35 +1526,37 @@ end;
 procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
+  book: TsWorkbook;
   coloredPattern: TsChartFillPattern;
-  pattern: TsFillPattern;
+  rawPattern: TsRawFillPattern;
 begin
   ABrush.Style := bsSolid;   // Fall-back style
 
+  book := TsWorkbook(AWorkbookChart.Workbook);
   coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  pattern := GetFillPattern(coloredPattern.Index);
+  rawPattern := book.RawFillPatterns[coloredPattern.Index];
 //  hatch := AWorkbookChart.Hatches[AFill.Hatch];
   ABrush.Color := Convert_sColor_to_Color(coloredpattern.Color.Color);
-  if pattern.LinePattern <> nil then
-    case pattern.LinePattern.Multiplier of
+  if rawPattern.LinePattern <> nil then
+    case rawPattern.LinePattern.Multiplier of
       lfpmSingle:
-        if InRange(FMod(pattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
+        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
           ABrush.Style := bsHorizontal
         else
-        if InRange(FMod(pattern.LinePattern.Angle - 90, 180.0), -22.5, 22.5) then  // vertical
+        if InRange(FMod(rawPattern.LinePattern.Angle - 90, 180.0), -22.5, 22.5) then  // vertical
           ABrush.Style := bsVertical
         else
-        if Inrange(FMod(pattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then  // diagonal up
+        if Inrange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then  // diagonal up
           ABrush.Style := bsBDiagonal
         else
-        if InRange(FMod(pattern.linePattern.Angle + 45, 180.0), -22.5, 22.5) then  // diagonal down
+        if InRange(FMod(rawPattern.linePattern.Angle + 45, 180.0), -22.5, 22.5) then  // diagonal down
           ABrush.Style := bsFDiagonal;
       lfpmDouble,
       lfpmTriple:   // no triple hatches in LCL - fall-back to double hatch
-        if InRange(FMod(pattern.LinePattern.Angle, 180.0), -22.5, 22.5) then   // +++
+        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then   // +++
           ABrush.Style := bsCross
         else
-        if InRange(FMod(pattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
+        if InRange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
           ABrush.Style := bsDiagCross;
     end;
 end;
@@ -1566,7 +1568,8 @@ end;
 procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
-  rawPattern: TsFillPattern;
+  book: TsWorkbook;
+  rawPattern: TsRawFillPattern;
   coloredPattern: TsChartFillPattern;
   png: TPortableNetworkGraphic;
   bkCol, fgCol: TColor;
@@ -1575,8 +1578,9 @@ var
 begin
   ABrush.Style := bsSolid;   // Fall-back pattern
 
+  book := TsWorkbook(AWorkbookChart.Workbook);
   coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := GetFillPattern(coloredPattern.Index);
+  rawPattern := book.RawFillPatterns[coloredPattern.Index];
 
   // Pattern color
   fgCol := Convert_sColor_to_Color(coloredPattern.Color.Color);

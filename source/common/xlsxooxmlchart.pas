@@ -11,7 +11,7 @@ uses
   Classes, SysUtils, StrUtils, Contnrs, Math, FPImage,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
+  fpSpreadsheet, fpsTypes, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
   fpsReaderWriter, fpsXMLCommon;
 
 type
@@ -204,8 +204,6 @@ const
   OHLC_HIGH = 1;
   OHLC_LOW = 2;
   OHLC_CLOSE = 3;
-
-{$INCLUDE xlsxooxmlchart_hatch.inc}
 
 type
   TNamedStreamItem = class
@@ -825,160 +823,102 @@ begin
   case hatch of
     'pct5':
       pattern := fpsGray06;
-      //AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY05_PATTERN);
     'pct10':
       pattern := fpsGray12;
-      //AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY10_PATTERN);
     'pct20':
-      pattern := RegisterFillPattern('Gray20', StringToDotPattern(OOXML_GRAY20_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY20_PATTERN);
+      pattern := fpsGray20;
     'pct25':
       pattern := fpsGray25;
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY25_PATTERN);
     'pct30':
-      pattern := RegisterFillPattern('Gray30', StringToDotPattern(OOXML_GRAY30_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY30_PATTERN);
+      pattern := fpsGray30;
     'pct40':
-      pattern := RegisterFillPattern('Gray40', StringToDotPattern(OOXML_GRAY40_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY40_PATTERN);
+      pattern := fpsGray40;
     'pct50':
       pattern := fpsGray50;
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY50_PATTERN);
     'pct60':
-      pattern := RegisterFillPattern('Gray60', StringToDotPattern(OOXML_GRAY60_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY60_PATTERN);
+      pattern := fpsGray60;
     'pct70':
-      pattern := RegisterFillPattern('Gray70', StringToDotPattern(OOXML_GRAY70_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY70_PATTERN);
+      pattern := fpsGray70;
     'pct75':
       pattern := fpsGray75;
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY75_PATTERN);
     'pct80':
-      pattern := RegisterFillPattern('Gray80', StringToDotPattern(OOXML_GRAY80_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY80_PATTERN);
+      pattern := fpsGray80;
     'pct90':
-      pattern := RegisterFillPattern('Gray90', StringToDotPattern(OOXML_GRAY90_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY90_PATTERN);
+      pattern := fpsGray90;
     'dashDnDiag':
-      pattern := RegisterFillPattern('DiagDownDash', StringToDotPattern(OOXML_DASH_DNDIAG_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_DNDIAG_PATTERN);
+      pattern := fpsDiagDownDash;
     'dashUpDiag':
-      pattern := RegisterFillPattern('DiagUpDash', StringToDotPattern(OOXML_DASH_UPDIAG_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_UPDIAG_PATTERN);
+      pattern := fpsDiagUpDash;
     'dashHorz':
-      pattern := RegisterFillPattern('HorDash', StringToDotPattern(OOXML_DASH_HORZ_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_HORZ_PATTERN);
+      pattern := fpsHorDash;
     'dashVert':
-      pattern := RegisterFillPattern('VertDash', StringToDotPattern(OOXML_DASH_VERT_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_VERT_PATTERN);
+      pattern := fpsVertDash;
     'smConfetti':
-      pattern := RegisterFillPattern('SmallConfetti', StringToDotPattern(OOXML_SMALL_CONFETTI_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CONFETTI_PATTERN);
+      pattern := fpsConfettiSmall;
     'lgConfetti':
-      pattern := RegisterFillPattern('LargeConfetti', StringToDotPattern(OOXML_LARGE_CONFETTI_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CONFETTI_PATTERN);
+      pattern := fpsConfettiLarge;
     'zigZag':
       pattern := fpsZigZag;
-//      pattern := RegisterFillPattern('ZigZag', StringToDotPattern(OOXML_ZIGZAG_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_ZIGZAG_PATTERN);
     'wave':
       pattern := fpsWave;
-//      pattern := RegisterFillPattern('Wave', StringToDotPattern(OOXML_WAVE_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WAVE_PATTERN);
     'diagBrick':
       pattern := fpsBrickDiag;
-//      pattern := RegisterFillPattern('DiagBrick', StringToDotPattern(OOXML_DIAG_BRICK_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIAG_BRICK_PATTERN);
     'horzBrick':
       pattern := fpsBrickHor;
-//      pattern := RegisterFillPattern('HorBrick', StringToDotPattern(OOXML_HORZ_BRICK_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_HORZ_BRICK_PATTERN);
     'weave':
-      pattern := RegisterFillPattern('Weave', StringToDotPattern(OOXML_WEAVE_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WEAVE_PATTERN);
+      pattern := fpsWeave;
     'plaid':
-      pattern := RegisterFillPattern('Plaid', StringToDotPattern(OOXML_PLAID_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_PLAID_PATTERN);
+      pattern := fpsPlaid;
     'divot':
-      pattern := RegisterFillPattern('Divot', StringToDotPattern(OOXML_DIVOT_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIVOT_PATTERN);
+      pattern := fpsDivot;
     'dotGrid':
       pattern := fpsCrossDot;
-//      pattern := RegisterFillPattern('DotGrid', StringToDotPattern(OOXML_DOT_GRID_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_GRID_PATTERN);
     'dotDmnd':
       pattern := fpsHatchDot;
-//      pattern := RegisterFillPattern('DotDiamond', StringToDotPattern(OOXML_DOT_DIAMOND_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_DIAMOND_PATTERN);
     'shingle':
       pattern := fpsShingle;
-//      pattern := RegisterFillPattern('Shingle', StringToDotPattern(OOXML_SHINGLE_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SHINGLE_PATTERN);
     'trellis':
-      pattern := RegisterFillPattern('Trellis', StringToDotPattern(OOXML_TRELLIS_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_TRELLIS_PATTERN);
+      pattern := fpsTrellis;
     'sphere':
-      pattern := RegisterFillPattern('Sphere', StringToDotPattern(OOXML_SPHERE_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SPHERE_PATTERN);
+      pattern := fpsSphere;
     'smCheck':
       pattern := fpsCheckerboardSmall;
-      //RegisterFillPattern('SmallCheckerboard', StringToDotPattern(OOXML_SMALL_CHECKERBOARD_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CHECKERBOARD_PATTERN);
     'lgCheck':
       pattern := fpsCheckerboardLarge;
-      //RegisterFillPattern('LargeCheckerboard', StringToDotPattern(OOXML_LARGE_CHECKERBOARD_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CHECKBOARD_PATTERN);
     'solidDmnd':
       pattern := fpsDiamond;
-//      pattern := RegisterFillPattern('SolidDiamond', StringToDotPattern(OOXML_SOLID_DIAMOND_PATTERN));
-//      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SOLID_DIAMOND_PATTERN);
 
     // The following patterns are combined line+dot patterns to simplify interfacing with ODS.
     'ltDnDiag':
       pattern := fpsDiagDownNarrow;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, -45);
     'ltUpDiag':
       pattern := fpsDiagUpNarrow;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, +45);
     'dkDnDiag':
       pattern := fpsDiagDownThick;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, -45);
     'dkUpDiag':
       pattern := fpsDiagUpThick;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, +45);
     'wdDnDiag':
       pattern := fpsDiagDownThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, -45);
     'wdUpDiag':
       pattern := fpsDiagUpThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, +45);
     'ltHorz':
       pattern := fpsHorThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 0);
     'ltVert':
       pattern := fpsVertThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 90);
     'narVert':
       pattern := fpsVertNarrow;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 90);
     'narHorz':
       pattern := fpsHorNarrow;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 0);
     'dkHorz':
       pattern := fpsHorThick;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 0);
     'dkVert':
       pattern := fpsVertThick;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 90);
     'smGrid':
       pattern := fpsCrossNarrow;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 1.0, 0.1, 0);
     'lgGrid':
       pattern := fpsCrossThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 0);
     'openDmnd':
       pattern := fpsHatchThin;
-//      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 45);
   end;
   AFill.Pattern := AChart.FillPatterns.AddPattern(hatch, pattern, color, AFill.Color);
 end;
@@ -3568,21 +3508,21 @@ const
     'smGrid', 'lgGrid', 'openDmnd'                              // 45..47
   );
   FPS_PATTERN_NAMES: array[0..47] of string = (
-    FPS_GRAY06, FPS_GRAY12, '', FPS_GRAY25, '',                 // pct5 ...
-    '', FPS_GRAY50, '', '', FPS_GRAY75,                         // ptc40 ...
-    '', '', '', '', '',                                         // pct80 ...
-    '', '', '', FPS_ZIGZAG, FPS_WAVE,                           // dashVert ...
-    FPS_BRICK_DIAG, FPS_BRICK_HOR, '', '', '',                  // diagBrick ...
-    FPS_CROSS_DOT, FPS_HATCH_DOT, FPS_SHINGLE, '', '',          // dotGrid ...
+    FPS_GRAY06, FPS_GRAY12, FPS_GRAY20, FPS_GRAY25, FPS_GRAY30,                  // pct5 ...
+    FPS_GRAY40, FPS_GRAY50, FPS_GRAY60, FPS_GRAY70, FPS_GRAY75,                  // ptc40 ...
+    FPS_GRAY80, FPS_GRAY90, FPS_DIAG_DOWN_DASH, FPS_DIAG_UP_DASH, FPS_HOR_DASH,  // pct80 ...
+    FPS_VERT_DASH, FPS_CONFETTI_SMALL, FPS_CONFETTI_LARGE, FPS_ZIGZAG, FPS_WAVE, // dashVert ...
+    FPS_BRICK_DIAG, FPS_BRICK_HOR, FPS_WEAVE, FPS_PLAID, FPS_DIVOT,              // diagBrick ...
+    FPS_CROSS_DOT, FPS_HATCH_DOT, FPS_SHINGLE, FPS_TRELLIS, FPS_SPHERE,          // dotGrid ...
     FPS_CHECKERBOARD_SMALL, FPS_CHECKERBOARD_LARGE, FPS_DIAMOND, FPS_DIAG_DOWN_NARROW, FPS_DIAG_UP_NARROW,  //smCheck ...
     FPS_DIAG_DOWN_THIN, FPS_DIAG_UP_THIN, FPS_DIAG_DOWN_THICK, FPS_DIAG_UP_THICK, FPS_HOR_THIN,  // dkDnDiag
     FPS_VERT_THIN, FPS_VERT_NARROW, FPS_HOR_NARROW, FPS_HOR_THICK, FPS_VERT_NARROW,              // ltVert
-    FPS_CROSS_NARROW, FPS_CROSS_THIN, FPS_HATCH_THIN            // smGrid ...
+    FPS_CROSS_NARROW, FPS_CROSS_THIN, FPS_HATCH_THIN                             // smGrid ...
   );
 
 var
   indent: String;
-  pattern: TsFillPattern;
+  rawPattern: TsRawFillPattern;
   coloredPattern: TsChartFillPattern;
   gradient: TsChartGradient;
   step: TsChartGradientStep;
@@ -3596,8 +3536,10 @@ var
   presetIdx: Integer;
   alpha: Integer;
   rgbStr: String;
+  workbook: TsWorkbook;
 begin
   indent := DupeString(' ', AIndent);
+  workbook := TsWorkbook(AChart.Workbook);
 
   if (AFill = nil) or (AFill.Style = cfsNoFill) then
     Result := indent + '<a:noFill/>'
@@ -3663,24 +3605,24 @@ begin
       cfsPattern, cfsSolidPattern:
         begin
           coloredPattern := AChart.FillPatterns[AFill.Pattern];
-          pattern := GetFillPattern(coloredPattern.Index);
+          rawPattern := workbook.RawFillPatterns[coloredPattern.Index];
          // hatch := AChart.Hatches[AFill.Hatch];
           presetIdx := -1;
           for i := 0 to High(OOXML_PATTERN_NAMES) do
-            if SameText(pattern.Name, OOXML_PATTERN_NAMES[i]) then
+            if SameText(rawPattern.Name, OOXML_PATTERN_NAMES[i]) then
             begin
               presetIdx := i;
               break;
             end;
           if presetIdx = -1 then
             for i := 0 to High(FPS_PATTERN_NAMES) do
-              if SameText(pattern.Name, FPS_PATTERN_NAMES[i]) then
+              if SameText(rawPattern.Name, FPS_PATTERN_NAMES[i]) then
               begin
                 presetIdx := i;
                 break;
               end;
           if presetIdx = -1 then
-            case Uppercase(pattern.Name) of
+            case Uppercase(rawPattern.Name) of
               'BACKWARD': presetIdx := 33;  // ltDnDiag
               'FORWARD': presetIdx := 36;   // ltUpDiag
               'CROSSED',

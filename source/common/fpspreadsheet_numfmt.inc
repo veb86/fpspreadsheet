@@ -474,7 +474,7 @@ var
   i: Integer;
   nfp: TsNumFormatParams;
 begin
-  for i:= FEmbeddedObjList.Count-1 downto 0 do begin
+  for i:= FNumFormatList.Count-1 downto 0 do begin
     nfp := TsNumFormatParams(FNumFormatList[i]);
     FNumFormatList.Delete(i);
     nfp.Free;

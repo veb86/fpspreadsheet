@@ -2118,11 +2118,15 @@ var
   styleName: String;
   pm, patternMultiplier: TsLineFillPatternMultiplier;
   fillPatternIdx: Integer;
+  fillPatternName: String;
   hatchColor, bgColor: TsChartColor;
   hatchDist: Double;
   hatchAngle: Double;
   rel: Boolean;
+  workbook: TsWorkbook;
 begin
+  workbook := TsWorkbook(AChart.Workbook);
+
   styleName := GetAttrValue(ANode, 'draw:display-name');
   if styleName = '' then
     styleName := GetAttrValue(ANode, 'draw:name');
@@ -2150,10 +2154,13 @@ begin
   else
     hatchAngle := 0;
 
-  fillPatternIdx := FindLineFillPatternIndex(hatchDist, hatchAngle, 0.1, patternMultiplier);
+  fillPatternIdx := workbook.RawFillPatterns.FindLinePatternIndex(hatchDist, hatchAngle, 0.1, patternMultiplier);
   if fillPatternIdx = -1 then
-    fillPatternIdx := RegisterFillPattern('', hatchDist, hatchAngle, 0.1, patternMultiplier);
-  AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor, bgColor);
+  begin
+    fillPatternName := Format('LinePattern%d', [workbook.RawFillPatterns.Count]);
+    fillPatternIdx := workbook.RawFillPatterns.AddLineFillPattern(fillPatternName, hatchDist, hatchAngle, 0.1, patternMultiplier);
+  end;
+  AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor, bgColor);    // wp: bgColor ????
 end;
 
 { Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
@@ -2577,12 +2584,15 @@ end;
 function TsSpreadOpenDocChartWriter.GetChartFillStyleGraphicPropsAsXML(AChart: TsChart;
   AFill: TsChartFill): String;
 var
+  workbook: TsWorkbook;
   gradient: TsChartGradient;
   coloredFillPattern: TsChartFillPattern;
-  fillPattern: TsFillPattern;
+  rawFillPattern: TsRawFillPattern;
   fillStr: String = '';
   opacityStr: String = '';
 begin
+  workbook := TsWorkbook(AChart.Workbook);
+
   case AFill.Style of
     cfsNoFill:
       Result := 'draw:fill="none" ';
@@ -2611,8 +2621,8 @@ begin
     cfsPattern, cfsSolidPattern:
       begin
         coloredFillPattern := AChart.FillPatterns[AFill.Pattern];
-        fillPattern := GetFillPattern(coloredFillPattern.Index);
-        if Assigned(fillPattern.LinePattern) then
+        rawFillPattern := workbook.RawFillPatterns[coloredFillPattern.Index];
+        if Assigned(rawFillPattern.LinePattern) then
         begin
           if (AFill.Color.Transparency > 0) then
             opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
@@ -3693,7 +3703,8 @@ var
   indent: String;
   style: String;
   i: Integer;
-  fillPattern: TsFillPattern;
+  workbook: TsWorkbook;
+  rawFillPattern: TsRawFillPattern;
   coloredFillPattern: TsChartFillPattern;
   img: TFPMemoryImage;
   imgWriter: TFPWriterPNG;
@@ -3703,11 +3714,12 @@ var
   picName: String;
 begin
   indent := DupeString(' ', AIndent);
+  workbook := TsWorkbook(AChart.Workbook);
   for i := 0 to AChart.FillPatterns.Count-1 do
   begin
     coloredFillPattern := AChart.FillPatterns[i];
-    fillPattern := GetFillPattern(coloredFillPattern.Index);
-    if Assigned(fillPattern.linePattern) then
+    rawFillPattern := workbook.RawFillPatterns[coloredFillPattern.Index];
+    if Assigned(rawFillPattern.LinePattern) then
     begin
       style := Format(indent +
         '<draw:hatch draw:name="%s" draw:display-name="%s" ' +
@@ -3716,10 +3728,10 @@ begin
           'draw:distance="%.2fmm" ' +
           'draw:rotation="%.0f" />',
         [ ASCIIName(coloredFillPattern.Name), coloredFillPattern.Name,
-          PATTERN_MULTIPLIER[fillPattern.LinePattern.Multiplier],
+          PATTERN_MULTIPLIER[rawFillPattern.LinePattern.Multiplier],
           ColorToHTMLColorStr(coloredFillPattern.Color.Color),
-          fillPattern.LinePattern.Distance,
-          fillPattern.LinePattern.Angle*10
+          rawFillPattern.LinePattern.Distance,
+          rawFillPattern.LinePattern.Angle*10
         ],
         FPointSeparatorSettings
       );
@@ -3732,7 +3744,7 @@ begin
       img := TFPMemoryImage.Create(8, 8);
       for y := 0 to 7 do
         for x := 0 to 7 do
-          if fillPattern.DotPattern[y] and (1 shl x) <> 0 then  // bit set
+          if rawFillPattern.DotPattern[y] and (1 shl x) <> 0 then  // bit set
             img.Colors[x, y] := fgCol
           else
             img.Colors[x, y] := bgCol;
