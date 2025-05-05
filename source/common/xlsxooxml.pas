@@ -3117,10 +3117,12 @@ begin
           // Add image
           w := -data.FromColOffs + data.ToColOffs;
           h := -data.FromRowOffs + data.ToRowOffs;
-          for j := data.FromCol to data.ToCol-1 do 
-            w := w + sheet.GetColWidth(j, suMillimeters);
-          for j := data.FromRow to data.ToRow-1 do 
-            h := h + sheet.GetRowHeight(j, suMillimeters);
+          if data.FromCol < data.ToCol then
+            for j := data.FromCol to data.ToCol-1 do
+              w := w + sheet.GetColWidth(j, suMillimeters);
+          if data.FromRow < data.ToRow then
+            for j := data.FromRow to data.ToRow-1 do
+              h := h + sheet.GetRowHeight(j, suMillimeters);
           scaleX := w / embObj.ImageWidth;
           scaleY := h / embObj.ImageHeight;
           // Scale factor calculation is very inaccurate. We try to round to integers
