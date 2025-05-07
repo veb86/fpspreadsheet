@@ -96,8 +96,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);      // series 1 x labels in A4:A11
     ser.SetYRange(3, 1, 10, 1);          // series 1 y values in B4:B11
     ser.Line.Color := ChartColor(scDarkRed);
+    ser.Fill.Pattern := ch.FillPatterns.AddSolidPattern('Hatched', fpsDiagDownNarrow, ChartColor(scWhite), ChartColor(scRed));
     ser.Fill.Style := cfsSolidPattern;
-    ser.Fill.Pattern := ch.FillPatterns.AddPattern('Hatched', fpsDiagDownNarrow, ChartColor(scWhite), ChartColor(scRed));
 
     // Add 2nd area series ("Student 2")
     ser := TsAreaSeries.Create(ch);
@@ -105,8 +105,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);      // series 2 x labels in A4:A11
     ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
     ser.Line.Color := ChartColor(scDarkBlue);
+    ser.Fill.Pattern := ch.FillPatterns.AddSolidPattern('Forward', fpsDiagUpThin, ChartColor(scWhite), ChartColor(scBlue));
     ser.Fill.Style := cfsSolidPattern;
-    ser.Fill.Pattern := ch.FillPatterns.AddPattern('Forward', fpsDiagUpThin, ChartColor(scWhite), ChartColor(scBlue));
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

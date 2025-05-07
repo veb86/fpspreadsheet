@@ -72,7 +72,7 @@ type
     procedure ReadChartFiles(AStream: TStream; AFileList: String);
     procedure ReadChart(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart; ARoot: String);
-    procedure ReadPictureFile(AStream: TStream; AFileName: String);
+    function ReadPictureFile(AStream: TStream; AFileName: String): Integer;
   public
     constructor Create(AReader: TsBasicSpreadReader); override;
     destructor Destroy; override;
@@ -84,7 +84,6 @@ type
   private
     FSCharts: array of TStream;
     FSObjectStyles: array of TStream;
-    FSPictures: TFPObjectList;
     FNumberFormatList: TStrings;
     FPointSeparatorSettings: TFormatSettings;
     FChartIndex: Integer;
@@ -170,7 +169,7 @@ implementation
 {$IFDEF FPS_CHARTS}
 
 uses
-  FPWritePNG, fpsPatterns, fpsOpenDocument;
+  FPWritePNG, fpsImages, fpsPatterns, fpsOpenDocument;
 
 type
   TAxisKind = 3..6;
@@ -189,7 +188,7 @@ const
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
   OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
   OPENDOC_PATH_CHART_STYLES     = 'Object %d/styles.xml';
-  OPENDOC_PATH_CHART_PICTURES   = 'Object %d/Pictures/%s';
+  //OPENDOC_PATH_CHART_PICTURES   = 'Object %d/Pictures/%s';
 
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
@@ -404,7 +403,7 @@ function TsChartNumberFormatList.IndexOfName(const AName: String): Integer;
 begin
   Result := inherited IndexOfName(lowercase(AName));
 end;
-
+         (*
 {------------------------------------------------------------------------------}
 {                         internal picture storage                             }
 {------------------------------------------------------------------------------}
@@ -450,7 +449,7 @@ begin
     end;
   Result := nil;
 end;
-
+     *)
 
 {------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartReader                            }
@@ -465,7 +464,7 @@ begin
 
   FChartFiles := TStringList.Create;
   FNumberFormatList := TsChartNumberFormatList.Create;
-  FStreamList := TStreamList.Create;
+//  FStreamList := TStreamList.Create;
 
   FPieSeriesStartAngle := 999;
 end;
@@ -578,14 +577,10 @@ begin
           img := AChart.Images[AFill.Image];
           sc := GetAttrValue(ANode, 'draw:fill-image-width');
           if (sc <> '') and EvalLengthStr(sc, value, rel) then
-            img.Width := value
-          else
-            img.Width := -1;
+            img.Width := value;
           sc := GetAttrValue(ANode, 'draw:fill-image-height');
           if (sc <> '') and EvalLengthStr(sc, value, rel) then
-            img.Height := value
-          else
-            img.Height := -1;
+            img.Height := value;
         end else
           AFill.Style := cfsSolidFill;
       end;
@@ -2001,26 +1996,22 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadObjectFillImages(ANode: TDOMNode;
   AChart: TsChart; ARoot: String);
 var
+  wBook: TsWorkbook;
   styleName: String;
   imgFileName: string;
-  imgStream: TStream;
-  img: TFPCustomImage;
+  objIdx: Integer;
 begin
-  styleName := GetAttrValue(ANode, 'draw:display-name');
-  if styleName = '' then
-    styleName := GetAttrValue(ANode, 'draw:name');
-
   imgFileName := GetAttrValue(ANode, 'xlink:href');
   if imgFileName = '' then
     exit;
 
-  imgStream := TStreamList(FStreamList).FindByName(ARoot + imgFileName);
-  if imgStream <> nil then
-  begin
-    img := TFPMemoryImage.Create(0, 0);     // do not destroy this image here!
-    img.LoadFromStream(imgStream);
-    AChart.Images.AddImage(styleName, img);
-  end;
+  styleName := GetAttrValue(ANode, 'draw:display-name');
+  if styleName = '' then
+    styleName := GetAttrValue(ANode, 'draw:name');
+
+  wBook := TsWorkbook(AChart.Workbook);
+  objIdx := wBook.FindEmbeddedObj(AChart.Name + imgFileName);
+  AChart.Images.AddEmbeddedObj(styleName, objIdx);
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadObjectGradientStyles(ANode: TDOMNode;
@@ -2160,7 +2151,7 @@ begin
     fillPatternName := Format('LinePattern%d', [workbook.RawFillPatterns.Count]);
     fillPatternIdx := workbook.RawFillPatterns.AddLineFillPattern(fillPatternName, hatchDist, hatchAngle, 0.1, patternMultiplier);
   end;
-  AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor, bgColor);    // wp: bgColor ????
+  AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor); //, bgColor);    // wp: bgColor ????
 end;
 
 { Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
@@ -2203,27 +2194,39 @@ begin
   AChart.LineStyles.Add(styleName, dots1Length, dots1, dots2Length, dots2, distance, rel1 or rel2 or relDist);
 end;
 
-procedure TsSpreadOpenDocChartReader.ReadPictureFile(AStream: TStream;
-  AFileName: String);
+{ Unzips the specified picture file from the given stream for the specified
+  chart and adds the unzipped stream to the embedded objects of the workbook.
+  Returns the index of the new embedded object in the EmbeddedObj list. }
+function TsSpreadOpenDocChartReader.ReadPictureFile(AStream: TStream;
+  AFileName: String): Integer;
 const
   NOT_USED = -1;
 var
+  lReader: TsSpreadOpenDocReader;
+  wBook: TsWorkbook;
   memStream: TMemoryStream;
-  img: TFPCustomImage;
-  item: TStreamItem;
+  obj: TsEmbeddedObj;
+  idx: Integer;
 begin
   memStream := TMemoryStream.Create;
   try
     if UnzipToStream(AStream, AFileName, memStream) then
     begin
-      memstream.Position := 0;
+      lReader := TsSpreadOpenDocReader(Reader);
+      wBook := TsWorkbook(lReader.Workbook);
+      idx := wBook.AddEmbeddedObj(memStream, AFileName);
+      obj := wBook.GetEmbeddedObj(idx);
+      obj.BelongsToChart := NOT_USED;  // wp: correct?
+      memStream.Position := 0;
+      {
       item := TStreamItem.Create(AFileName, TMemoryStream.Create, NOT_USED);
       item.Stream.CopyFrom(memStream, memStream.Size);
       item.Stream.Position := 0;
       FStreamList.Add(item);
+      }
     end;
   finally
-    memstream.Free;
+//    memstream.Free;
   end;
 end;
 
@@ -2250,7 +2253,7 @@ end;
 
 procedure TsSpreadOpenDocChartWriter.AddChartsToZip(AZip: TZipper);
 var
-  i, j: Integer;
+  i: Integer;
 begin
   for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount-1 do
   begin
@@ -2260,10 +2263,8 @@ begin
       FSObjectStyles[i], Format(OPENDOC_PATH_CHART_STYLES, [i+1]));
   end;
 
-  for i := 0 to FSPictures.Count-1 do
-    with TStreamItem(FSPictures[i]) do
-      AZip.Entries.AddFileEntry(
-        Stream, Format(OPENDOC_PATH_CHART_PICTURES, [ChartIndex+1, Name]));
+  // Pictures are contained in the workbook's EmbeddedObj list and will be
+  // added separately by the OpenDocWriter itself.
 end;
 
 { Writes the chart entries needed in the META-INF/manifest.xml file }
@@ -2286,12 +2287,9 @@ begin
       [i+1]
     ));
 
-    for j := 0 to FSPictures.Count-1 do
-      with TStreamItem(FSPictures[j]) do
-        AppendToStream(AStream, Format(
-          ' <manifest:file-entry manifest:media-type="image/png" manifest:full-path="Object %d/Pictures/%s" />' + LE,
-          [i+1, Name]
-        ));
+    // Images are contained in the workbook's EmbeddedObj list and are
+    // written by the main OpenDocWriter itself (WriteMetaInfManifest).
+
     // Object X/meta.xml and ObjectReplacement/Object X are not necessarily needed.
   end;
 end;
@@ -2308,7 +2306,6 @@ begin
     FSCharts[i] := CreateTempStream(Writer.Workbook, 'fpsCh');
     FSObjectStyles[i] := CreateTempStream(Writer.Workbook, 'fpsOS');
   end;
-  FSPictures := TStreamList.Create;
 end;
 
 procedure TsSpreadOpenDocChartWriter.DestroyStreams;
@@ -2322,7 +2319,6 @@ begin
   end;
   Setlength(FSCharts, 0);
   SetLength(FSObjectStyles, 0);
-  FSPictures.Free;
 end;
 
 function TsSpreadOpenDocChartWriter.GetChartAxisStyleAsXML(
@@ -2588,10 +2584,23 @@ var
   gradient: TsChartGradient;
   coloredFillPattern: TsChartFillPattern;
   rawFillPattern: TsRawFillPattern;
+  img: TsChartImage;
+  imgWidth, imgHeight: String;
   fillStr: String = '';
   opacityStr: String = '';
+  solidFillResult: String;
 begin
+  Result := '';
   workbook := TsWorkbook(AChart.Workbook);
+
+  (*
+  if (AFill.Color.Transparency > 0) then
+    opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
+  solidFillResult := Format(
+    'draw:fill="solid" draw:fill-color="%s" %s',
+    [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr ]
+  );
+  *)
 
   case AFill.Style of
     cfsNoFill:
@@ -2607,6 +2616,8 @@ begin
       end;
     cfsGradient:
       begin
+        if (AFill.Gradient < 0) or (AChart.Gradients.Count = 0) then
+          exit;
         gradient := AChart.Gradients[AFill.Gradient];
         if (gradient.StartColor.Transparency > 0) then
           opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - gradient.StartColor.Transparency))]);
@@ -2620,6 +2631,8 @@ begin
       end;
     cfsPattern, cfsSolidPattern:
       begin
+        if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
+          exit;
         coloredFillPattern := AChart.FillPatterns[AFill.Pattern];
         rawFillPattern := workbook.RawFillPatterns[coloredFillPattern.Index];
         if Assigned(rawFillPattern.LinePattern) then
@@ -2646,7 +2659,23 @@ begin
         end;
       end;
     cfsImage:
-      ; // FIX ME
+      begin
+        if (AFill.Image < 0) or (AChart.Images.Count = 0) then
+          exit;
+        img := AChart.Images[AFill.Image];
+        if img.Width > 0 then
+          imgWidth := Format('draw:fill-image-width="%.2gcm" ', [img.Width], FPointSeparatorSettings)
+        else
+          imgWidth := '';
+        if img.Height > 0 then
+          imgHeight := Format('draw:fill-image-height="%.2gcm" ', [img.Height], FPointSeparatorSettings)
+        else
+          imgHeight := '';
+        Result := Format(
+          'draw:fill="bitmap" draw:fill-image-name="%s" %s%s  ', [
+          img.Name, imgWidth, imgHeight
+        ]);
+      end;
   end;
 end;
 
@@ -2977,6 +3006,7 @@ var
   lineProps: String = '';
   fillProps: String = '';
   labelSeparator: String = '';
+  savedTransparency: Single;
 begin
   Result := '';
 
@@ -3059,8 +3089,13 @@ begin
   begin
     // NOTE: In LibreOffice lines and symbols have the same color. When different
     // colors are written here, the line color dominates.
+    // And: SymbolFill transparency is misinterpreted by ods as line transparency!
+    // And symbols never are transparent.
     lineSer := TsOpenedCustomLineSeries(series);
+    savedTransparency := lineser.SymbolFill.Color.Transparency;
+    lineser.SymbolFill.Color.Transparency := 0.0;
     fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, lineser.SymbolFill);
+    lineser.SymbolFill.Color.Transparency := savedTransparency;
     if lineSer.ShowSymbols then
       graphProps := graphProps + fillProps;
     if lineSer.ShowLines and (lineser.Line.Style <> clsNoLine) then
@@ -3372,8 +3407,6 @@ begin
     FSCharts[i].Position := 0;
     FSObjectStyles[i].Position := 0;
   end;
-  for i := 0 to FSPictures.Count-1 do
-    TStreamItem(FSPictures[i]).Stream.Position := 0;
 end;
 
 { Writes the chart to the specified stream.
@@ -3703,7 +3736,7 @@ var
   indent: String;
   style: String;
   i: Integer;
-  workbook: TsWorkbook;
+  wBook: TsWorkbook;
   rawFillPattern: TsRawFillPattern;
   coloredFillPattern: TsChartFillPattern;
   img: TFPMemoryImage;
@@ -3712,13 +3745,15 @@ var
   x, y: Integer;
   fgCol, bgCol: TFPColor;
   picName: String;
+  embObj: TsEmbeddedObj;
+  embIdx: Integer;
 begin
   indent := DupeString(' ', AIndent);
-  workbook := TsWorkbook(AChart.Workbook);
+  wBook := TsWorkbook(AChart.Workbook);
   for i := 0 to AChart.FillPatterns.Count-1 do
   begin
     coloredFillPattern := AChart.FillPatterns[i];
-    rawFillPattern := workbook.RawFillPatterns[coloredFillPattern.Index];
+    rawFillPattern := wBook.RawFillPatterns[coloredFillPattern.Index];
     if Assigned(rawFillPattern.LinePattern) then
     begin
       style := Format(indent +
@@ -3738,7 +3773,6 @@ begin
       AppendToStream(AStream, style);
     end else
     begin
-      picName := Format('Fill-Image%d.png', [FSPictures.Count+1]); //ASCIIName(coloredFillPattern.Name + fillpattern.Name) + '.png';
       fgCol := sColorToFPColor(coloredFillPattern.Color.Color);
       bgCol := sColorToFPColor(coloredFillPattern.BgColor.Color);
       img := TFPMemoryImage.Create(8, 8);
@@ -3756,16 +3790,28 @@ begin
       finally
         imgWriter.Free;
       end;
-      FSPictures.Add(TStreamItem.Create(picName, stream, FChartIndex));
-      style := Format(indent +
-        '<draw:fill-image draw:name="%s" draw:display-name="%s" ' +
-        'xlink:href="Pictures/%s" xlink:type="simple" ' +
-        'xlink:show="embed" xlink:actuate="onLoad"/>', [
-        ASCIIName(coloredFillPattern.Name), coloredFillPattern.Name,
-        picName
-      ]);
-      AppendToStream(AStream, style);
+      picName := Format('Image%d.png', [wBook.GetEmbeddedObjCount]);
+      embIdx := wBook.AddEmbeddedObj(stream, picName);
+      embObj := wBook.GetEmbeddedObj(embIdx);
+      embObj.BelongsToChart := AChart.Index;
+      AChart.Images.AddEmbeddedObj(coloredFillPattern.Name, embIdx);
     end;
+  end;
+
+  for i := 0 to AChart.Images.Count-1 do
+  begin
+    embIdx := AChart.Images[i].EmbeddedObjIndex;
+    embObj := wBook.GetEmbeddedObj(embIdx);
+    embObj.BelongsToChart := AChart.Index;
+    picName := AChart.Images[i].Name;
+    style := Format(indent +
+      '<draw:fill-image draw:name="%s" draw:display-name="%s" ' +
+       'xlink:href="Pictures/%s" xlink:type="simple" ' +
+       'xlink:show="embed" xlink:actuate="onLoad"/>', [
+      ASCIIName(picName), picName,
+      embObj.FileName
+    ]);
+    AppendToStream(AStream, style);
   end;
 end;
 

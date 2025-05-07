@@ -95,11 +95,10 @@ begin
     ser.SetTitleAddr(2, 1);              // series 1 title in cell B3
     ser.SetLabelRange(3, 0, 10, 0);      // series 1 x labels in A4:A11
     ser.SetYRange(3, 1, 10, 1);          // series 1 y values in B4:B11
-    ser.Line.Color := ChartColor(scRed);
+    ser.Line.SelectSolidLine(ChartColor(scRed));
     ser.ShowSymbols := true;
-    ser.SymbolFill.Color := ChartColor(scRed, 0.5);
-    ser.SymbolFill.Style := cfsSolidFill;
-    ser.SymbolBorder.Color := ChartColor(scBlack);
+    ser.SymbolFill.SelectSolidFill(ChartColor(scRed, 0.5));
+    ser.SymbolBorder.SelectSolidLine(ChartColor(scBlack));
     ser.Interpolation := ciCubicSpline;
 //    ser.GroupIndex := -1;
 
@@ -108,10 +107,9 @@ begin
     ser.SetTitleAddr(2, 2);              // series 2 title in cell C3
     ser.SetLabelRange(3, 0, 10, 0);      // series 2 x labels in A4:A11
     ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
-    ser.Line.Color := chartColor(scBlue);
-    ser.SymbolFill.Color := ChartColor(scBlue, 0.5);
-    ser.SymbolFill.Style := cfsSolidFill;
-    ser.SymbolBorder.Color := ChartColor(scBlack, 0.5);
+    ser.Line.SelectSolidLine(ChartColor(scBlue, 0.6), 1.0);
+    ser.SymbolFill.SelectSolidFill(ChartColor(scBlue, 0.6));
+    ser.SymbolBorder.SelectSolidLine(ChartColor(scBlack, 0.6));
     //ser.Smooth := true;
     ser.ShowSymbols := true;
 //    ser.GroupIndex := -1;

@@ -79,7 +79,7 @@ begin
     ser.SetBubbleRange(3, 3, 10, 3);
     ser.Line.Style := clsSolid; //NoLine;
     ser.Line.Color := ChartColor(scSilver);
-    ser.Fill.Color := ChartColor(scYellow, 0.4);
+    ser.Fill.SelectSolidFill(ChartColor(scYellow, 0.4));
     //ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
     ser.DataPointStyles.AddSolidFill(2, ChartColor($c47244));

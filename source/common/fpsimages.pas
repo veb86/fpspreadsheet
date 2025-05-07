@@ -55,13 +55,16 @@ type
     FImageType: TsImageType;  // image type, see itXXXX
     FWidth: Double;           // image width, in mm
     FHeight: Double;          // image height, in mm
+    FBelongsToChart: Integer; // > -1 indicates that obj belongs to a chart having this index, needed by ODS.
   protected
     function CheckStream(AImageType: TsImageType): Boolean;
   public
+    constructor Create;
     destructor Destroy; override;
     function LoadFromFile(const AFileName: String): Boolean;
     function LoadFromStream(AStream: TStream; AName: String;
       ASize: Int64 = -1): Boolean;
+    property BelongsToChart: Integer read FBelongsToChart write FBelongsToChart;
     property FileName: String read FFileName;
     property ImageType: TsImagetype read FImageType;
     property ImageWidth: Double read FWidth write FWidth;
@@ -803,8 +806,9 @@ begin
   if InRange(AImageType, 0, High(ImageTypeRegistry)) then
   begin
     AStream.Position := 0;
-    if ImageTypeRegistry[AImageType].GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY)
-      then Result := AImageType;
+    itr := ImageTypeRegistry[AImageType];
+    if itr.GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY) then
+      Result := AImageType;
   end else
   begin
     for Result := 0 to High(ImageTypeRegistry) do
@@ -812,10 +816,14 @@ begin
       AStream.Position := 0;
       itr := ImageTypeRegistry[Result];
       if itr.GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY) then
+      begin
+        AStream.Position := 0;
         exit;
+      end;
     end;
     Result := itUnknown;
   end;
+  AStream.Position := 0;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -912,6 +920,12 @@ end;
 {                               TsEmbeddedObj                                  }
 {==============================================================================}
 
+constructor TsEmbeddedObj.Create;
+begin
+  inherited;
+  FBelongsToChart := -1;
+end;
+
 destructor TsEmbeddedObj.Destroy;
 begin
   FreeAndNil(FStream);
@@ -929,13 +943,17 @@ function TsEmbeddedObj.LoadFromFile(const AFileName: String): Boolean;
 var
   s: TStream;
 begin
-  FreeAndNil(FStream);
+  FStream.Free;
   FStream := TMemoryStream.Create;
   s := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
     FStream.LoadFromStream(s);
     Result := CheckStream(GetImageTypeFromFileName(AFileName));
-    if Result then FFileName := AFileName;
+    if Result then
+    begin
+      FStream.Position := 0;
+      FFileName := AFileName;
+    end;
   finally
     s.Free;
   end;
@@ -944,7 +962,7 @@ end;
 function TsEmbeddedObj.LoadFromStream(AStream: TStream; AName: String;
   ASize: Int64 = -1): Boolean;
 begin
-  FreeAndNil(FStream);
+  FStream.Free;
   FStream := TMemoryStream.Create;
   if ASize = -1 then begin
     ASize := AStream.Size;
@@ -952,7 +970,11 @@ begin
   end;
   FStream.CopyFrom(AStream, ASize);
   Result := CheckStream(itUnknown);
-  if Result then FFileName := AName;
+  if Result then
+  begin
+    FStream.Position := 0;
+    FFileName := AName;
+  end;
 end;
 
 

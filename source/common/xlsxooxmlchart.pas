@@ -20,9 +20,9 @@ type
   TsSpreadOOXMLChartReader = class(TsBasicSpreadChartReader)
   private
     FPointSeparatorSettings: TFormatSettings;
-    FImages: TFPObjectList;
     FXAxisID, FYAxisID, FX2AxisID, FY2AxisID: DWord;
     FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
+    FChartRels: TFPList;  // must be cast to TXlsxRelationshipList
 
     procedure ReadChartColor(ANode: TDOMNode; var AColor: TsChartColor);
     function ReadChartColorDef(ANode: TDOMNode; ADefault: TsChartColor): TsChartColor;
@@ -161,8 +161,10 @@ const
   MIME_DRAWINGML_CHART_COLORS = 'application/vnd.ms-office.chartcolorstyle+xml';
 
   SCHEMAS_RELS         = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  SCHEMAS_RELS_2       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
   SCHEMAS_CHART_COLORS = 'http://schemas.microsoft.com/office/2011/relationships/chartColorStyle';
   SCHEMAS_CHART_STYLE  = 'http://schemas.microsoft.com/office/2011/relationships/chartStyle';
+  SCHEMAS_IMAGE        = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
 
   OOXML_PATH_XL_CHARTS      = 'xl/charts/';
   OOXML_PATH_XL_CHARTS_RELS = 'xl/charts/_rels/';
@@ -204,30 +206,6 @@ const
   OHLC_HIGH = 1;
   OHLC_LOW = 2;
   OHLC_CLOSE = 3;
-
-type
-  TNamedStreamItem = class
-    Name: String;
-    Stream: TStream;
-  end;
-
-  TNamedStreamList = class(TFPObjectList)
-  public
-    function FindStreamByName(const AName: String): TStream;
-  end;
-
-function TNamedStreamList.FindStreamByName(const AName: String): TStream;
-var
-  i: Integer;
-begin
-  for i := 0 to Count-1 do
-    if TNamedStreamItem(Items[i]).Name = AName then
-    begin
-      Result := TNamedStreamItem(Items[i]).Stream;
-      exit;
-    end;
-  Result := nil;
-end;
 
 function PositiveAngle(Angle: Double): Double;
 begin
@@ -284,13 +262,10 @@ begin
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
-
-  FImages := TFPObjectList.Create;
 end;
 
 destructor TsSpreadOOXMLChartReader.Destroy;
 begin
-  FImages.Free;
   inherited;
 end;
 
@@ -804,7 +779,6 @@ var
   color: TsChartColor;
   pattern: Integer;
 begin
-  AFill.Style := cfsSolidPattern;
   hatch := GetAttrValue(ANode, 'prst');
 
   ANode := ANode.FirstChild;
@@ -920,19 +894,14 @@ begin
     'openDmnd':
       pattern := fpsHatchThin;
   end;
-  AFill.Pattern := AChart.FillPatterns.AddPattern(hatch, pattern, color, AFill.Color);
+  AFill.Pattern := AChart.FillPatterns.AddSolidPattern(hatch, pattern, color, AFill.Color);
+  AFill.Style := cfsSolidPattern;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartFillAndLineProps(ANode: TDOMNode;
   AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
 var
-  nodeName, s: String;
-  child1, child2: TDOMNode;
-  n: Integer;
-  value: Double;
-  alpha: Double;
-  gradient: TsChartGradient;
-  color: TsColor;
+  nodeName: String;
 begin
   if ANode = nil then
     exit;
@@ -1059,6 +1028,10 @@ var
   img: TFPCustomImage;
   sImg: TsChartImage;
   stream: TStream;
+
+  wBook: TsWorkbook;
+  objIdx: Integer;
+  relTarget: String;
 begin
   if ANode = nil then
     exit;
@@ -1082,10 +1055,18 @@ begin
 
   if relID <> '' then
   begin
+    wBook := TsWorkbook(AChart.Workbook);
+    relTarget := TXlsxRelationshipList(FChartRels).FindTarget(relID);
+    objIdx := wbook.FindEmbeddedObj(ExtractFileName(relTarget));
+    AFill.Image := AChart.Images.AddEmbeddedObj(Format('FillImage%d', [AChart.Images.Count]), objIdx);
+    (*
+    stream := embObj
     stream := TNamedStreamList(FImages).FindStreamByName(relID);
     if stream <> nil then
     begin
       stream.Position := 0;
+      wBook := TsWorkbook(AChart.Workbook);
+      objIdx := wBook.AddEmbeddedObj(stream, Format('ChartImage
       GetImageInfo(stream, imgWidthInches, imgHeightInches);
       stream.Position := 0;
       img := TFPMemoryImage.Create(0, 0); // will be destroyed by the chart's images list.
@@ -1095,6 +1076,7 @@ begin
       sImg.Width := IfThen(widthFactor = 1.0, -1, InToMM(imgWidthInches) * widthFactor);
       sImg.Height := IfThen(heightFactor = 1.0, -1, InToMM(imgHeightInches) * heightFactor);
     end;
+      *)
   end;
 end;
 
@@ -1105,10 +1087,13 @@ var
   rel: TXlsxRelationship;
   img: TFPCustomImage;
   imgFileName: string;
-  namedStreamItem: TNamedStreamItem;
+  //namedStreamItem: TNamedStreamItem;
+  stream: TStream;
   unzip: TStreamUnzipper;
+  wBook: TsWorkbook;
 begin
-  FImages.Clear;
+  wBook := TsWorkbook(AChart.Workbook);
+  //FImages.Clear;
 
   for i := 0 to ARelsList.Count-1 do
   begin
@@ -1118,15 +1103,24 @@ begin
       imgFileName := MakeXLPath(rel.Target);
       if imgFileName = '' then
         Continue;
+
       unzip := TStreamUnzipper.Create(AStream);
       try
         unzip.Examine;
+        stream := TMemoryStream.Create;
+        unzip.UnzipFile(imgFileName, stream);
+        stream.Position := 0;
+        (*
         namedStreamItem := TNamedStreamItem.Create;
         namedStreamItem.Name := rel.RelID;
         namedStreamItem.Stream := TMemoryStream.Create;
         unzip.UnzipFile(imgFileName, namedStreamItem.Stream);
         namedStreamItem.Stream.Position := 0;
         FImages.Add(namedStreamItem);
+        *)
+
+        imgFileName := ExtractFileName(imgFileName);
+        wBook.AddEmbeddedObj(stream, imgFileName);
       finally
         unzip.Free;
       end;
@@ -2555,39 +2549,39 @@ var
 begin
   lReader := TsSpreadOOXMLReader(Reader);
 
-  // Read the rels file of the chart. The items go into the FRelsList.
-  relsFileName := ExtractFilePath(AChartXMLFile) + '_rels/' + ExtractFileName(AChartXMLFile) + '.rels';
-  relsList := TXlsxRelationshipList.Create;
+  // Read the rels file of the chart. The items go into the FChartRelsList.
+  FChartRels := TXlsxRelationshipList.Create;
   try
-    lReader.ReadRels(AStream, relsFileName, relsList);
-    // Read the images mentioned in the rels file.
-    ReadChartImages(AStream, AChart, relsList);
-  finally
-    relsList.Free;
-  end;
+    relsFileName := ExtractFilePath(AChartXMLFile) + '_rels/' + ExtractFileName(AChartXMLFile) + '.rels';
+    lReader.ReadRels(AStream, relsFileName, TXlsxRelationshipList(FChartRels));
+    // Read the images mentioned in the rels file to the workbook's EmbeddedObj list.
+    ReadChartImages(AStream, AChart, FChartRels);
 
-  // Read the xml file of the chart
-  xmlStream := lReader.CreateXMLStream;
-  try
-    if UnzipToStream(AStream, AChartXMLFile, xmlStream) then
-    begin
-      lReader.ReadXMLStream(doc, xmlStream);
-      node := doc.DocumentElement.FirstChild;
-      while Assigned(node) do
+    // Read the xml file of the chart
+    xmlStream := lReader.CreateXMLStream;
+    try
+      if UnzipToStream(AStream, AChartXMLFile, xmlStream) then
       begin
-        nodeName := node.NodeName;
-        case nodeName of
-          'c:chart':
-            ReadChart(node, AChart);
-          'c:spPr':
-            ReadChartFillAndLineProps(node.FirstChild, AChart, AChart.Background, AChart.Border);
+        lReader.ReadXMLStream(doc, xmlStream);
+        node := doc.DocumentElement.FirstChild;
+        while Assigned(node) do
+        begin
+          nodeName := node.NodeName;
+          case nodeName of
+            'c:chart':
+              ReadChart(node, AChart);
+            'c:spPr':
+              ReadChartFillAndLineProps(node.FirstChild, AChart, AChart.Background, AChart.Border);
+          end;
+          node := node.NextSibling;
         end;
-        node := node.NextSibling;
+        FreeAndNil(doc);
       end;
-      FreeAndNil(doc);
+    finally
+      xmlStream.Free;
     end;
   finally
-    xmlStream.Free;
+    FreeAndNil(FChartRels);
   end;
 end;
 
@@ -2845,6 +2839,59 @@ end;
 { Write the relationship file for the chart with the given index.
   The file defines which xml files contain the ChartStyles and Colors, as well
   as images needed by each chart. }
+ procedure TsSpreadOOXMLChartWriter.WriteChartRelsXML(AStream: TStream;
+   AChartIndex: Integer);
+ var
+   i: Integer;
+   book: TsWorkbook;
+   chart: TsChart;
+   rId: Integer;
+   embObj: TsEmbeddedObj;
+   embIdx: Integer;
+   embName, ext: String;
+ begin
+   book := TsWorkbook(Writer.Workbook);
+   chart := book.GetChartByIndex(AChartIndex);
+
+   if chart.Images.Count = 0 then    // FIX ME: must be changed once we have style.xml and colors.xml
+     exit;
+
+   AppendToStream(AStream,
+     XML_HEADER,
+    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LE
+   );
+
+   rId := 1;
+   // We don't need this at the moment...
+   {
+   AppendToStream(AStream, Format(
+    '  <Relationship Id="rId%d" Target="style%d.xml" Type="%s" />' + LE +
+    '  <Relationship Id="rId2" Target="colors%d.xml" Type="%s" />' + LE, [
+    rId, AChartIndex + 1, SCHEMAS_CHART_STYLE,
+    rId+1, AChartIndex + 1, SCHEMAS_CHART_COLORS
+   ]));
+   inc(rId, 2);
+   }
+
+   for i := 0 to chart.Images.Count-1 do
+   begin
+     embIdx := chart.Images[i].EmbeddedObjIndex;
+     embObj := book.GetEmbeddedObj(embIdx);
+     ext := GetImageTypeExt(embObj.ImageType);
+     embName := Format('image%d.%s', [embIdx+1, ext]);
+     rID := 1000 + embIdx;
+     AppendToStream(AStream, Format(
+       '  <Relationship Id="rId%d" Target="../media/%s" Type="%s"/>',
+          [ rId, embName, SCHEMAS_IMAGE ]
+       ));
+   end;
+
+   AppendToStream(AStream,
+    '</Relationships>' + LE
+   );
+ end;
+
+  (*
 procedure TsSpreadOOXMLChartWriter.WriteChartRelsXML(AStream: TStream;
   AChartIndex: Integer);
 begin
@@ -2860,6 +2907,7 @@ begin
     AChartIndex + 1, SCHEMAS_CHART_COLORS
   ]));
 end;
+*)
 
 {@@ ----------------------------------------------------------------------------
   Writes the xl/charts/stylesN.xml file where N is the number AChartIndex.
@@ -3537,21 +3585,33 @@ var
   alpha: Integer;
   rgbStr: String;
   workbook: TsWorkbook;
+  embObj: TsEmbeddedObj;
+  embIdx, rId: Integer;
+  solidFillResult: String;
 begin
+  Result := '';
+
   indent := DupeString(' ', AIndent);
   workbook := TsWorkbook(AChart.Workbook);
 
   if (AFill = nil) or (AFill.Style = cfsNoFill) then
     Result := indent + '<a:noFill/>'
   else
+  begin
+    solidFillResult := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
     case AFill.Style of
       // Solid fills
       cfsSolidFill:
-        Result := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
+        Result := solidFillResult;
 
       // Gradient fills
       cfsGradient:
         begin
+          if (AFill.Gradient < 0) or (AChart.Gradients.Count = 0) then
+          begin
+//            Result := solidFillResult;
+            exit;
+          end;
           gradient := AChart.Gradients[AFill.Gradient];
           gSteps := indent + '  <a:gsLst>' + LE;
           for i := 0 to gradient.NumSteps - 1 do
@@ -3604,6 +3664,12 @@ begin
       // Hatched and pattern fills
       cfsPattern, cfsSolidPattern:
         begin
+          if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
+          begin
+//            Result := solidFillResult;
+            exit;
+          end;
+
           coloredPattern := AChart.FillPatterns[AFill.Pattern];
           rawPattern := workbook.RawFillPatterns[coloredPattern.Index];
          // hatch := AChart.Hatches[AFill.Hatch];
@@ -3639,9 +3705,27 @@ begin
             Result :=
               indent + GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
         end;
-      else
-        Result := indent + '<a:noFill/>';
+
+      cfsImage:
+        begin
+          if (AFill.Image < 0) or (AChart.Images.Count = 0) then
+          begin
+//            Result := solidFillResult;
+            exit;
+          end;
+          embIdx := AChart.Images[AFill.Image].EmbeddedObjIndex;
+          //embObj := workbook.GetEmbeddedObj(embIdx);
+          rId := 1000 + embIdx;
+          Result := Format(
+            indent + '<a:blipFill>' + LE +
+            indent + '  <a:blip xmlns:r="%s" r:embed="rId%d" />' + LE +
+            indent + '  <a:tile tx="0" ty="0" sx="100000" sy="100000" flip="none" algn="tl"/>' + LE +
+            indent + '</a:blipFill>' + LE,
+            [ SCHEMAS_RELS_2, rId ]
+          );
+        end;
     end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3717,7 +3801,7 @@ begin
     Result := Format(
       indent + '<a:ln w="%.0f">' + LE +
                GetChartColorXML(AIndent + 2, 'a:solidFill', ALine.Color) + LE,
-      [ mmToPts(ALine.Width) ]
+      [ mmToPts(ALine.Width) * PTS_MULTIPLIER ]
     );
     if ALine.Style <> clsSolid then
     begin
@@ -4476,7 +4560,7 @@ var
 begin
   for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount - 1 do
   begin
-  //  WriteChartRelsXML(FSChartRels[i], i);
+    WriteChartRelsXML(FSChartRels[i], i);
   //  WriteChartStylesXML(FSChartStyles[i], i);
   //  WriteChartColorsXML(FSChartColors[i], i);
     WriteChartSpaceXML(FSCharts[i], i);

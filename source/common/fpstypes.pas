@@ -582,6 +582,9 @@ const
   scMaroon = scDarkRed;
   scNavy = scDarkBlue;
 
+  // other LCL colors
+  scSkyBlue = $00FFCC00;
+
   { These color constants are deprecated, they will be removed in the long term }
   scPink = $00FE00FE deprecated;
   scTurquoise = scCyan deprecated;
@@ -599,7 +602,6 @@ const
   scCoral = $008080FF deprecated;
   scOceanBlue = $00CC6600 deprecated;
   scIceBlue = $00FFCCCC deprecated;
-  scSkyBlue = $00FFCC00 deprecated;
   scLightGreen = $00CCFFCC deprecated;
   scLightYellow = $0099FFFF deprecated;
   scPaleBlue = $00FFCC99 deprecated;

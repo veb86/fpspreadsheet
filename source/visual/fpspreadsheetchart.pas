@@ -32,7 +32,7 @@ uses
   TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
   TATransformations, TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
   // FPSpreadsheet
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsChart, fpsStockSeries,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsImages, fpsChart, fpsStockSeries,
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
@@ -1085,6 +1085,8 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
           c := fill.Color;
         cfsGradient:
           begin
+            if (fill.Gradient = -1) or (ASeries.Chart.Gradients.Count = 0) then
+              exit;
             g := ASeries.Chart.Gradients[fill.Gradient];
             c := g.StartColor;
           end;
@@ -1531,6 +1533,8 @@ var
   rawPattern: TsRawFillPattern;
 begin
   ABrush.Style := bsSolid;   // Fall-back style
+  if AFill.Pattern = -1 then
+    exit;
 
   book := TsWorkbook(AWorkbookChart.Workbook);
   coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
@@ -2489,7 +2493,10 @@ end;
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
   AWorkbookFill: TsChartFill; ABrush: TBrush);
 var
+  wBook: TsWorkbook;
+  obj: TsEmbeddedObj;
   img: TsChartImage;
+  pic: TPicture;
   png: TCustomBitmap;
   w, h, ppi: Integer;
 begin
@@ -2509,6 +2516,22 @@ begin
         ConstructHatchPatternSolid(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
         begin
+          wBook := TsWorkbook(AWorkbookChart.Workbook);
+          img := AWorkbookChart.Images[AWorkbookFill.Image];
+          obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
+          pic := TPicture.Create;
+          try
+            obj.Stream.Position := 0;
+            pic.LoadFromStream(obj.Stream);
+            png := TPortableNetworkGraphic.Create;
+            png.Assign(pic.PNG);
+            FBrushBitmaps.Add(png);
+            ABrush.Bitmap := png;
+          finally
+            pic.Free;
+          end;
+        (*
+          img := AWorkbook.Chart
           img := AWorkbookChart.Images[AWorkbookFill.Image];
           if img <> nil then
           begin
@@ -2523,6 +2546,7 @@ begin
             ABrush.Bitmap := png;
           end else
             ABrush.Style := bsSolid;
+            *)
         end;
     end;
   end;

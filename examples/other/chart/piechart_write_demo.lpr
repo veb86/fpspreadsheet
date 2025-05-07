@@ -51,6 +51,7 @@ begin
 
     // Chart properties
     ch.Border.Style := clsNoLine;
+    ch.PlotArea.Border.Style := clsNoLine;
     ch.Title.Caption := 'World Population';
     ch.Title.Font.Style := [fssBold];
     ch.SubTitle.Caption := '(in millions)';
@@ -75,14 +76,15 @@ begin
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
     line := TsChartline.CreateSolid(ChartColor(scWhite), 0.8);
     ser.DataPointStyles.AddSolidFill(0, ChartColor($C47244), line);
-    ser.DataPointStyles.AddSolidFill(1, ChartColor($317DED), line, 20);  // with explode offset, as percentage
+    ser.DataPointStyles.AddSolidFill(1, ChartColor($317DED), line, 20);  // with explode offset, as percentage ("Africa")
     ser.DataPointStyles.AddSolidFill(2, ChartColor($A5A5A5), line);
     {$if Laz_FullVersion >= 3990000}
-    fill := TsChartFill.CreatePatternFill(
-      ch.FillPatterns.AddPattern('hor_thin', fpsHorThin, ChartColor($00C0FF), ChartColor(scWhite)),
-      false
-    );
-    ser.DataPointStyles.AddFillAndLine(3, fill, line);
+    // for "Europe":
+    fill := TsChartFill.Create;
+//    fill.Pattern := ch.FillPatterns.AddSolidPattern('Pattern1', fpsGray25{HorThin}, ChartColor($00C0FF), ChartColor(scWhite));
+    fill.Style := cfsSolidPattern;
+    fill.Pattern := ch.FillPatterns.AddSolidPattern('Pattern1', fpsHorThin, ChartColor($00C0FF), ChartColor(scWhite));
+    ser.DataPointStyles.AddFillAndLine(3, fill, line);      // Europe
     fill.Free;
     {$else}
     ser.DataPointStyles.AddSolidFill(3, ChartColor($00C0FF), line);

@@ -115,6 +115,7 @@ type
     Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
+    procedure SelectSolidLine(AColor: TsChartColor; AWidth: Double = -1.0);
   end;
 
   TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular, cgsShape);
@@ -199,7 +200,8 @@ type
   protected
     function NewPattern(AName: String): Integer;
   public
-    function AddPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
+    function AddPattern(AName: String; APatternIndex: Integer; APatternColor: TsChartColor): Integer;
+    function AddSolidPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
     function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
@@ -207,6 +209,7 @@ type
 
   TsChartImage = class
     Name: String;
+    EmbeddedObjIndex: Integer;     // Index into the workbook's EmbeddedObj list
     Image: TFPCustomImage;
     Width, Height: Double;  // mm
     destructor Destroy; override;
@@ -218,6 +221,7 @@ type
     function GetItem(AIndex: Integer): TsChartImage;
     procedure SetItem(AIndex: Integer; AValue: TsChartImage);
   public
+    function AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer): Integer;
     function AddImage(AName: String; AImage: TFPCustomImage): Integer;
     function FindByName(AName: String): TsChartImage;
     function IndexOfName(AName: String): Integer;
@@ -229,13 +233,19 @@ type
   TsChartFill = class
   public
     Style: TsChartFillStyle;
+    Gradient: Integer;
+    Pattern: Integer;
+    Image: Integer;
     Color: TsChartColor;   // Background color of the fill pattern
-    Gradient: Integer;     // Index into chart's Gradients list
-    Pattern: Integer;      // Index into chart's FillPatterns list
-    Image: Integer;        // Index into chart's Images list
+    constructor Create;
     constructor CreateSolidFill(AColor: TsChartColor);
-    constructor CreatePatternFill(APatternIndex: Integer; ATransparent: Boolean);
     procedure CopyFrom(AFill: TsChartFill);
+    procedure SelectGradientFill(AGradientIndex: Integer);
+    procedure SelectImageFill(AImageIndex: Integer);
+    procedure SelectNoFill;
+    procedure SelectPatternFill(APatternIndex: Integer);
+    procedure SelectSolidFill(AColor: TsChartColor);
+    procedure SelectSolidPatternFill(APatternIndex: Integer; ABackColor: TsChartColor);
   end;
 
   TsChartLineSegment = record
@@ -995,9 +1005,7 @@ end;
 constructor TsChartLine.CreateSolid(AColor: TsChartColor; AWidth: Double);
 begin
   inherited Create;
-  Style := clsSolid;
-  Color := AColor;
-  Width := AWidth;
+  SelectSolidLine(AColor, AWidth);
 end;
 
 procedure TsChartLine.CopyFrom(ALine: TsChartLine);
@@ -1008,6 +1016,16 @@ begin
     Width := ALine.Width;
     Color := ALine.Color;
   end;
+end;
+
+procedure TsChartLine.SelectSolidline(AColor: TsChartColor; AWidth: Double = -1.0);
+begin
+  Style := clsSolid;
+  Color := AColor;
+  if AWidth = -1.0 then
+    Width := PtsToMM(DEFAULT_CHART_LINEWIDTH)
+  else
+    Width := AWidth;
 end;
 
 
@@ -1357,6 +1375,20 @@ end;
 { TsChartFillPatternList }
 
 function TsChartFillPatternList.AddPattern(AName: String;
+  APatternIndex: Integer; APatternColor: TsChartColor): Integer;
+var
+  pattern: TsChartFillPattern;
+  i, j: Integer;
+begin
+  Result := NewPattern(AName);
+  pattern := Items[Result];
+  pattern.Name := AName;
+  pattern.Index := APatternIndex;
+  pattern.Color := APatternColor;
+  pattern.BgColor := sccTransparent;
+end;
+
+function TsChartFillPatternList.AddSolidPattern(AName: String;
   APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
@@ -1426,6 +1458,7 @@ end;
 procedure TsChartImage.CopyFrom(ASource: TsChartImage);
 begin
   Name := ASource.Name;
+  EmbeddedObjIndex := ASource.EmbeddedObjIndex;
   Image := ASource.Image;
   Width := ASource.Width;
   Height := ASource.Height;
@@ -1433,6 +1466,22 @@ end;
 
 
 { TsChartImageList }
+
+function TsChartImageList.AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer): Integer;
+var
+  item: TsChartImage;
+begin
+  if AName = '' then
+    AName := 'Img' + IntToStr(Count + 1);
+  Result := IndexOfName(AName);
+  if Result = -1 then
+  begin
+    item := TsChartImage.Create;
+    item.Name := AName;
+    Result := inherited Add(item);
+  end;
+  Items[Result].EmbeddedObjIndex := AEmbeddedObjIndex;
+end;
 
 function TsChartImageList.AddImage(AName: String; AImage: TFPCustomImage): Integer;
 var
@@ -1482,25 +1531,18 @@ end;
 
 { TsChartFill }
 
+constructor TsChartFill.Create;
+begin
+  inherited Create;
+  Style := cfsSolidFill;
+  Color := ChartColor(scBlack);
+end;
+
 constructor TsChartFill.CreateSolidFill(AColor: TsChartColor);
 begin
   inherited Create;
   Style := cfsSolidFill;
   Color := AColor;
-end;
-
-// APatternIndex is the index of the pattern in the chart's FillPatterns list
-// Pattern color and background color are already contained in the pattern
-// referred to by APatternIndex.
-constructor TsChartFill.CreatePatternFill(APatternIndex: Integer;
-  ATransparent: Boolean);
-begin
-  inherited Create;
-  if ATransparent then
-    Style := cfsPattern
-  else
-    Style := cfsSolidPattern;
-  Pattern := APatternIndex;
 end;
 
 procedure TsChartFill.CopyFrom(AFill: TsChartFill);
@@ -1513,6 +1555,59 @@ begin
     Pattern := AFill.Pattern;
     Image := AFill.Image;
   end;
+end;
+
+{ Results in a gradient fill using the gradient defined in the chart's Gradients
+  list at the specified index index. }
+procedure TsChartFill.SelectGradientFill(AGradientIndex: Integer);
+begin
+  Style := cfsGradient;
+  Gradient := AGradientIndex;
+end;
+
+{ Results in an image fill using the image from the chart's Images list referred
+  to by AImageIndex. }
+procedure TsChartFill.SelectImageFill(AImageIndex: Integer);
+begin
+  inherited Create;
+  Style := cfsImage;
+  Image := AImageIndex;
+end;
+
+{ Does NOT fill the corresponding area at all. }
+procedure TsChartFill.SelectNoFill;
+begin
+  Style := cfsNoFill;
+end;
+
+{ Results in a pattern without background.
+  APatternIndex is the index of the pattern in the chart's FillPatterns list
+  The pattern color is already contained in the pattern referred to by
+  APatternIndex. }
+procedure TsChartFill.SelectPatternFill(APatternIndex: Integer);
+begin
+  Style := cfsPattern;
+  Pattern := APatternIndex;
+end;
+
+{ Results in a uniform fill with the specified color. }
+procedure TsChartFill.SelectSolidFill(AColor: TsChartColor);
+begin
+  Style := cfsSolidFill;
+  Color := AColor;
+end;
+
+{ Results in a pattern with given background color.
+  APatternIndex is the index of the pattern in the chart's FillPatterns list.
+  The background color is specified in ABackColor
+  The pattern color is already contained in the pattern referred to
+  by APatternIndex. }
+procedure TsChartFill.SelectSolidPatternFill(APatternIndex: Integer;
+  ABackColor: TsChartColor);
+begin
+  Style := cfsSolidPattern;
+  Pattern := APatternIndex;
+  Color := ABackColor;
 end;
 
 

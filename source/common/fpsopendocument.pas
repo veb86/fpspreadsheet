@@ -1501,7 +1501,7 @@ end;
 
 {$IFDEF FPS_CHARTS}
 { Searches the manifest file entries for the names of files needed by charts.
-  Returns false if there no charts are found.
+  Returns false if no charts are found.
   The found filenames are passed over to the chart reader for further processing. }
 function TsSpreadOpenDocReader.CollectChartFilesFromManifest: Boolean;
 var
@@ -6367,10 +6367,11 @@ end;
 procedure TsSpreadOpenDocWriter.WriteMetaInfManifest;
 var
   i: Integer;
-  ext: String;
+  //ext: String;
   mime: String;
-  imgtype: Integer;
+  imgType: Integer;
   embObj: TsEmbeddedObj;
+  path: String;
 begin
   AppendToStream(FSMetaInfManifest,
     XML_HEADER);
@@ -6391,14 +6392,21 @@ begin
   for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
     embObj := TsWorkbook(FWorkbook).GetEmbeddedObj(i);
-    imgtype := embObj.ImageType;
+    imgType := embObj.ImageType;
     if imgtype <> itUnknown then
     begin
-      mime := GetImageMimeType(imgtype);
-      ext := GetImageTypeExt(imgType);
+      mime := GetImageMimeType(imgType);
+
+      //ext := GetImageTypeExt(imgType);
+      if embObj.BelongsToChart <> -1 then
+        path := Format('Object %d/Pictures', [embObj.BelongsToChart + 1])
+      else
+        path := 'Pictures';
       AppendToStream(FSMetaInfManifest, Format(
-        '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />' + LE,
-        [mime, i+1, ext]
+        '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="%s/%s" />' + LE,
+        [ mime,
+          path, ExtractFileName(embObj.FileName)
+        ]
       ));
     end;
   end;
@@ -6514,18 +6522,25 @@ procedure TsSpreadOpenDocWriter.ZipPictures(AZip: TZipper);
 var
   i: Integer;
   embObj: TsEmbeddedObj;
-  embName: String;
-  ext: String;
+  embName, path: String;
+//  ext: String;
 begin
   for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
     embObj := (FWorkbook as TsWorkbook).GetEmbeddedObj(i);
-    // The original ods files have a very long, ranomd, unique (?) filename.
+    // The original ods files have a very long, maybe random, unique (?) filename
+    // (hash of file contents?).
     // Tests show that a simple, unique, increasing number works as well.
-    ext := GetImageTypeExt(embObj.ImageType);
-    embName := Format('%d.%s', [i+1, ext]);
+//    ext := GetImageTypeExt(embObj.ImageType);
+//    embName := Format('Pictures/Image%d.%s', [i+1, ext]);
+    // Handle "normal" images and "chart fill" images separately!
+    if embObj.BelongsToChart > -1 then
+      path := Format('Object %d/Pictures/', [embObj.BelongsToChart + 1])
+    else
+      path := 'Pictures/';
+    embName := path + ExtractFileName(embObj.FileName);
     embObj.Stream.Position := 0;
-    AZip.Entries.AddFileEntry(embObj.Stream, 'Pictures/' + embname);
+    AZip.Entries.AddFileEntry(embObj.Stream, embname);
   end;
 end;
 
@@ -9267,6 +9282,8 @@ var
   i: Integer;
   img: TsImage;
   imgType: TsImageType;
+  embObj: TsEmbeddedObj;
+  embName: String;
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
@@ -9359,7 +9376,9 @@ begin
   for i:=0 to (ASheet as TsWorksheet).GetImageCount-1 do
   begin
     img := (ASheet as TsWorksheet).GetImage(i);
-    imgType := (FWorkbook as TsWorkbook).GetEmbeddedObj(img.Index).ImageType;
+    embObj := (FWorkbook as TsWorkbook).GetEmbeddedObj(img.Index);
+    embName := ExtractFileName(embObj.FileName);
+    imgType := embObj.ImageType;
     if imgType = itUnknown then
       Continue;
 
@@ -9373,14 +9392,16 @@ begin
         'draw:style-name="gr1" draw:text-style-name="P1" '+
         'svg:width="%.2fmm" svg:height="%.2fmm" '+
         'svg:x="%.2fmm" svg:y="%.2fmm">' +
-        '<draw:image xlink:href="Pictures/%d.%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
+//        '<draw:image xlink:href="Pictures/%d.%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
+        '<draw:image xlink:href="Pictures/%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
           '<text:p />' +
         '</draw:image>' +
       '</draw:frame>', [
       i+1, i+1,
       w, h,
       x, y,
-      img.Index+1, GetImageTypeExt(imgType)
+//      img.Index+1, GetImageTypeExt(imgType)
+      embName
     ], FPointSeparatorSettings);
 
     if img.HyperlinkTarget <> '' then begin

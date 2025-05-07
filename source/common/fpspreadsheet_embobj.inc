@@ -273,7 +273,7 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Removes all image from the internal image list.
+  Removes all images from the internal image list.
   The image streams (stored by the workbook), however, are retained because
   images may also be used as header/footer images.
 -------------------------------------------------------------------------------}
@@ -339,7 +339,7 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Adds an embedded image to the worksheet. The image passed in a stream.
+  Adds an embedded image to the worksheet. The image is passed in a stream.
 
   @param   ARow       Index of the row at which the image begins (top edge)
   @param   ACol       Index of the column at which the image begins (left edge)
@@ -348,7 +348,7 @@ end;
   @param   AOffsetY   The image is offset vertically from the top edge of the anchor cell. May reach into another cell. Value is in workbook units.
   @param   AScaleX    Horizontal scaling factor of the image
   @param   AScaleY    Vertical scaling factor of the image
-  @param   ASize      Number ob bytes to be read from the input stream.
+  @param   ASize      Number of bytes to be read from the input stream.
   @returns Index into the internal image list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AStream: TStream;
@@ -409,7 +409,7 @@ begin
   begin
     obj.ImageWidth := ConvertUnits(obj.ImageWidth, suInches, FUnits);
     obj.ImageHeight := ConvertUnits(obj.ImageHeight, suInches, FUnits);
-    Result := FEmbeddedObjList.Add(obj)
+    Result := FEmbeddedObjList.Add(obj);
   end else
   begin
     AddErrorMsg(rsFileFormatNotSupported, [AFileName]);
@@ -433,6 +433,7 @@ begin
   begin
     obj.ImageWidth := ConvertUnits(obj.ImageWidth, suInches, FUnits);
     obj.ImageHeight := ConvertUnits(obj.ImageHeight, suInches, FUnits);
+    obj.Stream.Position := 0;
     Result := FEmbeddedObjList.Add(obj)
   end else
   begin
