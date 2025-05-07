@@ -115,7 +115,8 @@ type
     Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
-    procedure SelectSolidLine(AColor: TsChartColor; AWidth: Double = -1.0);
+    procedure SelectPatternLine(ALineStyle: Integer; AColor: TsChartColor; ALineWidth: Double = -1.0);
+    procedure SelectSolidLine(AColor: TsChartColor; ALineWidth: Double = -1.0);
   end;
 
   TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular, cgsShape);
@@ -1002,6 +1003,7 @@ end;
 
 { TsChartLine }
 
+{ Creates a line with solid "pattern". }
 constructor TsChartLine.CreateSolid(AColor: TsChartColor; AWidth: Double);
 begin
   inherited Create;
@@ -1018,14 +1020,27 @@ begin
   end;
 end;
 
-procedure TsChartLine.SelectSolidline(AColor: TsChartColor; AWidth: Double = -1.0);
+{ Assigns a patterned line to the TsChartLine instance.
+  - ALineStyle ... Index into the charts LineStyles list, see also clsXXXX variables
+  - AColor ....... Color of the line
+  - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+procedure TsChartLine.SelectPatternLine(ALineStyle: Integer;
+  AColor: TsChartColor; ALineWidth: Double = -1.0);
 begin
-  Style := clsSolid;
+  Style := ALineStyle;
   Color := AColor;
-  if AWidth = -1.0 then
+  if ALineWidth = -1.0 then
     Width := PtsToMM(DEFAULT_CHART_LINEWIDTH)
   else
-    Width := AWidth;
+    Width := ALineWidth;
+end;
+
+{ Makes the TsChartLine instance a solid line:
+  - AColor ....... Color of the line
+  - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+procedure TsChartLine.SelectSolidline(AColor: TsChartColor; ALineWidth: Double = -1.0);
+begin
+  SelectPatternLine(clsSolid, AColor, ALineWidth);
 end;
 
 
