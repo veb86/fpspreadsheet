@@ -316,7 +316,14 @@ var
   u: Integer;
   p: Int64;
   exifSig: Array[0..5] of AnsiChar;
-  imgW, imgH: DWord;
+  lWidth, lHeight: DWord;
+  lDpiX, lDpiY: Double;
+
+  function ResultsComplete: Boolean;
+  begin
+    Result := (AWidth > 0) and (AHeight > 0) and (dpiX <> -1) and (dpiY <> -1);
+  end;
+
 begin
   Result := false;
 
@@ -332,6 +339,7 @@ begin
     exit;
 
   while (AStream.Position < AStream.Size) and (rec.Marker = $FF) do begin
+    p := AStream.Position;
     if AStream.Read(rec, SizeOf(rec)) < SizeOf(rec) then exit;
     rec.RecSize := BEToN(rec.RecSize);
     p := AStream.Position - 2;
@@ -344,12 +352,19 @@ begin
           dpiX := BEToN(app0.XDensity);
           dpiY := BEToN(app0.YDensity);
           u := app0.Units;
-        end else
-          exit;
+        end;
       $E1:   // APP1 record (EXIF)
         begin
           AStream.Read(exifSig{%H-}, Sizeof(exifSig));
-          if not GetTIFSize(AStream, imgW, imgH, dpiX, dpiY) then exit;
+          if  GetTIFSize(AStream, lWidth, lHeight, lDpiX, lDpiY) then
+          begin
+            AWidth := lWidth;
+            AHeight := lHeight;
+            dpiX := lDpiX;
+            dpiY := lDpiY;
+            if ResultsComplete then
+              break;
+          end;
         end;
       $C0..$C3:
         if (rec.RecSize >= 4) then // Start of frame markers
@@ -357,6 +372,8 @@ begin
           AStream.Seek(1, soFromCurrent);  // Skip "bits per sample"
           AHeight := BEToN(AStream.ReadWord);
           AWidth := BEToN(AStream.ReadWord);
+          if ResultsComplete then
+            break;
         end else
           exit;
       $D9:  // end of image;
@@ -697,7 +714,7 @@ begin
     3: begin dpiX := dpiX*2.54; dpiY := dpiY * 2.54; end;
   end;
 
-  Result := true;
+  Result := (AWidth <> 0) and (AHeight <> 0) and (dpiX <> 0.0) and (dpiY <> 0.0);
 end;
 
 
@@ -803,6 +820,7 @@ function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
 var
   itr: TImageTypeRecord;  // [i]mage [t]ype [r]ecord
 begin
+  Result := itUnknown;
   if InRange(AImageType, 0, High(ImageTypeRegistry)) then
   begin
     AStream.Position := 0;
