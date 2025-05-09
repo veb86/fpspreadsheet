@@ -23,9 +23,9 @@ uses
   lazloggerbase,
 
   // RTL/FCL
-  Classes, Contnrs, SysUtils, Types, FPCanvas,
+  Classes, Contnrs, SysUtils, Types, FPImage, FPCanvas,
   // LCL
-  LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
+  LCLVersion, Forms, Controls, IntfGraphics, Graphics, GraphUtil, Dialogs,
   // TAChart
   TATypes, TATextElements, TAChartUtils, TADrawUtils, TALegend,
   TACustomSource, TASources, TACustomSeries, TAIntervalSources,
@@ -1564,7 +1564,7 @@ begin
           ABrush.Style := bsDiagCross;
     end;
 end;
-
+               (*
 { Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
   a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
   FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
@@ -1611,6 +1611,63 @@ begin
   ABrush.Style := bsImage;
   ABrush.Bitmap := png;
 end;
+          *)
+
+{ Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
+  a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
+  FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
+  style. }
+procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  book: TsWorkbook;
+  rawPattern: TsRawFillPattern;
+  coloredPattern: TsChartFillPattern;
+  png: TPortableNetworkGraphic;
+  img: TLazIntfImage;
+  chBkCol: TsChartColor;
+  bkCol, fgCol: TFPColor;
+  x, y: Integer;
+  b: byte;
+begin
+  ABrush.Style := bsSolid;   // Fall-back pattern
+
+  book := TsWorkbook(AWorkbookChart.Workbook);
+  coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
+  rawPattern := book.RawFillPatterns[coloredPattern.Index];
+
+  // Pattern color
+  fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.Color.Color));
+
+  // Background color
+  if rawPattern.LinePattern <> nil then
+    chBkCol := AFill.Color
+  else
+    chBkCol := coloredPattern.BgColor;
+  bkCol := TColorToFPColor(Convert_sColor_to_Color(chBkCol.Color));
+
+  png := TPortableNetworkGraphic.Create;
+  png.SetSize(8, 8);
+  img := png.CreateIntfImage;
+  for y := 0 to img.Height-1 do
+    for x := 0 to img.Width-1 do
+    begin
+      b := 1 shl x;
+      if rawPattern.DotPattern[y] and b <> 0 then
+        img.Colors[x, y] := fgCol
+      else
+        img.Colors[x, y] := bkCol;
+    end;
+  png.LoadFromIntfImage(img);
+  img.Free;
+  FBrushBitmaps.Add(png);
+
+  // ... and assign the pattern to the brush
+  ABrush.Style := bsImage;
+  ABrush.Bitmap := png;
+end;
+
+
 (*
 procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);

@@ -789,7 +789,10 @@ begin
       'a:fgClr':
         color := ReadChartColorDef(ANode.FirstChild, ChartColor(scBlack));
       'a:bgClr':
-        AFill.Color := ReadChartColorDef(ANode.FirstChild, ChartColor(scWhite));
+        begin
+          AFill.Color := ReadChartColorDef(ANode.FirstChild, ChartColor(scWhite));
+          AFill.Color.Transparency := 0.0;  // workaround...
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -894,7 +897,7 @@ begin
     'openDmnd':
       pattern := fpsHatchThin;
   end;
-  AFill.Pattern := AChart.FillPatterns.AddSolidPattern(hatch, pattern, color, AFill.Color);
+  AFill.Pattern := AChart.FillPatterns.AddPattern(hatch, pattern, color, AFill.Color);
   AFill.Style := cfsSolidPattern;
 end;
 
@@ -3582,12 +3585,8 @@ var
   bStr: String = '';
   i: Integer;
   presetIdx: Integer;
-  alpha: Integer;
-  rgbStr: String;
   workbook: TsWorkbook;
-  embObj: TsEmbeddedObj;
   embIdx, rId: Integer;
-  solidFillResult: String;
 begin
   Result := '';
 
@@ -3598,20 +3597,16 @@ begin
     Result := indent + '<a:noFill/>'
   else
   begin
-    solidFillResult := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
     case AFill.Style of
       // Solid fills
       cfsSolidFill:
-        Result := solidFillResult;
+        Result := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
 
       // Gradient fills
       cfsGradient:
         begin
           if (AFill.Gradient < 0) or (AChart.Gradients.Count = 0) then
-          begin
-//            Result := solidFillResult;
             exit;
-          end;
           gradient := AChart.Gradients[AFill.Gradient];
           gSteps := indent + '  <a:gsLst>' + LE;
           for i := 0 to gradient.NumSteps - 1 do
@@ -3665,11 +3660,7 @@ begin
       cfsPattern, cfsSolidPattern:
         begin
           if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
-          begin
-//            Result := solidFillResult;
             exit;
-          end;
-
           coloredPattern := AChart.FillPatterns[AFill.Pattern];
           rawPattern := workbook.RawFillPatterns[coloredPattern.Index];
          // hatch := AChart.Hatches[AFill.Hatch];
@@ -3709,12 +3700,8 @@ begin
       cfsImage:
         begin
           if (AFill.Image < 0) or (AChart.Images.Count = 0) then
-          begin
-//            Result := solidFillResult;
             exit;
-          end;
           embIdx := AChart.Images[AFill.Image].EmbeddedObjIndex;
-          //embObj := workbook.GetEmbeddedObj(embIdx);
           rId := 1000 + embIdx;
           Result := Format(
             indent + '<a:blipFill>' + LE +

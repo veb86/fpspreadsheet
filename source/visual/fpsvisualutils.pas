@@ -228,7 +228,7 @@ end;
   @return  Text with inserted line endings such that the lines are shorter than
            AMaxWidth.
 
-  @note    Based on ocde posted by user "taazz" in the Lazarus forum
+  @note    Based on code posted by user "taazz" in the Lazarus forum
            http://forum.lazarus.freepascal.org/index.php/topic,21305.msg124743.html#msg124743
 -------------------------------------------------------------------------------}
 function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;

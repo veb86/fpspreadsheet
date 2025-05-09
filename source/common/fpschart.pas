@@ -202,7 +202,7 @@ type
     function NewPattern(AName: String): Integer;
   public
     function AddPattern(AName: String; APatternIndex: Integer; APatternColor: TsChartColor): Integer;
-    function AddSolidPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
+    function AddPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
     function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
@@ -237,7 +237,7 @@ type
     Gradient: Integer;
     Pattern: Integer;
     Image: Integer;
-    Color: TsChartColor;   // Background color of the fill pattern
+    Color: TsChartColor;
     constructor Create;
     constructor CreateSolidFill(AColor: TsChartColor);
     procedure CopyFrom(AFill: TsChartFill);
@@ -1393,28 +1393,29 @@ function TsChartFillPatternList.AddPattern(AName: String;
   APatternIndex: Integer; APatternColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
-  i, j: Integer;
 begin
   Result := NewPattern(AName);
   pattern := Items[Result];
   pattern.Name := AName;
   pattern.Index := APatternIndex;
   pattern.Color := APatternColor;
-  pattern.BgColor := sccTransparent;
+  pattern.BgColor := ChartColor(scWhite, 0.0);  // Do not use scBlack here - will hide the entire pattern in xlsx.
 end;
 
-function TsChartFillPatternList.AddSolidPattern(AName: String;
+function TsChartFillPatternList.AddPattern(AName: String;
   APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
-  i, j: Integer;
 begin
   Result := NewPattern(AName);
   pattern := Items[Result];
   pattern.Name := AName;
   pattern.Index := APatternIndex;
   pattern.Color := APatternColor;
-  pattern.BgColor := ABackColor;
+  if (ABackColor.Color = scBlack) and (ABackColor.Transparency = 0) then
+    pattern.BgColor := ChartColor(scWhite, 0.0)
+  else
+    pattern.BgColor := ABackColor;
 end;
 
 function TsChartFillPatternList.FindByName(AName: String): TsChartFillPattern;
@@ -1601,15 +1602,15 @@ end;
   APatternIndex. }
 procedure TsChartFill.SelectPatternFill(APatternIndex: Integer);
 begin
-  Style := cfsPattern;
   Pattern := APatternIndex;
+  Style := cfsPattern;
 end;
 
 { Results in a uniform fill with the specified color. }
 procedure TsChartFill.SelectSolidFill(AColor: TsChartColor);
 begin
-  Style := cfsSolidFill;
   Color := AColor;
+  Style := cfsSolidFill;
 end;
 
 { Results in a pattern with given background color.
