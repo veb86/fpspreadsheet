@@ -2935,8 +2935,11 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
     tmp: Integer = 0;
     gcol, grow: Integer;
     relativeX, relativeY: Boolean;
+    zoom: Double;
   begin
     Result := Rect(0, 0, 0, 0);  // To silence the compiler
+
+    zoom := Worksheet.ZoomFactor;
 
     grow := GetGridRow(img^.row);
     gcol := GetGridCol(img^.Col);
@@ -2988,9 +2991,9 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
     Result.Bottom := Result.Top + AHeight;
 
     if IsRightToLeft then
-      OffsetRect(Result, -ToPixels(img^.OffsetX), ToPixels(img^.OffsetY))
+      OffsetRect(Result, -ToPixels(img^.OffsetX*zoom), ToPixels(img^.OffsetY*zoom))
     else
-      OffsetRect(Result, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
+      OffsetRect(Result, ToPixels(img^.OffsetX*zoom), ToPixels(img^.OffsetY*zoom));
   end;
 
 var
@@ -3001,6 +3004,7 @@ var
   imgRect: TRect;
   w, h: Integer;
   coloffs, rowoffs: Integer;
+  scaleX, scaleY: Double;
   rgn: HRGN;
   fc, fr: Integer;
   R: TRect = (Left:0; Top:0; Right: 0; Bottom: 0);
@@ -3030,8 +3034,10 @@ begin
     end;
 
     // Size of image and its position
-    w := ToPixels(obj.ImageWidth * img^.ScaleX);
-    h := ToPixels(obj.ImageHeight * img^.ScaleY);
+    scaleX := img^.ScaleX * Worksheet.ZoomFactor;
+    scaleY := img^.ScaleY * Worksheet.ZoomFactor;
+    w := ToPixels(obj.ImageWidth * scaleX);
+    h := ToPixels(obj.ImageHeight * scaleY);
     imgRect := GetImageRect(img, w, h, rowoffs, coloffs);
 
     // Nothing to do if image is outside the visible grid area
@@ -3052,7 +3058,7 @@ begin
       SelectClipRgn(Canvas.Handle, rgn);
       R := Rect(0, 0, w, h);
       OffsetRect(R, imgRect.Left, imgRect.Top);
-      if (img^.ScaleX = 1.0) and (img^.ScaleY = 1.0) then
+      if (scaleX = 1.0) and (scaleY = 1.0) then
         Canvas.Draw(R.Left, R.Top, TPicture(img^.Picture).Graphic)
       else
         Canvas.StretchDraw(R, TPicture(img^.Picture).Graphic);
