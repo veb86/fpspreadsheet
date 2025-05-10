@@ -211,8 +211,8 @@ type
   TsChartImage = class
     Name: String;
     EmbeddedObjIndex: Integer;     // Index into the workbook's EmbeddedObj list
-    Image: TFPCustomImage;
-    Width, Height: Double;  // mm
+//    Image: TFPCustomImage;
+    Width, Height: Single;         // Size as used in the chart, in mm
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartImage);
   end;
@@ -222,8 +222,8 @@ type
     function GetItem(AIndex: Integer): TsChartImage;
     procedure SetItem(AIndex: Integer; AValue: TsChartImage);
   public
-    function AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer): Integer;
-    function AddImage(AName: String; AImage: TFPCustomImage): Integer;
+    function AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer;
+      AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
     function FindByName(AName: String): TsChartImage;
     function IndexOfName(AName: String): Integer;
     property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
@@ -1475,7 +1475,7 @@ procedure TsChartImage.CopyFrom(ASource: TsChartImage);
 begin
   Name := ASource.Name;
   EmbeddedObjIndex := ASource.EmbeddedObjIndex;
-  Image := ASource.Image;
+//  Image := ASource.Image;
   Width := ASource.Width;
   Height := ASource.Height;
 end;
@@ -1483,7 +1483,11 @@ end;
 
 { TsChartImageList }
 
-function TsChartImageList.AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer): Integer;
+// Add an image defined by the AEmbeddedObjIndex to the chart. AImgWidth and
+// AImgHeight are the image width and height (in millimeters) in which the
+// image will appear in the chart. Use -1 to request the original image size.
+function TsChartImageList.AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer;
+  AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
 var
   item: TsChartImage;
 begin
@@ -1497,22 +1501,8 @@ begin
     Result := inherited Add(item);
   end;
   Items[Result].EmbeddedObjIndex := AEmbeddedObjIndex;
-end;
-
-function TsChartImageList.AddImage(AName: String; AImage: TFPCustomImage): Integer;
-var
-  item: TsChartImage;
-begin
-  if AName = '' then
-    AName := 'Img' + IntToStr(Count + 1);
-  Result := IndexOfName(AName);
-  if Result = -1 then
-  begin
-    item := TsChartImage.Create;
-    item.Name := AName;
-    Result := inherited Add(item);
-  end;
-  Items[Result].Image := AImage;
+  Items[Result].Width := AImgWidth;
+  Items[Result].Height := AImgHeight;
 end;
 
 function TsChartImageList.FindByName(AName: String): TsChartImage;

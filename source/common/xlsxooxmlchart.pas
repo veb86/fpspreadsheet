@@ -1034,7 +1034,10 @@ var
 
   wBook: TsWorkbook;
   objIdx: Integer;
+  obj: TsEmbeddedObj;
   relTarget: String;
+  dummy: TsImageType;
+  w, h: Double;
 begin
   if ANode = nil then
     exit;
@@ -1061,25 +1064,19 @@ begin
     wBook := TsWorkbook(AChart.Workbook);
     relTarget := TXlsxRelationshipList(FChartRels).FindTarget(relID);
     objIdx := wbook.FindEmbeddedObj(ExtractFileName(relTarget));
-    AFill.Image := AChart.Images.AddEmbeddedObj(Format('FillImage%d', [AChart.Images.Count]), objIdx);
-    (*
-    stream := embObj
-    stream := TNamedStreamList(FImages).FindStreamByName(relID);
-    if stream <> nil then
+    obj := wBook.GetEmbeddedObj(objIdx);
+    w := -1;
+    h := -1;
+    if GetImageInfo(obj.Stream, w, h, dummy) <> itUnknown then
     begin
-      stream.Position := 0;
-      wBook := TsWorkbook(AChart.Workbook);
-      objIdx := wBook.AddEmbeddedObj(stream, Format('ChartImage
-      GetImageInfo(stream, imgWidthInches, imgHeightInches);
-      stream.Position := 0;
-      img := TFPMemoryImage.Create(0, 0); // will be destroyed by the chart's images list.
-      img.LoadFromStream(stream);
-      AFill.Image := AChart.Images.AddImage('', img);
-      sImg := AChart.Images[AFill.Image];
-      sImg.Width := IfThen(widthFactor = 1.0, -1, InToMM(imgWidthInches) * widthFactor);
-      sImg.Height := IfThen(heightFactor = 1.0, -1, InToMM(imgHeightInches) * heightFactor);
+      if widthFactor <> 1.0 then w := InToMM(w) * widthFactor;
+      if heightFactor <> 1.0 then h := InToMM(h) * heightFactor;
     end;
-      *)
+    AFill.Image := AChart.Images.AddEmbeddedObj(
+      Format('FillImage%d', [AChart.Images.Count]),
+      objIdx,
+      w, h
+    );
   end;
 end;
 
@@ -3587,6 +3584,10 @@ var
   presetIdx: Integer;
   workbook: TsWorkbook;
   embIdx, rId: Integer;
+  embObj: TsEmbeddedObj;
+  img: TsChartImage;
+  w, h, scaleX, scaleY: Double;
+  dummy: TsImageType;
 begin
   Result := '';
 
@@ -3701,14 +3702,24 @@ begin
         begin
           if (AFill.Image < 0) or (AChart.Images.Count = 0) then
             exit;
-          embIdx := AChart.Images[AFill.Image].EmbeddedObjIndex;
+          img := AChart.Images[AFill.Image];
+          embIdx := img.EmbeddedObjIndex;
+          embObj := workbook.GetEmbeddedObj(embIdx);
+          scaleX := 1.0;
+          scaleY := 1.0;
+          if (GetImageInfo(embObj.Stream, w, h, dummy) <> itUnknown) then
+          begin
+            if img.Width > 0 then scaleX := img.Width / InToMM(w);
+            if img.Height > 0 then scaleY := img.Height/ InToMM(h);
+          end;
           rId := 1000 + embIdx;
           Result := Format(
             indent + '<a:blipFill>' + LE +
             indent + '  <a:blip xmlns:r="%s" r:embed="rId%d" />' + LE +
-            indent + '  <a:tile tx="0" ty="0" sx="100000" sy="100000" flip="none" algn="tl"/>' + LE +
+            indent + '  <a:tile tx="0" ty="0" sx="%.0f" sy="%.0f" flip="none" algn="tl"/>' + LE +
             indent + '</a:blipFill>' + LE,
-            [ SCHEMAS_RELS_2, rId ]
+            [ SCHEMAS_RELS_2, rId,
+              scaleX * 100000, scaleY * 100000]
           );
         end;
     end;

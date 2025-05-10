@@ -2664,11 +2664,11 @@ begin
           exit;
         img := AChart.Images[AFill.Image];
         if img.Width > 0 then
-          imgWidth := Format('draw:fill-image-width="%.2gcm" ', [img.Width], FPointSeparatorSettings)
+          imgWidth := Format('draw:fill-image-width="%.2gmm" ', [img.Width], FPointSeparatorSettings)
         else
           imgWidth := '';
         if img.Height > 0 then
-          imgHeight := Format('draw:fill-image-height="%.2gcm" ', [img.Height], FPointSeparatorSettings)
+          imgHeight := Format('draw:fill-image-height="%.2gmm" ', [img.Height], FPointSeparatorSettings)
         else
           imgHeight := '';
         Result := Format(

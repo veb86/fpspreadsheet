@@ -156,6 +156,7 @@ type
     procedure ClearChart;
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
+    procedure ConstructImagePattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetAutoscaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
     function GetAxisTransform(AChartAxis: TChartAxis; AClass: TAxisTransformClass): TAxisTransform;
@@ -1803,6 +1804,40 @@ begin
   ABrush.Bitmap := png;
 end;
      *)
+
+procedure TsWorkbookChartLink.ConstructImagePattern(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  wBook: TsWorkbook;
+  img: TsChartImage;
+  obj: TsEmbeddedObj;
+  pic: TPicture;
+  png: TPortableNetworkGraphic;
+  w, h, ppi: Integer;
+begin
+  wBook := TsWorkbook(AWorkbookChart.Workbook);
+  img := AWorkbookChart.Images[AFill.Image];
+  obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
+  pic := TPicture.Create;
+  try
+    obj.Stream.Position := 0;
+    pic.LoadFromStream(obj.Stream);
+    png := TPortableNetworkGraphic.Create;
+    if (img.Width > 0) and (img.Height > 0) then
+    begin
+      png.PixelFormat := pf32Bit;
+      ppi := GetParentForm(FChart).PixelsPerInch;
+      png.SetSize(mmToPx(img.Width, ppi), mmToPx(img.Height, ppi));
+      png.Canvas.StretchDraw(Rect(0, 0, png.Width, png.Height), pic.PNG);
+    end else
+      png.Assign(pic.PNG);
+    FBrushBitmaps.Add(png);
+    ABrush.Bitmap := png;
+  finally
+    pic.Free;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Constructs the format strings for the series marks allowing: multiple items
   separated by the WorkbookSeries.LabelSeparator, formatting of numbers as
@@ -2549,13 +2584,6 @@ end;
 
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
   AWorkbookFill: TsChartFill; ABrush: TBrush);
-var
-  wBook: TsWorkbook;
-  obj: TsEmbeddedObj;
-  img: TsChartImage;
-  pic: TPicture;
-  png: TCustomBitmap;
-  w, h, ppi: Integer;
 begin
   if (AWorkbookFill <> nil) and (ABrush <> nil) then
   begin
@@ -2572,39 +2600,7 @@ begin
       cfsSolidPattern:
         ConstructHatchPatternSolid(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
-        begin
-          wBook := TsWorkbook(AWorkbookChart.Workbook);
-          img := AWorkbookChart.Images[AWorkbookFill.Image];
-          obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
-          pic := TPicture.Create;
-          try
-            obj.Stream.Position := 0;
-            pic.LoadFromStream(obj.Stream);
-            png := TPortableNetworkGraphic.Create;
-            png.Assign(pic.PNG);
-            FBrushBitmaps.Add(png);
-            ABrush.Bitmap := png;
-          finally
-            pic.Free;
-          end;
-        (*
-          img := AWorkbook.Chart
-          img := AWorkbookChart.Images[AWorkbookFill.Image];
-          if img <> nil then
-          begin
-            ppi := GetParentForm(FChart).PixelsPerInch;
-            w := mmToPx(img.Width, ppi);
-            h := mmToPx(img.Height, ppi);
-            png := TPortableNetworkGraphic.Create;
-            png.Assign(img.Image);
-            if (img.Width <> -1) and (img.Height <> -1) then
-              ScaleImg(png, w, h);
-            FBrushBitmaps.Add(png);
-            ABrush.Bitmap := png;
-          end else
-            ABrush.Style := bsSolid;
-            *)
-        end;
+        ConstructImagePattern(AWorkbookChart, AWorkbookFill, ABrush);
     end;
   end;
 end;
