@@ -1027,16 +1027,11 @@ var
   relID: String = '';
   widthFactor: Double = 1.0;
   heightFactor: Double = 1.0;
-  imgWidthInches, imgHeightInches: Double;
-  img: TFPCustomImage;
-  sImg: TsChartImage;
-  stream: TStream;
-
   wBook: TsWorkbook;
   objIdx: Integer;
   obj: TsEmbeddedObj;
   relTarget: String;
-  dummy: TsImageType;
+  dummy: TsImageType = itUnknown;
   w, h: Double;
 begin
   if ANode = nil then
@@ -1052,8 +1047,8 @@ begin
         relID := GetAttrValue(ANode, 'r:embed');
       'a:tile':
         begin
-          widthFactor := StrToFloatDef(GetAttrValue(ANode, 'cx'), 100000, FPointSeparatorSettings) / 100000;
-          heightFactor := StrToFloatDef(GetAttrValue(ANode, 'cy'), 100000, FPointSeparatorSettings) / 100000;
+          widthFactor := StrToFloatDef(GetAttrValue(ANode, 'sx'), 100000, FPointSeparatorSettings) / 100000;
+          heightFactor := StrToFloatDef(GetAttrValue(ANode, 'sy'), 100000, FPointSeparatorSettings) / 100000;
         end;
     end;
     ANode := ANode.NextSibling;
@@ -1069,8 +1064,8 @@ begin
     h := -1;
     if GetImageInfo(obj.Stream, w, h, dummy) <> itUnknown then
     begin
-      if widthFactor <> 1.0 then w := InToMM(w) * widthFactor;
-      if heightFactor <> 1.0 then h := InToMM(h) * heightFactor;
+      if widthFactor <> 1.0 then w := InToMM(w) * widthFactor else w := -1;
+      if heightFactor <> 1.0 then h := InToMM(h) * heightFactor else h := -1;
     end;
     AFill.Image := AChart.Images.AddEmbeddedObj(
       Format('FillImage%d', [AChart.Images.Count]),
@@ -2125,6 +2120,8 @@ begin
               if ParseCellRangeString(s, sheet1, sheet2, r1, c1, r2, c2, flags) then
               begin
                 if sheet2 = '' then sheet2 := sheet1;
+                if r2 = UNASSIGNED_ROW_COL_INDEX then r2 := r1;
+                if c2 = UNASSIGNED_ROW_COL_INDEX then c2 := c1;
                 ARange.Sheet1 := sheet1;
                 ARange.Sheet2 := sheet2;
                 ARange.Row1 := r1;
