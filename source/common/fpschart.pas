@@ -93,9 +93,10 @@ const
   );
 
 type
+  TsChartTransparency = single;   // 0.0 (opaque) - 1.0 (transparent)
   {@@ Record describing a color used by charts, includes a Transparency element }
   TsChartColor = record
-    Transparency: single;         // 0.0 (opaque) ... 1.0 (transparent)
+    Transparency: TsChartTransparency;
     case Integer of
       0: (Red, Green, Blue, SystemColorIndex: Byte);
       1: (Color: TsColor);
@@ -188,8 +189,8 @@ type
   TsChartFillPattern = class
     Name: String;
     Index: Integer;           // Index into fpsPatterns.FillPatternList
-    Color: TsChartColor;      // Color of pattern
-    BgColor: TsChartColor;    // Color of background (needed by ODS)
+    FgColor: TsChartColor;    // Color of pattern
+    BgColor: TsChartColor;    // Color of background
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartFillPattern);
   end;
@@ -199,6 +200,7 @@ type
     function GetItem(AIndex: Integer): TsChartFillPattern;
     procedure SetItem(AIndex: Integer; AValue: TsChartFillPattern);
   protected
+    function DefaultPatternName: String;
     function NewPattern(AName: String): Integer;
   public
     function AddPattern(AName: String; APatternIndex: Integer; APatternColor: TsChartColor): Integer;
@@ -211,7 +213,6 @@ type
   TsChartImage = class
     Name: String;
     EmbeddedObjIndex: Integer;     // Index into the workbook's EmbeddedObj list
-//    Image: TFPCustomImage;
     Width, Height: Single;         // Size as used in the chart, in mm
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartImage);
@@ -244,9 +245,9 @@ type
     procedure SelectGradientFill(AGradientIndex: Integer);
     procedure SelectImageFill(AImageIndex: Integer);
     procedure SelectNoFill;
-    procedure SelectPatternFill(APatternIndex: Integer);
+//    procedure SelectPatternFill(APatternIndex: Integer);
     procedure SelectSolidFill(AColor: TsChartColor);
-    procedure SelectSolidPatternFill(APatternIndex: Integer; ABackColor: TsChartColor);
+//    procedure SelectSolidPatternFill(APatternIndex: Integer; ABackColor: TsChartColor);
   end;
 
   TsChartLineSegment = record
@@ -976,7 +977,7 @@ type
   TsChartArray = array of TsChart;
 
 
-function ChartColor(AColor: TsColor; ATransparency: Single = 0.0): TsChartColor;
+function ChartColor(AColor: TsColor; ATransparency: TsChartTransparency = 0.0): TsChartColor;
 
 implementation
 
@@ -994,7 +995,9 @@ uses
 
   @returns  A TsChartColor record
   @seeAlso  TsColor }
-function ChartColor(AColor: TsColor; ATransparency: Single = 0.0): TsChartColor;
+function ChartColor(
+  AColor: TsColor;
+  ATransparency: TsChartTransparency = 0.0): TsChartColor;
 begin
   Result.Color := AColor;
   Result.Transparency := ATransparency;
@@ -1382,40 +1385,52 @@ var
 begin
   Name := ASource.Name;
   Index := ASource.Index;
-  Color := ASource.Color;
+  FgColor := ASource.FgColor;
   BgColor := ASource.BgColor;
 end;
 
 
 { TsChartFillPatternList }
 
+{ Add a transparent pattern (no background) }
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternIndex: Integer; APatternColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
 begin
+  if AName = '' then
+    AName := DefaultPatternName;
   Result := NewPattern(AName);
   pattern := Items[Result];
-  pattern.Name := AName;
   pattern.Index := APatternIndex;
-  pattern.Color := APatternColor;
-  pattern.BgColor := ChartColor(scWhite, 0.0);  // Do not use scBlack here - will hide the entire pattern in xlsx.
+  pattern.FgColor := APatternColor;
+  pattern.BgColor := ChartColor(scWhite, 1.0);  // Do not use scBlack here - will hide the entire pattern in xlsx.
 end;
 
+{ Add a solid pattern (with background color) }
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
 begin
+  if AName = '' then
+    AName := DefaultPatternName;
   Result := NewPattern(AName);
   pattern := Items[Result];
-  pattern.Name := AName;
   pattern.Index := APatternIndex;
-  pattern.Color := APatternColor;
+  pattern.FgColor := APatternColor;
+  pattern.BgColor := ABackColor;
+  {
   if (ABackColor.Color = scBlack) and (ABackColor.Transparency = 0) then
     pattern.BgColor := ChartColor(scWhite, 0.0)
   else
     pattern.BgColor := ABackColor;
+    }
+end;
+
+function TsChartFillPatternList.DefaultPatternName: String;
+begin
+  Result := 'Pattern' + IntToStr(Count+1);
 end;
 
 function TsChartFillPatternList.FindByName(AName: String): TsChartFillPattern;
@@ -1446,12 +1461,11 @@ function TsChartFillPatternList.NewPattern(AName: String): integer;
 var
   pattern: TsChartFillPattern;
 begin
-  if AName = '' then
-    AName := 'Pattern' + IntToStr(Count+1);
   Result := IndexOfName(AName);
   if Result = -1 then
   begin
     pattern := TsChartFillPattern.Create;
+    pattern.Name := AName;
     Result := inherited Add(pattern);
   end;
 end;
@@ -1585,7 +1599,7 @@ procedure TsChartFill.SelectNoFill;
 begin
   Style := cfsNoFill;
 end;
-
+        (*
 { Results in a pattern without background.
   APatternIndex is the index of the pattern in the chart's FillPatterns list
   The pattern color is already contained in the pattern referred to by
@@ -1595,14 +1609,14 @@ begin
   Pattern := APatternIndex;
   Style := cfsPattern;
 end;
-
+          *)
 { Results in a uniform fill with the specified color. }
 procedure TsChartFill.SelectSolidFill(AColor: TsChartColor);
 begin
   Color := AColor;
   Style := cfsSolidFill;
 end;
-
+            (*
 { Results in a pattern with given background color.
   APatternIndex is the index of the pattern in the chart's FillPatterns list.
   The background color is specified in ABackColor
@@ -1613,9 +1627,9 @@ procedure TsChartFill.SelectSolidPatternFill(APatternIndex: Integer;
 begin
   Style := cfsSolidPattern;
   Pattern := APatternIndex;
-  Color := ABackColor;
+  //Color := ABackColor;
 end;
-
+*)
 
 { TsChartLineStyle }
 

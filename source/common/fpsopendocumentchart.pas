@@ -329,6 +329,21 @@ begin
   Result.Alpha := FPImage.alphaOpaque;
 end;
 
+// Opacity is not a percentage here!
+function OpacityToTransparency(Opacity: single): TsChartTransparency;
+begin
+  Result := 1.0 - Opacity;
+end;
+
+// The result is expected to be a percentage!
+function TransparencyToOpacity(Transparency: TsChartTransparency): Integer;
+begin
+  Result := round((1.0 - Transparency) * 100);
+  if Result > 100 then Result := 100;
+  if Result < 0 then Result := 0;
+end;
+
+
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
 {------------------------------------------------------------------------------}
@@ -588,7 +603,7 @@ begin
 
   sOpac := GetAttrValue(ANode, 'draw:opacity');
   if (sOpac <> '') and TryPercentStrToFloat(sOpac, opacity) then
-    AFill.Color.Transparency := 1.0 - opacity;
+    AFill.Color.Transparency := OpacityToTransparency(opacity);
 
   Result := (sFill <> '') or (sc <> '') or (sn <> '') or (sOpac <> '');
 end;
@@ -639,7 +654,7 @@ begin
 
   so := GetAttrValue(ANode, 'draw:stroke-opacity');
   if (so <> '') and TryPercentStrToFloat(so, value) then
-    ALine.Color.Transparency := 1.0 - value*0.01;
+    ALine.Color.Transparency := OpacityToTransparency(value);
 
   Result := (s <> '') or (sc <> '') or (sw <> '') or (so <> '');
 end;
@@ -1753,7 +1768,7 @@ begin
           // Label border transparency
           s := GetAttrValue(AStyleNode, 'loext:label-stroke-opacity');
           if TryPercentStrToFloat(s, value) then
-            ASeries.LabelBorder.Color.Transparency := 1.0 - value;
+            ASeries.LabelBorder.Color.Transparency := OpacityToTransparency(value);
           // Label border line style
           s := GetAttrValue(AStyleNode, 'loext:label-stroke');
           if s <> '' then
@@ -2608,7 +2623,7 @@ begin
     cfsSolidFill:
       begin
         if (AFill.Color.Transparency > 0) then
-          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
+          opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(AFill.Color.Transparency)]);
         Result := Format(
           'draw:fill="solid" draw:fill-color="%s" %s',
           [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr ]
@@ -2620,7 +2635,7 @@ begin
           exit;
         gradient := AChart.Gradients[AFill.Gradient];
         if (gradient.StartColor.Transparency > 0) then
-          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - gradient.StartColor.Transparency))]);
+          opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(gradient.StartColor.Transparency)]);
         // to do: evaluate opacity of all gradient steps
         Result := Format(
           'draw:fill="gradient" ' +
@@ -2638,7 +2653,7 @@ begin
         if Assigned(rawFillPattern.LinePattern) then
         begin
           if (AFill.Color.Transparency > 0) then
-            opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
+            opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(AFill.Color.Transparency)]);
           if AFill.Style = cfsSolidPattern then
             fillStr := 'draw:fill-hatch-solid="true" ';
           Result := Format(
@@ -2767,7 +2782,7 @@ begin
   colorStr := Format('svg:stroke-color="%s" ', [ColorToHTMLColorStr(ALine.Color.Color)]);
 
   if ALine.Color.Transparency > 0 then
-    opacityStr := Format('svg:stroke-opacity="%d%%" ', [round((1.0 - ALine.Color.Transparency)*100)], FPointSeparatorSettings);
+    opacityStr := Format('svg:stroke-opacity="%d%%" ', [TransparencyToOpacity(ALine.Color.Transparency)]);
 
   Result := strokeStr + widthStr + colorStr + opacityStr;
 end;
@@ -3075,7 +3090,7 @@ begin
     chartProps := chartProps + 'loext:label-stroke="solid" ';
     chartProps := chartProps + 'loext:label-stroke-color="' + ColorToHTMLColorStr(series.LabelBorder.Color.Color) + '"';
     if series.LabelBorder.Color.Transparency > 0 then
-      chartProps := chartProps + 'loext:label-stroke-opacity="' + IntToStr(round(100*(1.0 - series.LabelBorder.Color.Transparency))) + '"';
+      chartProps := chartProps + 'loext:label-stroke-opacity="' + IntToStr(TransparencyToOpacity(series.LabelBorder.Color.Transparency)) + '%"';
   end;
 
   if labelSeparator <> '' then
@@ -3764,7 +3779,7 @@ begin
           'draw:rotation="%.0f" />',
         [ ASCIIName(coloredFillPattern.Name), coloredFillPattern.Name,
           PATTERN_MULTIPLIER[rawFillPattern.LinePattern.Multiplier],
-          ColorToHTMLColorStr(coloredFillPattern.Color.Color),
+          ColorToHTMLColorStr(coloredFillPattern.FgColor.Color),
           rawFillPattern.LinePattern.Distance,
           rawFillPattern.LinePattern.Angle*10
         ],
@@ -3773,7 +3788,7 @@ begin
       AppendToStream(AStream, style);
     end else
     begin
-      fgCol := sColorToFPColor(coloredFillPattern.Color.Color);
+      fgCol := sColorToFPColor(coloredFillPattern.FgColor.Color);
       bgCol := sColorToFPColor(coloredFillPattern.BgColor.Color);
       img := TFPMemoryImage.Create(8, 8);
       for y := 0 to 7 do

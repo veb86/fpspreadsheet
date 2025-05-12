@@ -154,8 +154,8 @@ type
     procedure FixAreaSeries({%H-}AWorkbookChart: TsChart);
     procedure FixSource(AChartSeries: TBasicPointSeries);
     procedure ClearChart;
+    procedure ConstructFillPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
-    procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructImagePattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetAutoscaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
@@ -1541,7 +1541,7 @@ begin
   coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
   rawPattern := book.RawFillPatterns[coloredPattern.Index];
 //  hatch := AWorkbookChart.Hatches[AFill.Hatch];
-  ABrush.Color := Convert_sColor_to_Color(coloredpattern.Color.Color);
+  ABrush.Color := Convert_sColor_to_Color(coloredpattern.FgColor.Color);
   if rawPattern.LinePattern <> nil then
     case rawPattern.LinePattern.Multiplier of
       lfpmSingle:
@@ -1618,7 +1618,7 @@ end;
   a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
   FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
   style. }
-procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
+procedure TsWorkbookChartLink.ConstructFillPattern(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
   book: TsWorkbook;
@@ -1626,26 +1626,30 @@ var
   coloredPattern: TsChartFillPattern;
   png: TPortableNetworkGraphic;
   img: TLazIntfImage;
-  chBkCol: TsChartColor;
+//  chBkCol: TsChartColor;
   bkCol, fgCol: TFPColor;
   x, y: Integer;
   b: byte;
 begin
-  ABrush.Style := bsSolid;   // Fall-back pattern
+  ABrush.Style := bsSolid;   // Solid fill as fall-back "pattern"
 
   book := TsWorkbook(AWorkbookChart.Workbook);
   coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
   rawPattern := book.RawFillPatterns[coloredPattern.Index];
 
   // Pattern color
-  fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.Color.Color));
+  fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.FgColor.Color));
 
   // Background color
+  {
   if rawPattern.LinePattern <> nil then
+    // workaround because TAChart (LCL) cannot render transparent custom fill pattern -- use backgroun color for fill background
     chBkCol := AFill.Color
   else
     chBkCol := coloredPattern.BgColor;
   bkCol := TColorToFPColor(Convert_sColor_to_Color(chBkCol.Color));
+  }
+  bkCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.BgColor.Color));
 
   png := TPortableNetworkGraphic.Create;
   png.SetSize(8, 8);
@@ -2254,7 +2258,7 @@ procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
-  AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Color.Transparency);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Color.Transparency * 255);
   AChartSeries.Legend.Multiplicity := lmPoint;
 
   {$IF LCL_FullVersion >= 3990000}
@@ -2598,7 +2602,7 @@ begin
       cfsPattern:
         ConstructHatchPattern(AWorkbookChart, AWorkbookFill, ABrush);
       cfsSolidPattern:
-        ConstructHatchPatternSolid(AWorkbookChart, AWorkbookFill, ABrush);
+        ConstructFillPattern(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
         ConstructImagePattern(AWorkbookChart, AWorkbookFill, ABrush);
     end;

@@ -231,6 +231,15 @@ type
     property Trendline;
   end;
 
+function AlphaToTransparency(Alpha: Integer): TsChartTransparency;
+begin
+  Result := 1.0 - Alpha / FACTOR_MULTIPLIER;
+end;
+
+function TransparencyToAlpha(Transparency: TsChartTransparency): Integer;
+begin
+  Result := round((1.0 - Transparency) * FACTOR_MULTIPLIER);
+end;
 
 function CalcDefaultSeriesColor(AIndex: Integer): TsChartColor;
 const
@@ -663,7 +672,7 @@ begin
                       lumOff := n/FACTOR_MULTIPLIER;
                   'a:alpha':
                     if TryStrToInt(s, n) then
-                      AColor.Transparency := 1.0 - n / FACTOR_MULTIPLIER;
+                      AColor.Transparency := AlphaToTransparency(n);
                 end;
                 child := child.NextSibling;
               end;
@@ -684,7 +693,7 @@ begin
             case nodeName of
               'a:alpha':
                 if TryStrToInt(s, n) then
-                  AColor.Transparency := 1.0 - n / FACTOR_MULTIPLIER;
+                  AColor.Transparency := AlphaToTransparency(n);
             end;
             child := child.NextSibling;
           end;
@@ -776,7 +785,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartHatchFillProps(ANode: TDOMNode;
 var
   nodeName: String;
   hatch: String;
-  color: TsChartColor;
+  fgColor, bgColor: TsChartColor;
   pattern: Integer;
 begin
   hatch := GetAttrValue(ANode, 'prst');
@@ -787,12 +796,9 @@ begin
     nodeName := ANode.NodeName;
     case nodeName of
       'a:fgClr':
-        color := ReadChartColorDef(ANode.FirstChild, ChartColor(scBlack));
+        fgColor := ReadChartColorDef(ANode.FirstChild, ChartColor(scBlack));
       'a:bgClr':
-        begin
-          AFill.Color := ReadChartColorDef(ANode.FirstChild, ChartColor(scWhite));
-          AFill.Color.Transparency := 0.0;  // workaround...
-        end;
+        bgColor := ReadChartColorDef(ANode.FirstChild, ChartColor(scWhite));
     end;
     ANode := ANode.NextSibling;
   end;
@@ -897,8 +903,11 @@ begin
     'openDmnd':
       pattern := fpsHatchThin;
   end;
-  AFill.Pattern := AChart.FillPatterns.AddPattern(hatch, pattern, color, AFill.Color);
-  AFill.Style := cfsSolidPattern;
+  AFill.Pattern := AChart.FillPatterns.AddPattern(''{hatch}, pattern, fgColor, bgColor);
+  if bgColor.Transparency = 1 then
+    AFill.Style := cfsPattern
+  else
+    AFill.Style := cfsSolidPattern;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartFillAndLineProps(ANode: TDOMNode;
@@ -3515,7 +3524,7 @@ var
 begin
   if (AColor.Transparency > 0) then
   begin
-    alpha := round((1.0 - AColor.Transparency) * FACTOR_MULTIPLIER);
+    alpha := TransparencyToAlpha(AColor.Transparency);
     Result := Format('<a:srgbClr val="%s"><a:alpha val="%d"/></a:srgbClr>',
       [HtmlColorStr(AColor.Color), alpha]
     );
@@ -3686,13 +3695,13 @@ begin
           if presetIdx > -1 then
             Result :=
               indent + '<a:pattFill prst="' + OOXML_PATTERN_NAMES[presetIdx] + '">' + LE +
-                       GetChartColorXML(AIndent + 2, 'a:fgClr', coloredPattern.Color) + LE +
+                       GetChartColorXML(AIndent + 2, 'a:fgClr', coloredPattern.FgColor) + LE +
                        GetChartColorXML(AIndent + 2, 'a:bgClr', coloredPattern.BgColor) + LE +
               indent + '</a:pattFill>'
           else
             // unknown pattern - use a solid fill
             Result :=
-              indent + GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
+              indent + GetChartColorXML(AIndent + 2, 'a:solidFill', coloredPattern.FgColor);
         end;
 
       cfsImage:
