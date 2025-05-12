@@ -4539,6 +4539,12 @@ var
   len: Integer;
   wideStr: WideString;
 begin
+  if AString = '' then
+  begin
+    Result := 0;
+    exit;
+  end;
+
   // string constant is stored as widestring in BIFF8
   wideStr := UTF8Decode(AString);
   len := Length(wideStr);

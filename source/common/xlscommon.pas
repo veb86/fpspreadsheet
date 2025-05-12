@@ -5724,6 +5724,12 @@ var
   len: Byte;
   s: ansistring;
 begin
+  if AString = '' then
+  begin
+    Result := 0;
+    exit;
+  end;
+
   s := ConvertEncoding(AString, encodingUTF8, FCodePage);
   len := Length(s);
   AStream.WriteByte(len);
