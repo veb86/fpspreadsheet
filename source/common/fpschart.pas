@@ -114,6 +114,7 @@ type
     Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
     Width: Double;         // mm
     Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
+    constructor Create;
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
     procedure SelectPatternLine(ALineStyle: Integer; AColor: TsChartColor; ALineWidth: Double = -1.0);
@@ -1005,6 +1006,12 @@ end;
 
 
 { TsChartLine }
+
+constructor TsChartLine.Create;
+begin
+  inherited Create;
+  SelectSolidLine(ChartColor(scBlack), DEFAULT_CHART_LINEWIDTH);
+end;
 
 { Creates a line with solid "pattern". }
 constructor TsChartLine.CreateSolid(AColor: TsChartColor; AWidth: Double);

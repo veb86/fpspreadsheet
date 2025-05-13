@@ -1073,6 +1073,7 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
     c: TsChartColor;
     g: TsChartGradient;
     fill: TsChartFill;
+    coloredPatt: TsChartFillPattern;
   begin
     Result := clTAColor;
     if (ADatapointStyle <> nil) then
@@ -1082,8 +1083,13 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
       else
         fill := ASeries.Fill;
       case fill.Style of
-        cfsSolidFill, cfsSolidPattern:
+        cfsSolidFill:
           c := fill.Color;
+        cfsSolidPattern:
+          begin
+            coloredPatt := ASeries.Chart.FillPatterns[fill.Pattern];
+            c := coloredPatt.BgColor;
+          end;
         cfsGradient:
           begin
             if (fill.Gradient = -1) or (ASeries.Chart.Gradients.Count = 0) then
@@ -1099,8 +1105,6 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
 var
   datapointStyle: TsChartDataPointStyle;
   i, j: Integer;
-  c: TsColor;
-  g: TsChartGradient;
 begin
   if ASeries = nil then
   begin

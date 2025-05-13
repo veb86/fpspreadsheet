@@ -2653,13 +2653,13 @@ begin
         if Assigned(rawFillPattern.LinePattern) then
         begin
           if (AFill.Color.Transparency > 0) then
-            opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(AFill.Color.Transparency)]);
+            opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(coloredFillPattern.BgColor.Transparency)]);
           if AFill.Style = cfsSolidPattern then
             fillStr := 'draw:fill-hatch-solid="true" ';
           Result := Format(
             'draw:fill="hatch" draw:fill-color="%s" %s' +
             'draw:fill-hatch-name="%s" %s',
-            [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr,
+            [ ColorToHTMLColorStr(coloredFillPattern.BgColor.Color), opacityStr,
               ASCIIName(coloredFillPattern.Name), fillStr
             ]
           );
@@ -2667,7 +2667,7 @@ begin
         begin
           Result := Format(
             'draw:fill="bitmap" draw:fill-color="%s" draw:fill-image-name="%s" ',
-            [ ColorToHTMLColorStr(AFill.Color.Color),
+            [ ColorToHTMLColorStr(coloredFillPattern.BgColor.Color),
               ASCIIName(coloredFillPattern.Name)
             ]
           );
