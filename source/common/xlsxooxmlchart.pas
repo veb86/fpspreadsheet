@@ -8,7 +8,7 @@ interface
 {$ifdef FPS_CHARTS}
 
 uses
-  Classes, SysUtils, StrUtils, Contnrs, Math, FPImage,
+  Classes, SysUtils, StrUtils, Contnrs, FPImage,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
   fpSpreadsheet, fpsTypes, fpsChart, fpsUtils, fpsNumFormat, fpsImages,

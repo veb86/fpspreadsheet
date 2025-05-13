@@ -5,7 +5,7 @@ unit fpsPatterns;
 interface
 
 uses
-  SysUtils, Classes, Contnrs, Math, Types, FPImage, FPCanvas,
+  SysUtils, Classes, Contnrs, Math,
   fpsTypes, fpsChart;
 
 const
@@ -129,8 +129,6 @@ type
     property Items[AIndex: Integer]: TsRawFillPattern read GetItem write SetItem; default;
   end;
 
-//function StringToDotPattern(APattern: String): TsDotFillPattern;
-
 
 implementation
 
@@ -168,6 +166,7 @@ begin
     end;
   end;
 end;
+
 
 { TsRawFillPattern }
 
