@@ -1479,7 +1479,7 @@ procedure TsWorksheet.CalcFormulas;
 begin
   Workbook.CalcFormulas;
   // To do: Determine whether the worksheet has in- and out-going links
-  // to others sheets. If not call the faster "CalcSheet".
+  // from/to other sheets. If not call the faster "CalcSheet".
 end;
 
 {@@ ----------------------------------------------------------------------------

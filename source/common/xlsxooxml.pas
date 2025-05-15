@@ -3132,7 +3132,7 @@ begin
             scaleY := round(scaleY);
           sheet.WriteImage(data.FromRow, data.FromCol,
             data.ImgIndex,
-            data.FromRowOffs, data.FromColOffs,
+            data.FromColOffs, data.FromRowOffs,
             scaleX, scaleY
           );
         end;
