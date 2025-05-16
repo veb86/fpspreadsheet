@@ -1076,7 +1076,7 @@ begin
       if widthFactor <> 1.0 then w := InToMM(w) * widthFactor else w := -1;
       if heightFactor <> 1.0 then h := InToMM(h) * heightFactor else h := -1;
     end;
-    AFill.Image := AChart.Images.AddEmbeddedObj(
+    AFill.Image := AChart.Images.AddImage(
       Format('FillImage%d', [AChart.Images.Count]),
       objIdx,
       w, h

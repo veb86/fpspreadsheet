@@ -224,7 +224,7 @@ type
     function GetItem(AIndex: Integer): TsChartImage;
     procedure SetItem(AIndex: Integer; AValue: TsChartImage);
   public
-    function AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer;
+    function AddImage(AName: String; AEmbeddedObjIndex: Integer;
       AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
     function FindByName(AName: String): TsChartImage;
     function IndexOfName(AName: String): Integer;
@@ -1507,7 +1507,7 @@ end;
 // Add an image defined by the AEmbeddedObjIndex to the chart. AImgWidth and
 // AImgHeight are the image width and height (in millimeters) in which the
 // image will appear in the chart. Use -1 to request the original image size.
-function TsChartImageList.AddEmbeddedObj(AName: String; AEmbeddedObjIndex: Integer;
+function TsChartImageList.AddImage(AName: String; AEmbeddedObjIndex: Integer;
   AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
 var
   item: TsChartImage;
@@ -3010,7 +3010,7 @@ begin
 
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
-  clsDot := FLineStyles.Add('dot', 400, 1, 0, 0, 400, true);
+  clsDot := FLineStyles.Add('dot', 500, 1, 0, 0, 500, true);
   clsDash := FLineStyles.Add('dash', 1200, 1, 0, 0, 800, true);
   clsDashDot := FLineStyles.Add('dash-dot', 1000, 1, 300, 1, 2000, true);
   clsLongDash := FLineStyles.Add('long dash', 2400, 1, 0, 0, 800, true);

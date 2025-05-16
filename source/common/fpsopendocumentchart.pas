@@ -2026,7 +2026,7 @@ begin
 
   wBook := TsWorkbook(AChart.Workbook);
   objIdx := wBook.FindEmbeddedObj(AChart.Name + imgFileName);
-  AChart.Images.AddEmbeddedObj(styleName, objIdx);
+  AChart.Images.AddImage(styleName, objIdx);
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadObjectGradientStyles(ANode: TDOMNode;
@@ -3809,7 +3809,7 @@ begin
       embIdx := wBook.AddEmbeddedObj(stream, picName);
       embObj := wBook.GetEmbeddedObj(embIdx);
       embObj.BelongsToChart := AChart.Index;
-      AChart.Images.AddEmbeddedObj(coloredFillPattern.Name, embIdx);
+      AChart.Images.AddImage(coloredFillPattern.Name, embIdx);
     end;
   end;
 
