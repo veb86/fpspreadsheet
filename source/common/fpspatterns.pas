@@ -129,6 +129,15 @@ type
     property Items[AIndex: Integer]: TsRawFillPattern read GetItem write SetItem; default;
   end;
 
+procedure CreateRawFillPatterns;
+procedure DestroyRawFillPatterns;
+
+function GetRawFillPattern(APatternIndex: Integer): TsRawFillPattern;
+function GetRawFillPatternCount: Integer;
+function GetRawFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
+
+function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
+  AMultiplier: TsLineFillPatternMultiplier): Integer;
 
 implementation
 
@@ -631,6 +640,72 @@ procedure TsRawFillPatternList.SetItem(AIndex: Integer; AValue: TsRawFillPattern
 begin
   TsRawFillPattern(inherited Items[AIndex]).CopyFrom(AValue);
 end;
+
+{ ------------------------------------------------------------------------------
+                          global procedures
+-------------------------------------------------------------------------------}
+var
+  RawFillPatterns: TsRawFillPatternList = nil;
+  RawFillPatterns_ReferenceCounter: Integer = 0;
+
+procedure CreateRawFillPatterns;
+begin
+  if RawFillPatterns_ReferenceCounter = 0 then
+  begin
+    RawFillPatterns := TsRawFillPatternList.Create;
+    RawFillPatterns.AddBuiltinPatterns;
+  end;
+  inc(RawFillPatterns_ReferenceCounter);
+end;
+
+procedure DestroyRawFillPatterns;
+begin
+  dec(RawFillPatterns_ReferenceCounter);
+  if RawFillPatterns_ReferenceCounter <= 0 then
+  begin
+    FreeAndNil(RawfillPatterns);
+    RawFillPatterns_ReferenceCounter := 0;
+  end;
+end;
+
+function GetRawFillPattern(APatternIndex: Integer): TsRawFillPattern;
+begin
+  if Assigned(RawFillPatterns) then
+    Result := RawFillPatterns.Items[APatternIndex]
+  else
+    Result := nil;
+end;
+
+{ Finds the index of the line fill pattern having the specified parameters.
+  Returns -1 if not found. }
+function GetRawFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single;
+  AMultiplier: TsLineFillPatternMultiplier): Integer;
+begin
+  if Assigned(RawFillPatterns) then
+    Result := RawFillPatterns.FindLinePatternIndex(ALineDistance, ALineAngle, ALineWidth, AMultiplier)
+  else
+    Result := -1;
+end;
+
+function GetRawFillPatternCount: Integer;
+begin
+  if Assigned(RawFillPatterns) then
+    Result := RawFillPatterns.Count
+  else
+    Result := 0;
+end;
+
+function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
+  AMultiplier: TsLineFillPatternMultiplier): Integer;
+begin
+  if Assigned(RawFillPatterns) then
+    Result := RawFillPatterns.AddLineFillPattern(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier)
+  else
+    Result := -1;
+end;
+
+finalization
+  FreeAndNil(RawFillPatterns);
 
 end.
 

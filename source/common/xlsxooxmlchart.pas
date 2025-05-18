@@ -3669,7 +3669,7 @@ begin
           if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
             exit;
           coloredPattern := AChart.FillPatterns[AFill.Pattern];
-          rawPattern := workbook.RawFillPatterns[coloredPattern.Index];
+          rawPattern := GetRawFillPattern(coloredPattern.Index);
          // hatch := AChart.Hatches[AFill.Hatch];
           presetIdx := -1;
           for i := 0 to High(OOXML_PATTERN_NAMES) do

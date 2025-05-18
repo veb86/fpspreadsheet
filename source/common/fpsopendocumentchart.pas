@@ -2160,11 +2160,11 @@ begin
   else
     hatchAngle := 0;
 
-  fillPatternIdx := workbook.RawFillPatterns.FindLinePatternIndex(hatchDist, hatchAngle, 0.1, patternMultiplier);
+  fillPatternIdx := GetRawFillPatternIndex(hatchDist, hatchAngle, 0.1, patternMultiplier);
   if fillPatternIdx = -1 then
   begin
-    fillPatternName := Format('LinePattern%d', [workbook.RawFillPatterns.Count]);
-    fillPatternIdx := workbook.RawFillPatterns.AddLineFillPattern(fillPatternName, hatchDist, hatchAngle, 0.1, patternMultiplier);
+    fillPatternName := Format('LinePattern%d', [GetRawFillPatternCount]);
+    fillPatternIdx := RegisterRawFillPattern(fillPatternName, hatchDist, hatchAngle, 0.1, patternMultiplier);
   end;
   AChart.FillPatterns.AddPattern(styleName, fillPatternIdx, hatchColor); //, bgColor);    // wp: bgColor ????
 end;
@@ -2649,7 +2649,7 @@ begin
         if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
           exit;
         coloredFillPattern := AChart.FillPatterns[AFill.Pattern];
-        rawFillPattern := workbook.RawFillPatterns[coloredFillPattern.Index];
+        rawFillPattern := GetRawFillPattern(coloredFillPattern.Index);
         if Assigned(rawFillPattern.LinePattern) then
         begin
           if (AFill.Color.Transparency > 0) then
@@ -3768,7 +3768,7 @@ begin
   for i := 0 to AChart.FillPatterns.Count-1 do
   begin
     coloredFillPattern := AChart.FillPatterns[i];
-    rawFillPattern := wBook.RawFillPatterns[coloredFillPattern.Index];
+    rawFillPattern := GetRawFillPattern(coloredFillPattern.Index);
     if Assigned(rawFillPattern.LinePattern) then
     begin
       style := Format(indent +

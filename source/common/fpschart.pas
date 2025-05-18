@@ -3008,6 +3008,8 @@ constructor TsChart.Create;
 begin
   inherited Create(nil);
 
+  CreateRawFillPatterns;
+
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
   clsDot := FLineStyles.Add('dot', 500, 1, 0, 0, 500, true);
@@ -3101,6 +3103,9 @@ begin
   FFillPatterns.Free;
   FGradients.Free;
   FLineStyles.Free;
+
+  DestroyRawFillPatterns;
+
   inherited;
 end;
 

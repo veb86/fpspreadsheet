@@ -822,7 +822,6 @@ type
   {$ifdef FPS_CHARTS}
   protected
     FCharts: TsChartList;
-    FRawFillPatternList: TsRawFillPatternList;
   {$endif}
 
   public
@@ -981,11 +980,6 @@ type
 
     {@@ Workbook metadata}
     property MetaData: TsMetaData read FMetaData write FMetaData;
-
-    {$ifdef FPS_CHARTS}
-    {@@ Raw fill patterns for charts }
-    property RawFillPatterns: TsRawFillPatternList read FRawFillPatternList;
-    {$endif}
 
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
@@ -6652,8 +6646,6 @@ begin
   FEmbeddedObjList := TFPList.Create;
 
  {$ifdef FPS_CHARTS}
-  FRawFillPatternList := TsRawFillPatternList.Create;
-  FRawFillPatternList.AddBuiltinPatterns;
   FCharts := TsChartList.Create;
  {$endif}
 
@@ -6694,7 +6686,6 @@ begin
   FEmbeddedObjList.Free;
  {$ifdef FPS_CHARTS}
   FCharts.Free;
-  FRawFillPatternList.Free;
  {$endif}
 
   inherited Destroy;
