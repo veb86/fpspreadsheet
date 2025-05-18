@@ -765,6 +765,18 @@ type
     BgColor: TsColor;    // background color (undefined when Style=fsSolidFill)
   end;
 
+  {@@ Style for fill patterns used by charts }
+  TsChartFillPatternStyle = (
+    fpsGray05, fpsGray10, fpsGray20, fpsGray25, fpsGray30, fpsGray40,
+    fpsGray50, fpsGray60, fpsGray70, fpsGray75, fpsGray80, fpsGray90,
+    fpsHorThick, fpsVertThick, fpsDiagUpThick, fpsDiagDownThick, fpsHatchThick, fpsCrossThick,
+    fpsHorThin, fpsVertThin, fpsDiagUpThin, fpsDiagDownThin, fpsHatchThin, fpsCrossThin,
+    fpsHorNarrow, fpsVertNarrow, fpsDiagUpNarrow, fpsDiagDownNarrow, fpsHatchNarrow, fpsCrossNarrow,
+    fpsHorDash, fpsVertDash, fpsDiagUpDash, fpsDiagDownDash, fpsHatchDot, fpsCrossDot,
+    fpsBrickDiag, fpsBrickHor, fpsCheckerBoardLarge, fpsCheckerBoardSmall, fpsConfettiLarge, fpsConfettiSmall,
+    fpsDiamond, fpsDivot, fpsPlaid, fpsShingle, fpsSphere, fpsTrellis, fpsWave, fpsWeave, fpsZigZag
+  );
+
 const
   {@@ Parameters for a non-filled cell background }
   EMPTY_FILL: TsFillPattern = (

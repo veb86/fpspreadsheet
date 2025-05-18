@@ -1543,7 +1543,7 @@ begin
 
   book := TsWorkbook(AWorkbookChart.Workbook);
   coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := book.RawFillPatterns[coloredPattern.Index];
+  rawPattern := GetRawFillPattern(coloredPattern.Index);
 //  hatch := AWorkbookChart.Hatches[AFill.Hatch];
   ABrush.Color := Convert_sColor_to_Color(coloredpattern.FgColor.Color);
   if rawPattern.LinePattern <> nil then
@@ -1639,7 +1639,7 @@ begin
 
   book := TsWorkbook(AWorkbookChart.Workbook);
   coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := book.RawFillPatterns[coloredPattern.Index];
+  rawPattern := GetRawFillPattern(coloredPattern.Index);
 
   // Pattern color
   fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.FgColor.Color));

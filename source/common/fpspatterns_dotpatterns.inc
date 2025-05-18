@@ -2,7 +2,7 @@
 // (used by fpspatterns.pas)
 
 const
-  GRAY06_PATTERN =
+  GRAY05_PATTERN =
     'x       '+
     '        '+
     '    x   '+
@@ -12,7 +12,7 @@ const
     '    x   '+
     '        ';
 
-  GRAY12_PATTERN =
+  GRAY10_PATTERN =
     'x   x   '+
     '        '+
     '  x   x '+

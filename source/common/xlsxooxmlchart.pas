@@ -786,7 +786,7 @@ var
   nodeName: String;
   hatch: String;
   fgColor, bgColor: TsChartColor;
-  pattern: Integer;
+  pattern: TsChartFillPatternStyle;
 begin
   hatch := GetAttrValue(ANode, 'prst');
 
@@ -805,9 +805,9 @@ begin
 
   case hatch of
     'pct5':
-      pattern := fpsGray06;
+      pattern := fpsGray05;
     'pct10':
-      pattern := fpsGray12;
+      pattern := fpsGray10;
     'pct20':
       pattern := fpsGray20;
     'pct25':
@@ -3548,6 +3548,7 @@ end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
   AChart: TsChart; AFill: TsChartFill): String;
+  (*
 const
   OOXML_PATTERN_NAMES: array[0..47] of string = (
     'pct5', 'pct10', 'pct20', 'pct25', 'pct30',                 // 0..4
@@ -3573,7 +3574,7 @@ const
     FPS_VERT_THIN, FPS_VERT_NARROW, FPS_HOR_NARROW, FPS_HOR_THICK, FPS_VERT_NARROW,              // ltVert
     FPS_CROSS_NARROW, FPS_CROSS_THIN, FPS_HATCH_THIN                             // smGrid ...
   );
-
+    *)
 var
   indent: String;
   rawPattern: TsRawFillPattern;
@@ -3594,6 +3595,7 @@ var
   img: TsChartImage;
   w, h, scaleX, scaleY: Double;
   dummy: TsImageType;
+  excelName: String;
 begin
   Result := '';
 
@@ -3670,6 +3672,15 @@ begin
             exit;
           coloredPattern := AChart.FillPatterns[AFill.Pattern];
           rawPattern := GetRawFillPattern(coloredPattern.Index);
+          excelName := rawPattern.ExcelName;
+          if excelName = '' then
+            case Uppercase(rawPattern.Name)of
+              'BACKWARD': excelName := 'ltDnDiag';
+              'FORWARD': excelName := 'ltUpDiag';
+              'CROSSED': excelName := 'lgGrid';
+              'HATCH_THICK': excelName := 'openDmnd';
+            end;
+(*
          // hatch := AChart.Hatches[AFill.Hatch];
           presetIdx := -1;
           for i := 0 to High(OOXML_PATTERN_NAMES) do
@@ -3693,8 +3704,10 @@ begin
               'HATCH_THICK': presetIdx := 47;   // openDmnd
             end;
           if presetIdx > -1 then
+          *)
+          if excelName <> '' then
             Result :=
-              indent + '<a:pattFill prst="' + OOXML_PATTERN_NAMES[presetIdx] + '">' + LE +
+              indent + '<a:pattFill prst="' + excelName + '">' + LE +
                        GetChartColorXML(AIndent + 2, 'a:fgClr', coloredPattern.FgColor) + LE +
                        GetChartColorXML(AIndent + 2, 'a:bgClr', coloredPattern.BgColor) + LE +
               indent + '</a:pattFill>'

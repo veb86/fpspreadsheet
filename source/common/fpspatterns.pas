@@ -8,64 +8,6 @@ uses
   SysUtils, Classes, Contnrs, Math,
   fpsTypes, fpsChart;
 
-const
-  FPS_GRAY06 = 'GRAY06';
-  FPS_GRAY12 = 'GRAY12';
-  FPS_GRAY20 = 'GRAY20';
-  FPS_GRAY25 = 'GRAY25';
-  FPS_GRAY30 = 'GRAY30';
-  FPS_GRAY40 = 'GRAY40';
-  FPS_GRAY50 = 'GRAY50';
-  FPS_GRAY60 = 'GRAY60';
-  FPS_GRAY70 = 'GRAY70';
-  FPS_GRAY75 = 'GRAY75';
-  FPS_GRAY80 = 'GRAY80';
-  FPS_GRAY90 = 'GRAY90';
-
-  FPS_HOR_THICK = 'HOR_THICK';
-  FPS_VERT_THICK = 'VERT_THICK';
-  FPS_DIAG_UP_THICK = 'DIAG_UP_THICK';
-  FPS_DIAG_DOWN_THICK = 'DIAG_DOWN_THICK';
-  FPS_HATCH_THICK = 'HATCH_THICK';
-  FPS_CROSS_THICK = 'CROSS_THICK';
-
-  FPS_HOR_THIN = 'HOR_THIN';
-  FPS_VERT_THIN = 'VERT_THIN';
-  FPS_DIAG_UP_THIN = 'DIAG_UP_THIN';
-  FPS_DIAG_DOWN_THIN = 'DIAG_DOWN_THIN';
-  FPS_HATCH_THIN = 'HATCH_THIN';
-  FPS_CROSS_THIN = 'CROSS_THIN';
-
-  FPS_HOR_NARROW = 'HOR_NARROW';
-  FPS_VERT_NARROW = 'VERT_NARROW';
-  FPS_DIAG_UP_NARROW = 'DIAG_UP_NARROW';
-  FPS_DIAG_DOWN_NARROW = 'DIAG_DOWN_NARROW';
-  FPS_HATCH_NARROW = 'HATCH_NARROW';
-  FPS_CROSS_NARROW = 'CROSS_NARROW';
-
-  FPS_HOR_DASH = 'HOR_DASH';
-  FPS_VERT_DASH = 'VERT_DASH';
-  FPS_DIAG_UP_DASH = 'DIAG_UP_DASH';
-  FPS_DIAG_DOWN_DASH = 'DIAG_DOWN_DASH';
-  FPS_CROSS_DOT = 'CROSS_DOT';
-  FPS_HATCH_DOT = 'HATCH_DOT';
-
-  FPS_BRICK_HOR = 'BRICK_HOR';
-  FPS_BRICK_DIAG = 'BRICK_DIAG';
-  FPS_CHECKERBOARD_LARGE = 'CHECKERBOARD_LARGE';
-  FPS_CHECKERBOARD_SMALL = 'CHECKERBOARD_SMALL';
-  FPS_CONFETTI_LARGE = 'CONFETTI_LARGE';
-  FPS_CONFETTI_SMALL = 'CONFETTI_SMALL';
-  FPS_DIAMOND = 'DIAMOND';
-  FPS_DIVOT = 'DIVOT';
-  FPS_PLAID = 'PLAID';
-  FPS_SHINGLE = 'SHINGLE';
-  FPS_SPHERE = 'SPHERE';
-  FPS_TRELLIS = 'TRELLIS';
-  FPS_WAVE = 'WAVE';
-  FPS_WEAVE = 'WEAVE';
-  FPS_ZIGZAG = 'ZIGZAG';
-
 type
   TsLineFillPatternMultiplier = (lfpmSingle, lfpmDouble, lfpmTriple);
 
@@ -90,6 +32,7 @@ type
   TsRawFillPattern = class
   private
     FName: String;
+    FExcelName: string;   // style name used in Excel xlsx
     FDotPattern: TsDotFillPattern;
     FLinePattern: TsLineFillPattern;
     procedure SetLinePattern(AValue: TsLineFillPattern);
@@ -101,6 +44,7 @@ type
       ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier);
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsRawFillPattern); virtual;
+    property ExcelName: String read FExcelName;
     property Name: String read FName;
     property DotPattern: TsDotFillPattern read FDotPattern write FDotPattern;
     property LinePattern: TsLineFillPattern read FLinePattern write SetLinePattern;
@@ -116,10 +60,10 @@ type
       AMultiplier: TsLineFillPatternMultiplier): TsDotFillPattern;
   public
     procedure AddBuiltinPatterns;
-    function AddFillPattern(AName: String; ADotPattern: TsDotFillPattern;
+    function AddFillPattern(AName, AExcelName: String; ADotPattern: TsDotFillPattern;
       ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
-    function AddDotFillPattern(AName: String; APattern: TsDotFillPattern): Integer; overload;
-    function AddLineFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
+    function AddDotFillPattern(AName, AExcelName: String; APattern: TsDotFillPattern): Integer; overload;
+    function AddLineFillPattern(AName, AExcelName: String; ALineDistance, ALineAngle, ALineWidth: Single;
       AMultiplier: TsLineFillPatternMultiplier): Integer;
     function ClonePattern(AIndex: Integer; AName: String): Integer;
     function FindByName(AName: String): TsRawFillPattern;
@@ -135,6 +79,7 @@ procedure DestroyRawFillPatterns;
 function GetRawFillPattern(APatternIndex: Integer): TsRawFillPattern;
 function GetRawFillPatternCount: Integer;
 function GetRawFillPatternIndex(ALineDistance, ALineAngle, ALineWidth: Single; AMultiplier: TsLineFillPatternMultiplier): Integer;
+function GetRawFillPatternName(APatternStyle: TsChartFillPatternStyle): String;
 
 function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
@@ -223,6 +168,7 @@ end;
 procedure TsRawFillPattern.CopyFrom(ASource: TsRawFillPattern);
 begin
   FName := ASource.Name;
+  FExcelName := ASource.ExcelName;
   FDotPattern := ASource.DotPattern;
   SetLinePattern(ASource.LinePattern);
 end;
@@ -357,143 +303,163 @@ end;
 { Creates the built-in dot patterns as used by Excel. Not all of them are
   available in ODS. }
 procedure TsRawFillPatternList.AddBuiltinPatterns;
+var
+  i: Integer;
+  fps: TsChartFillpatternStyle;
 begin
-  fpsGray06 := AddDotFillPattern(FPS_GRAY06,
-    StringToDotPattern(GRAY06_PATTERN));
-  fpsGray12 := AddDotFillPattern(FPS_GRAY12,
-    StringToDotPattern(GRAY12_PATTERN));
-  fpsGray20 := AddDotFillPattern(FPS_GRAY20,
+  // IMPORTANT: Add all predefined fill patterns in correct order as defined
+  // by the type TsChartfillPatternStyle.
+  AddDotFillPattern(GetRawFillPatternName(fpsGray05), 'pct5',                   // 0
+    StringToDotPattern(GRAY05_PATTERN));
+  AddDotFillPattern(GetRawFillPatternName(fpsGray10), 'pct10',
     StringToDotPattern(GRAY20_PATTERN));
-  fpsGray25 := AddDotFillPattern(FPS_GRAY25,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray20), 'pct20',
+    StringToDotPattern(GRAY20_PATTERN));
+  AddDotFillPattern(GetRawFillPatternName(fpsGray25), 'pct25',
     StringToDotPattern(GRAY25_PATTERN));
-  fpsGray30 := AddDotFillPattern(FPS_GRAY30,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray30), 'pct30',
     StringToDotPattern(GRAY30_PATTERN));
-  fpsGray40 := AddDotFillPattern(FPS_GRAY40,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray40), 'pct40',                  // 5
     StringToDotPattern(GRAY40_PATTERN));
-  fpsGray50 := AddDotFillPattern(FPS_GRAY50,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray50), 'pct50',
     StringToDotPattern(GRAY50_PATTERN));
-  fpsGray60 := AddDotFillPattern(FPS_GRAY60,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray60), 'pct60',
     StringToDotPattern(GRAY60_PATTERN));
-  fpsGray75 := AddDotFillPattern(FPS_GRAY75,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray70), 'pct70',
+    StringToDotPattern(GRAY70_PATTERN));
+  AddDotFillPattern(GetRawFillPatternName(fpsGray75), 'pct75',
     StringToDotPattern(GRAY75_PATTERN));
-  fpsGray80 := AddDotFillPattern(FPS_GRAY80,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray80), 'pct80',                  // 10
     StringToDotPattern(GRAY80_PATTERN));
-  fpsGray90 := AddDotFillPattern(FPS_GRAY90,
+  AddDotFillPattern(GetRawFillPatternName(fpsGray90), 'pct90',
     StringToDotPattern(GRAY90_PATTERN));
 
-  fpsHorThick := AddFillPattern(FPS_HOR_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsHorThick), 'dkHorz',                  // 12
     StringToDotPattern(HOR_PATTERN_THICK),
     WIDE_DISTANCE, 0.0, THICK_LINE, lfpmSingle);
-  fpsVertThick := AddFillPattern(FPS_VERT_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsVertThick), 'dkVert',                 // 13
     StringToDotPattern(VERT_PATTERN_THICK),
     WIDE_DISTANCE, 90.0, THICK_LINE, lfpmSingle);
-  fpsDiagUpThick := AddFillPattern(FPS_DIAG_UP_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsDiagUpThick), 'dkUpDiag',             // 14
     StringToDotPattern(DIAG_UP_PATTERN_THICK),
     WIDE_DISTANCE, 45.0, THICK_LINE, lfpmSingle);
-  fpsDiagDownThick := AddFillPattern(FPS_DIAG_DOWN_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsDiagDownThick), 'dkDnDiag',           // 15
     StringToDotPattern(DIAG_DOWN_PATTERN_THICK),
     WIDE_DISTANCE, -45.0, THICK_LINE, lfpmSingle);
-  fpsHatchThick := AddFillPattern(FPS_HATCH_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsHatchThick), 'openDmnd',              // 16  -- replacement
     StringToDotPattern(HATCH_PATTERN_THICK),
     WIDE_DISTANCE, 45.0, THICK_LINE, lfpmDouble);
-  fpsCrossThick := AddFillPattern(FPS_CROSS_THICK,
+  AddFillPattern(GetRawFillPatternName(fpsCrossThick), 'smGrid',                // 17  -- replacement
     StringToDotPattern(CROSS_PATTERN_THICK),
     WIDE_DISTANCE, 0.0, THICK_LINE, lfpmDouble);
 
-  fpsHorThin := AddFillPattern(FPS_HOR_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsHorThin), 'ltHorz',                   // 18
     StringToDotPattern(HOR_PATTERN_THIN),
     WIDE_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
-  fpsVertThin := AddFillPattern(FPS_VERT_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsVertThin), 'ltVert',                  // 19
     StringToDotPattern(VERT_PATTERN_THIN),
     WIDE_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
-  fpsDiagUpThin := AddFillPattern(FPS_DIAG_UP_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsDiagUpThin), 'wdUpDiag',              // 20
     StringToDotPattern(DIAG_UP_PATTERN_THIN),
     WIDE_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
-  fpsDiagDownThin := AddFillPattern(FPS_DIAG_DOWN_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsDiagDownThin), 'wdDnDiag',            // 21
     StringToDotPattern(DIAG_DOWN_PATTERN_THIN),
     WIDE_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
-  fpsHatchThin := AddFillPattern(FPS_HATCH_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsHatchThin), 'openDmnd',               // 22
     StringToDotPattern(HATCH_PATTERN_THIN),
     WIDE_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
-  fpsCrossThin := AddFillPattern(FPS_CROSS_THIN,
+  AddFillPattern(GetRawFillPatternName(fpsCrossThin), 'lgGrid',                 // 23
     StringToDotPattern(CROSS_PATTERN_THIN),
     WIDE_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
 
-  fpsHorNarrow := AddFillPattern(FPS_HOR_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsHorNarrow), 'narHorz',                // 24
     StringToDotPattern(HOR_PATTERN_NARROW),
     NARROW_DISTANCE, 0.0, THIN_LINE, lfpmSingle);
-  fpsVertNarrow := AddFillPattern(FPS_VERT_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsVertNarrow), 'narVert',               // 25
     StringToDotPattern(VERT_PATTERN_NARROW),
     NARROW_DISTANCE, 90.0, THIN_LINE, lfpmSingle);
-  fpsDiagUpNarrow := AddFillPattern(FPS_DIAG_UP_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsDiagUpNarrow), 'ltUpDiag',            // 26
     StringToDotPattern(DIAG_UP_PATTERN_NARROW),
     NARROW_DISTANCE, 45.0, THIN_LINE, lfpmSingle);
-  fpsDiagDownNarrow := AddFillPattern(FPS_DIAG_DOWN_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsDiagDownNarrow), 'ltDnDiag',          // 27
     StringToDotPattern(DIAG_DOWN_PATTERN_NARROW),
     NARROW_DISTANCE, -45.0, THIN_LINE, lfpmSingle);
-  fpsHatchNarrow := AddFillPattern(FPS_HATCH_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsHatchNarrow), 'openDmnd',             // 28   -- replacement
     StringToDotPattern(HATCH_PATTERN_NARROW),
     NARROW_DISTANCE, 45.0, THIN_LINE, lfpmDouble);
-  fpsCrossNarrow := AddFillPattern(FPS_CROSS_NARROW,
+  AddFillPattern(GetRawFillPatternName(fpsCrossNarrow), 'smGrid',               // 29
     StringToDotPattern(CROSS_PATTERN_NARROW),
     NARROW_DISTANCE, 0.0, THIN_LINE, lfpmDouble);
 
-  fpsHorDash := AddDotFillPattern(FPS_HOR_DASH,
+  AddDotFillPattern(GetRawFillPatternName(fpsHorDash), 'dashHorz',              // 30
     StringToDotPattern(HOR_DASH_PATTERN));
-  fpsVertDash := AddDotFillPattern(FPS_VERT_DASH,
+  AddDotFillPattern(GetRawFillPatternName(fpsVertDash), 'dashVert',             // 31
     StringToDotPattern(VERT_DASH_PATTERN));
-  fpsDiagUpDash := AddDotFillPattern(FPS_DIAG_UP_DASH,
+  AddDotFillPattern(GetRawFillPatternName(fpsDiagUpDash), 'dashUpDiag',         // 32
     StringToDotPattern(DIAG_UP_DASH_PATTERN));
-  fpsDiagDownDash := AddDotFillPattern(FPS_DIAG_DOWN_DASH,
+  AddDotFillPattern(GetRawFillPatternName(fpsDiagDownDash), 'dashDnDiag',       // 33
     StringToDotPattern(DIAG_DOWN_DASH_PATTERN));
-  fpsCrossDot := AddDotFillPattern(FPS_CROSS_DOT,
+  AddDotFillPattern(GetRawFillPatternName(fpsCrossDot), 'dotGrid',              // 34
     StringToDotPattern(CROSS_PATTERN_DOT));
-  fpsHatchDot := AddDotFillPattern(FPS_HATCH_DOT,
+  AddDotFillPattern(GetRawFillPatternName(fpsHatchDot), 'dotDmnd',              // 35
     StringToDotPattern(HATCH_PATTERN_DOT));
 
-  fpsBrickHor := AddDotFillPattern(FPS_BRICK_HOR,
+  AddDotFillPattern(GetRawFillPatternName(fpsBrickHor), 'horzBrick',            // 36
     StringToDotPattern(BRICK_HOR_PATTERN));
-  fpsBrickHor := AddDotFillPattern(FPS_BRICK_DIAG,
+  AddDotFillPattern(GetRawFillPatternName(fpsBrickDiag), 'diagBrick',           // 37
     StringToDotPattern(BRICK_DIAG_PATTERN));
-  fpsCheckerBoardLarge := AddDotFillPattern(FPS_CHECKERBOARD_LARGE,
+  AddDotFillPattern(GetRawFillPatternName(fpsCheckerboardLarge), 'lgCheck',     // 38
     StringToDotPattern(CHECKERBOARD_LARGE_PATTERN));
-  fpsCheckerBoardSmall := AddDotFillPattern(FPS_CHECKERBOARD_SMALL,
+  AddDotFillPattern(GetRawFillPatternName(fpsCheckerboardSmall), 'smCheck',     // 39
     StringToDotPattern(CHECKERBOARD_SMALL_PATTERN));
-  fpsConfettiLarge := AddDotFillPattern(FPS_CONFETTI_LARGE,
+  AddDotFillPattern(GetRawFillPatternName(fpsConfettiLarge), 'lgConfetti',      // 40
     StringToDotPattern(CONFETTI_LARGE_PATTERN));
-  fpsConfettiSmall := AddDotFillPattern(FPS_CONFETTI_SMALL,
+  AddDotFillPattern(GetRawFillPatternName(fpsConfettiSmall), 'smConfetti',      // 41
     StringToDotPattern(CONFETTI_SMALL_PATTERN));
-  fpsDiamond := AddDotFillPattern(FPS_DIAMOND,
+  AddDotFillPattern(GetRawFillPatternName(fpsDiamond), 'solidDmnd',             // 42
     StringToDotPattern(DIAMOND_PATTERN));
-  fpsDivot := AddDotFillPattern(FPS_DIVOT,
+  AddDotFillPattern(GetRawFillPatternName(fpsDivot), 'divot',                   // 43
     StringToDotPattern(DIVOT_PATTERN));
-  fpsPlaid := AddDotFillPattern(FPS_PLAID,
+  AddDotFillPattern(GetRawFillPatternName(fpsPlaid), 'plaid',                   // 44
     StringToDotPattern(PLAID_PATTERN));
-  fpsShingle := AddDotFillPattern(FPS_SHINGLE,
+  AddDotFillPattern(GetRawFillPatternName(fpsShingle), 'shingle',               // 45
     StringToDotPattern(SHINGLE_PATTERN));
-  fpsSphere := AddDotFillPattern(FPS_SPHERE,
+  AddDotFillPattern(GetRawFillPatternName(fpsSphere), 'sphere',                 // 46
     StringToDotPattern(SPHERE_PATTERN));
-  fpsTrellis := AddDotFillPattern(FPS_TRELLIS,
+  AddDotFillPattern(GetRawFillPatternName(fpsTrellis), 'trellis',               // 47
     StringToDotPattern(TRELLIS_PATTERN));
-  fpsWave := AddDotFillPattern(FPS_WAVE,
+  AddDotFillPattern(GetRawFillPatternName(fpsWave), 'wave',                     // 48
     StringToDotPattern(WAVE_PATTERN));
-  fpsWeave := AddDotFillPattern(FPS_WEAVE,
+  AddDotFillPattern(GetRawFillPatternName(fpsWeave), 'weave',                   // 49
     StringToDotPattern(WEAVE_PATTERN));
-  fpsZigzag := AddDotFillPattern(FPS_ZIGZAG,
+  AddDotFillPattern(GetRawFillPatternName(fpsZigZag), 'zigZag',                 // 50
     StringToDotPattern(ZIGZAG_PATTERN));
+
+  {
+  // Check for completeness
+  for i := 0 to Count - 1 do
+    with Items[i] do
+      WriteLn(
+        'TsRawFillPatternList.AddBuiltinPatterns] i=', i,
+        ' style=', TsChartFillPatternStyle(i),
+        ' Name=', Name,
+        ' ExcelName=', ExcelName
+      );
+  }
 end;
 
-function TsRawFillPatternList.AddDotFillPattern(AName: String;
+function TsRawFillPatternList.AddDotFillPattern(AName, AExcelName: String;
   APattern: TsDotFillPattern): Integer;
 var
   patt: TsRawFillPattern;
 begin
   patt := TsRawFillPattern.Create(AName, APattern);
+  patt.FExcelName := AExcelName;
   Result := AddOrReplace(patt);
 end;
 
-function TsRawFillPatternList.AddFillPattern(AName: String; ADotPattern: TsDotFillPattern;
-  ALineDistance, ALineAngle, ALineWidth: Single;
+function TsRawFillPatternList.AddFillPattern(AName, AExcelName: String;
+  ADotPattern: TsDotFillPattern; ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 var
   patt: TsRawFillPattern;
@@ -502,10 +468,11 @@ begin
     ADotPattern,
     ALineDistance, ALineAngle, ALineWidth, AMultiplier
   );
+  patt.FExcelName := AExcelName;
   Result := AddOrReplace(patt);
 end;
 
-function TsRawFillPatternList.AddLineFillPattern(AName: String;
+function TsRawFillPatternList.AddLineFillPattern(AName, AExcelName: String;
   ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 var
@@ -513,6 +480,7 @@ var
 begin
   patt := TsRawFillPattern.Create(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier);
   patt.DotPattern := FindSimilarDotPattern(ALineDistance, ALineAngle, ALineWidth, AMultiplier);
+  patt.FExcelName := AExcelName;
   Result := AddOrReplace(patt);
 end;
 
@@ -537,7 +505,7 @@ var
   patt: TsRawFillPattern;
 begin
   patt := Items[AIndex];
-  Result := AddFillPattern(AName,
+  Result := AddFillPattern(AName, '',
     patt.DotPattern,
     patt.LinePattern.Distance, patt.LinePattern.Angle, patt.LinePattern.LineWidth, patt.LinePattern.Multiplier
   );
@@ -592,30 +560,30 @@ begin
   singleLine := (AMultiplier = lfpmSingle);
   if SameValue(sinAngle, 0.0, 0.2) then  // about +/- 12°
   begin
-    if (ALineDistance >= WIDE_DISTANCE) or (ALineDistance <= -8) then
-      similarIdx := IfThen(singleLine, fpsHorThin, fpsCrossThin)
+    if (ALineDistance >= WIDE_DISTANCE) or (ALineDistance <= -8) then  // wider than 3mm or 8px
+      similarIdx := IfThen(singleLine, ord(fpsHorThin), ord(fpsCrossThin))
     else
-      similarIdx := IfThen(singleLine, fpsHorNarrow, fpsCrossNarrow);
+      similarIdx := IfThen(singleLine, ord(fpsHorNarrow), ord(fpsCrossNarrow));
   end else
   if SameValue(cosAngle, 0.0, 0.2) then  // about 90 +/- 12°
   begin
     if (ALineDistance >= WIDE_DISTANCE) or (ALineDistance <= -8) then
-      similarIdx := IfThen(singleLine, fpsVertThin, fpsCrossThin)
+      similarIdx := IfThen(singleLine, ord(fpsVertThin), ord(fpsCrossThin))
     else
-      similarIdx := IfThen(singleLine, fpsVertNarrow, fpsCrossNarrow);
+      similarIdx := IfThen(singleLine, ord(fpsVertNarrow), ord(fpsCrossNarrow));
   end else
   if ALineAngle > 0 then
   begin
     if (ALineDistance >= WIDE_DISTANCE) or (ALineDistance <= -8) then
-      similarIdx := IfThen(singleLine, fpsDiagUpThin, fpsHatchThin)
+      similarIdx := IfThen(singleLine, ord(fpsDiagUpThin), ord(fpsHatchThin))
     else
-      similarIdx := IfThen(singleLine, fpsDiagUpNarrow, fpsHatchNarrow);
+      similarIdx := IfThen(singleLine, ord(fpsDiagUpNarrow), ord(fpsHatchNarrow));
   end else
   begin
     if (ALineDistance >= WIDE_DISTANCE) or (ALineDistance <= -8) then
-      similarIdx := IfThen(singleLine, fpsDiagDownThin, fpsHatchThin)
+      similarIdx := IfThen(singleLine, ord(fpsDiagDownThin), ord(fpsHatchThin))
     else
-      similarIdx := IfThen(singleLine, fpsDiagDownNarrow, fpsHatchNarrow);
+      similarIdx := IfThen(singleLine, ord(fpsDiagDownNarrow), ord(fpsHatchNarrow));
   end;
   if similarIdx > -1 then
     Result := Items[similarIdx].DotPattern
@@ -687,6 +655,22 @@ begin
     Result := -1;
 end;
 
+function GetRawFillPatternName(APatternStyle: TsChartFillPatternStyle): String;
+const
+  PatternName: Array[TsChartFillPatternStyle] of string = (
+    'GRAY05', 'GRAY10', 'GRAY20', 'GRAY25', 'GRAY30', 'GRAY40',
+    'GRAY50', 'GRAY60', 'GRAY70', 'GRAY75', 'GRAY80', 'GRAY90',
+    'HOR_THICK', 'VERT_THICK', 'DIAG_UP_THICK', 'DIAG_DOWN_THICK', 'HATCH_THICK', 'CROSS_THICK',
+    'HOR_THIN', 'VERT_THIN', 'DIAG_UP_THIN', 'DIAG_DOWN_THIN', 'HATCH_THIN', 'CROSS_THIN',
+    'HOR_NARROW', 'VERT_NARROW', 'DIAG_UP_NARROW', 'DIAG_DOWN_NARROW', 'HATCH_NARROW', 'CROSS_NARROW',
+    'HOR_DASH', 'VERT_DASH', 'DIAG_UP_DASH', 'DIAG_DOWN_DASH', 'CROSS_DOT', 'HATCH_DOT',
+    'BRICK_HOR', 'BRICK_DIAG', 'CHECKERBOARD_LARGE', 'CHECKERBOARD_SMALL', 'CONFETTI_LARGE', 'CONFETTI_SMALL',
+    'DIAMOND', 'DIVOT', 'PLAID', 'SHINGLE', 'SPHERE', 'TRELLIS', 'WAVE', 'WEAVE', 'ZIGZAG'
+  );
+begin
+  Result := PatternName[APatternStyle];
+end;
+
 function GetRawFillPatternCount: Integer;
 begin
   if Assigned(RawFillPatterns) then
@@ -699,7 +683,7 @@ function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineW
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 begin
   if Assigned(RawFillPatterns) then
-    Result := RawFillPatterns.AddLineFillPattern(AName, ALineDistance, ALineAngle, ALineWidth, AMultiplier)
+    Result := RawFillPatterns.AddLineFillPattern(AName, '', ALineDistance, ALineAngle, ALineWidth, AMultiplier)
   else
     Result := -1;
 end;

@@ -13,11 +13,12 @@ const
   clsSolid = -1;
 
 var
+(*
   {@@ Pre-defined chart fill patterns given as indices into the workbook's
     RawFillPatternList. When this list is created the pattern indices will get
     their values. }
-  fpsGray06: Integer = -1;
-  fpsGray12: Integer = -1;
+  fpsGray05: Integer = -1;
+  fpsGray10: Integer = -1;
   fpsGray20: Integer = -1;
   fpsGray25: Integer = -1;
   fpsGray30: Integer = -1;
@@ -72,7 +73,7 @@ var
   fpsWave: Integer = -1;
   fpsWeave: Integer = -1;
   fpsZigZag: Integer = -1;
-
+                   *)
   {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
     list. Get their value in the constructor of TsChart. Default here to -1
     which is the code for a solid line, just in case that something goes wrong }
@@ -204,8 +205,14 @@ type
     function DefaultPatternName: String;
     function NewPattern(AName: String): Integer;
   public
-    function AddPattern(AName: String; APatternIndex: Integer; APatternColor: TsChartColor): Integer;
-    function AddPattern(AName: String; APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
+    function AddPattern(AName: String; APatternStyle: TsChartFillPatternStyle;
+      APatternColor: TsChartColor): Integer;
+    function AddPattern(AName: String; APatternStyle: TsChartFillPatternStyle;
+      APatternColor, ABackColor: TsChartColor): Integer;
+    function AddPattern(AName: String; ARawPatternIndex: Integer;
+      APatternColor: TsChartColor): Integer;
+    function AddPattern(AName: String; ARawPatternIndex: Integer;
+      APatternColor, ABackColor: TsChartColor): Integer;
     function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
@@ -1399,24 +1406,41 @@ end;
 
 { TsChartFillPatternList }
 
-{ Add a transparent pattern (no background) }
 function TsChartFillPatternList.AddPattern(AName: String;
-  APatternIndex: Integer; APatternColor: TsChartColor): Integer;
+  APatternStyle: TsChartFillPatternStyle; APatternColor: TsChartColor): Integer;
+begin
+  Result := AddPattern(AName, APatternStyle, APatternColor, ChartColor(scWhite, 1.0));
+end;
+
+function TsChartFillPatternList.AddPattern(AName: String;
+  APatternStyle: TsChartFillPatternStyle; APatternColor, ABackColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
+  rawPatternIdx: Integer;
 begin
   if AName = '' then
     AName := DefaultPatternName;
+  rawPatternIdx := ord(APatternStyle);
+  if rawPatternIdx >= GetRawFillPatternCount then
+    raise Exception.Create('Raw fill pattern not defined.');
   Result := NewPattern(AName);
   pattern := Items[Result];
-  pattern.Index := APatternIndex;
+  pattern.Index := rawPatternIdx;
   pattern.FgColor := APatternColor;
-  pattern.BgColor := ChartColor(scWhite, 1.0);  // Do not use scBlack here - will hide the entire pattern in xlsx.
+  pattern.BgColor := ABackColor;
+end;
+
+{ Add a transparent pattern (no background) }
+function TsChartFillPatternList.AddPattern(AName: String;
+  ARawPatternIndex: Integer; APatternColor: TsChartColor): Integer;
+begin
+  Result := AddPattern(AName, ARawPatternIndex, APatternColor, ChartColor(scWhite, 1.0));
+  // Do not use scBlack here - will hide the entire pattern in xlsx.
 end;
 
 { Add a solid pattern (with background color) }
 function TsChartFillPatternList.AddPattern(AName: String;
-  APatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
+  ArawPatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
   pattern: TsChartFillPattern;
 begin
@@ -1424,7 +1448,7 @@ begin
     AName := DefaultPatternName;
   Result := NewPattern(AName);
   pattern := Items[Result];
-  pattern.Index := APatternIndex;
+  pattern.Index := ARawPatternIndex;
   pattern.FgColor := APatternColor;
   pattern.BgColor := ABackColor;
   {
