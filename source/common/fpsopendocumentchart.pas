@@ -533,10 +533,12 @@ var
   {%H-}nodeName: String;
   sFill: String;
   sOpac: String;
-  sc: String;
-  sn: String;
+  sc, sn, s: String;
   opacity: Double;
   img: TsChartImage;
+  bkColor: TsChartColor;
+  patternIdx: Integer;
+  pattern: TsChartFillPattern;
   value: Double;
   rel: Boolean;
 begin
@@ -562,25 +564,33 @@ begin
       end;
     'hatch':
       begin
+        AFill.Style := cfsPattern;
+        bkColor := ChartColor(scWhite, 1);  // default: transparent background
         sc := GetAttrValue(ANode, 'draw:fill-hatch-solid');
         if sc = 'true' then
-          AFill.Style := cfsSolidPattern
-        else
-          AFill.Style := cfsPattern;
+        begin
+          sc := GetAttrValue(ANode, 'draw:fill-color');
+          if sc <> '' then
+            bkColor := ChartColor(HTMLColorStrToColor(sc));
+        end;
         AFill.Pattern := -1;
-        sc := GetAttrValue(ANode, 'draw:fill-color');
-        if sc <> '' then
-          AFill.Color := ChartColor(HTMLColorStrToColor(sc));
         sn := GetAttrValue(ANode, 'draw:fill-hatch-name');
         if sn <> '' then
         begin
-          AFill.Pattern := AChart.FillPatterns.IndexOfName(UnASCIIName(sn));
-          if AFill.Pattern <> -1 then
-            AChart.FillPatterns[AFill.Pattern].BgColor := AFill.Color;
+          sn := UnASCIIName(sn);
+          patternIdx := AChart.FillPatterns.IndexOfNameAndBgColor(sn, bkColor);
+          // A new pattern must be created if it exists with a different background color.
+          if patternIdx = -1 then
+          begin
+            patternIdx := AChart.FillPatterns.IndexOfName(sn);
+            pattern := AChart.FillPatterns[patternIdx];
+            sn := sn + '_' + IntToStr(AChart.FillPatterns.Count);  // New unique name
+            patternIdx := AChart.FillPatterns.AddPattern(sn, pattern.Index, pattern.FgColor, bkColor);
+          end;
+          AFill.Pattern := patternIdx;
         end;
         if AFill.Pattern = -1 then
           AFill.Style := cfsSolidFill;
-
       end;
     'bitmap':
       begin
@@ -590,11 +600,11 @@ begin
           AFill.Style := cfsImage;
           AFill.Image := AChart.Images.IndexOfName(UnASCIIName(sn));
           img := AChart.Images[AFill.Image];
-          sc := GetAttrValue(ANode, 'draw:fill-image-width');
-          if (sc <> '') and EvalLengthStr(sc, value, rel) then
+          s := GetAttrValue(ANode, 'draw:fill-image-width');
+          if (s <> '') and EvalLengthStr(s, value, rel) then
             img.Width := value;
-          sc := GetAttrValue(ANode, 'draw:fill-image-height');
-          if (sc <> '') and EvalLengthStr(sc, value, rel) then
+          s := GetAttrValue(ANode, 'draw:fill-image-height');
+          if (s <> '') and EvalLengthStr(s, value, rel) then
             img.Height := value;
         end else
           AFill.Style := cfsSolidFill;
@@ -2116,7 +2126,7 @@ begin
       angle, centerX, centerY, border, 1.0)
 end;
 
-{ Read the hatch pattern stored in the "draw:hatch" nodes of the chart's
+{ Reads the hatch pattern stored in the "draw:hatch" nodes of the chart's
   Object styles.xml file. }
 procedure TsSpreadOpenDocChartReader.ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
 var
@@ -2125,14 +2135,11 @@ var
   pm, patternMultiplier: TsLineFillPatternMultiplier;
   fillPatternIdx: Integer;
   fillPatternName: String;
-  hatchColor, bgColor: TsChartColor;
+  hatchColor: TsChartColor;
   hatchDist: Double;
   hatchAngle: Double;
   rel: Boolean;
-  workbook: TsWorkbook;
 begin
-  workbook := TsWorkbook(AChart.Workbook);
-
   styleName := GetAttrValue(ANode, 'draw:display-name');
   if styleName = '' then
     styleName := GetAttrValue(ANode, 'draw:name');
@@ -2607,16 +2614,6 @@ var
 begin
   Result := '';
   workbook := TsWorkbook(AChart.Workbook);
-
-  (*
-  if (AFill.Color.Transparency > 0) then
-    opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
-  solidFillResult := Format(
-    'draw:fill="solid" draw:fill-color="%s" %s',
-    [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr ]
-  );
-  *)
-
   case AFill.Style of
     cfsNoFill:
       Result := 'draw:fill="none" ';
@@ -2644,7 +2641,7 @@ begin
           [ ASCIIName(gradient.Name), opacityStr ]
         );
       end;
-    cfsPattern, cfsSolidPattern:
+    cfsPattern:
       begin
         if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
           exit;
@@ -2652,9 +2649,14 @@ begin
         rawFillPattern := GetRawFillPattern(coloredFillPattern.Index);
         if Assigned(rawFillPattern.LinePattern) then
         begin
-          if (AFill.Color.Transparency > 0) then
+          // Hatched pattern
+//          if (AFill.Color.Transparency > 0) then
+{
+          if (coloredFillPattern.BgColor.Transparency > 0) then
             opacityStr := Format('draw:opacity="%d%%" ', [TransparencyToOpacity(coloredFillPattern.BgColor.Transparency)]);
-          if AFill.Style = cfsSolidPattern then
+            }
+          if not coloredFillPattern.IsClearPattern then
+//          if AFill.Style = cfsSolidPattern then
             fillStr := 'draw:fill-hatch-solid="true" ';
           Result := Format(
             'draw:fill="hatch" draw:fill-color="%s" %s' +
@@ -2665,6 +2667,7 @@ begin
           );
         end else
         begin
+          // Dotted pattern
           Result := Format(
             'draw:fill="bitmap" draw:fill-color="%s" draw:fill-image-name="%s" ',
             [ ColorToHTMLColorStr(coloredFillPattern.BgColor.Color),
@@ -3824,7 +3827,7 @@ begin
        'xlink:href="Pictures/%s" xlink:type="simple" ' +
        'xlink:show="embed" xlink:actuate="onLoad"/>', [
       ASCIIName(picName), picName,
-      embObj.FileName
+      ExtractFileName(embObj.FileName)
     ]);
     AppendToStream(AStream, style);
   end;

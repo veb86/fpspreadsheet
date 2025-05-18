@@ -63,7 +63,7 @@ begin
     ser.SetYRange(3, 1, 8, 1);          // series 1, y values in B4:B11
     ser.Line.Color := ChartColor(scDarkRed);
     ser.Fill.Pattern := ch.FillPatterns.AddPattern('Crossed', fpsHatchThin, ChartColor(scDarkRed), ChartColor(scRed));
-    ser.Fill.Style := cfsSolidPattern;
+    ser.Fill.Style := cfsPattern;
     ser.DataLabels := [cdlValue];        // Show sales as datapoint labels
 
     // Add 2nd bar series ("Product B")
@@ -73,7 +73,7 @@ begin
     ser.SetYRange(3, 2, 8, 2);          // series 2, y values in C4:C11
     ser.Line.Color := ChartColor(scDarkBlue);
     ser.Fill.Pattern := ch.FillPatterns.AddPattern('Forward', fpsDiagUpThin, ChartColor(scWhite), ChartColor(scBlue));
-    ser.Fill.Style := cfsSolidPattern;
+    ser.Fill.Style := cfsPattern;
     ser.DataLabels := [cdlValue];        // Show sales as datapoint labels
 
     book.WriteToFile(dir + fn + '.xlsx', true);

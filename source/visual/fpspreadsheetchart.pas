@@ -1085,7 +1085,7 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
       case fill.Style of
         cfsSolidFill:
           c := fill.Color;
-        cfsSolidPattern:
+        cfsPattern:
           begin
             coloredPatt := ASeries.Chart.FillPatterns[fill.Pattern];
             c := coloredPatt.BgColor;
@@ -1544,9 +1544,8 @@ begin
   book := TsWorkbook(AWorkbookChart.Workbook);
   coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
   rawPattern := GetRawFillPattern(coloredPattern.Index);
-//  hatch := AWorkbookChart.Hatches[AFill.Hatch];
   ABrush.Color := Convert_sColor_to_Color(coloredpattern.FgColor.Color);
-  if rawPattern.LinePattern <> nil then
+  if (rawPattern.LinePattern <> nil) and coloredPattern.IsClearPattern then
     case rawPattern.LinePattern.Multiplier of
       lfpmSingle:
         if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
@@ -1567,7 +1566,9 @@ begin
         else
         if InRange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
           ABrush.Style := bsDiagCross;
-    end;
+    end
+  else
+    ConstructFillPattern(AWorkbookChart, AFill, ABrush);
 end;
                (*
 { Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
@@ -1645,14 +1646,6 @@ begin
   fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.FgColor.Color));
 
   // Background color
-  {
-  if rawPattern.LinePattern <> nil then
-    // workaround because TAChart (LCL) cannot render transparent custom fill pattern -- use backgroun color for fill background
-    chBkCol := AFill.Color
-  else
-    chBkCol := coloredPattern.BgColor;
-  bkCol := TColorToFPColor(Convert_sColor_to_Color(chBkCol.Color));
-  }
   bkCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.BgColor.Color));
 
   png := TPortableNetworkGraphic.Create;
@@ -1824,7 +1817,13 @@ var
   w, h, ppi: Integer;
 begin
   wBook := TsWorkbook(AWorkbookChart.Workbook);
+
+  if AFill.Image = -1 then
+    exit;
   img := AWorkbookChart.Images[AFill.Image];
+  if img.EmbeddedObjIndex = -1 then
+    exit;
+
   obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
   pic := TPicture.Create;
   try
@@ -2605,8 +2604,6 @@ begin
         ABrush.Style := bsSolid;  // NOTE: TAChart cannot display gradients
       cfsPattern:
         ConstructHatchPattern(AWorkbookChart, AWorkbookFill, ABrush);
-      cfsSolidPattern:
-        ConstructFillPattern(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
         ConstructImagePattern(AWorkbookChart, AWorkbookFill, ABrush);
     end;

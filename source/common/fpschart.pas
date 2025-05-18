@@ -13,67 +13,6 @@ const
   clsSolid = -1;
 
 var
-(*
-  {@@ Pre-defined chart fill patterns given as indices into the workbook's
-    RawFillPatternList. When this list is created the pattern indices will get
-    their values. }
-  fpsGray05: Integer = -1;
-  fpsGray10: Integer = -1;
-  fpsGray20: Integer = -1;
-  fpsGray25: Integer = -1;
-  fpsGray30: Integer = -1;
-  fpsGray40: Integer = -1;
-  fpsGray50: Integer = -1;
-  fpsGray60: Integer = -1;
-  fpsGray70: Integer = -1;
-  fpsGray75: Integer = -1;
-  fpsGray80: Integer = -1;
-  fpsGray90: Integer = -1;
-
-  fpsHorThick: Integer = -1;
-  fpsVertThick: Integer = -1;
-  fpsDiagUpThick: Integer = -1;
-  fpsDiagDownThick: Integer = -1;
-  fpsHatchThick: Integer = -1;
-  fpsCrossThick: Integer = -1;
-
-  fpsHorThin: Integer = -1;
-  fpsVertThin: Integer = -1;
-  fpsDiagUpThin: Integer = -1;
-  fpsDiagDownThin: Integer = -1;
-  fpsHatchThin: Integer = -1;
-  fpsCrossThin: Integer = -1;
-
-  fpsHorNarrow: Integer = -1;
-  fpsVertNarrow: Integer = -1;
-  fpsDiagUpNarrow: Integer = -1;
-  fpsDiagDownNarrow: Integer = -1;
-  fpsHatchNarrow: Integer = -1;
-  fpsCrossNarrow: Integer = -1;
-
-  fpsHorDash: Integer = -1;
-  fpsVertDash: Integer = -1;
-  fpsDiagUpDash: Integer = -1;
-  fpsDiagDownDash: Integer = -1;
-  fpsHatchDot: Integer = -1;
-  fpsCrossDot: Integer = -1;
-
-  fpsBrickDiag: Integer = -1;
-  fpsBrickHor: Integer = -1;
-  fpsCheckerBoardLarge: Integer = -1;
-  fpsCheckerBoardSmall: Integer = -1;
-  fpsConfettiLarge: Integer = -1;
-  fpsConfettiSmall: Integer = -1;
-  fpsDiamond: Integer = -1;
-  fpsDivot: Integer = -1;
-  fpsPlaid: Integer = -1;
-  fpsShingle: Integer = -1;
-  fpsSphere: Integer = -1;
-  fpsTrellis: Integer = -1;
-  fpsWave: Integer = -1;
-  fpsWeave: Integer = -1;
-  fpsZigZag: Integer = -1;
-                   *)
   {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
     list. Get their value in the constructor of TsChart. Default here to -1
     which is the code for a solid line, just in case that something goes wrong }
@@ -94,7 +33,11 @@ const
   );
 
 type
-  TsChartTransparency = single;   // 0.0 (opaque) - 1.0 (transparent)
+  {@@ Data type alias for transparency of chart colors:
+    Should range between 0.0 and 1.0 (but is not enforced).
+    0.0 is opaque, 1.0 is fully transparent }
+  TsChartTransparency = single;
+
   {@@ Record describing a color used by charts, includes a Transparency element }
   TsChartColor = record
     Transparency: TsChartTransparency;
@@ -195,6 +138,7 @@ type
     BgColor: TsChartColor;    // Color of background
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartFillPattern);
+    function IsClearPattern: Boolean;
   end;
 
   TsChartFillPatternList = class(TFPObjectList)
@@ -215,6 +159,7 @@ type
       APatternColor, ABackColor: TsChartColor): Integer;
     function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
+    function IndexOfNameAndBgColor(AName: String; AColor: TsChartColor): Integer;
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
   end;
 
@@ -238,7 +183,7 @@ type
     property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
   end;
 
-  TsChartFillStyle = (cfsNoFill, cfsSolidFill, cfsGradient, cfsPattern, cfsSolidPattern, cfsImage);
+  TsChartFillStyle = (cfsNoFill, cfsSolidFill, cfsGradient, cfsPattern, cfsImage);
 
   TsChartFill = class
   public
@@ -253,7 +198,7 @@ type
     procedure SelectGradientFill(AGradientIndex: Integer);
     procedure SelectImageFill(AImageIndex: Integer);
     procedure SelectNoFill;
-//    procedure SelectPatternFill(APatternIndex: Integer);
+    procedure SelectPatternFill(APatternIndex: Integer);
     procedure SelectSolidFill(AColor: TsChartColor);
 //    procedure SelectSolidPatternFill(APatternIndex: Integer; ABackColor: TsChartColor);
   end;
@@ -990,7 +935,7 @@ function ChartColor(AColor: TsColor; ATransparency: TsChartTransparency = 0.0): 
 implementation
 
 uses
-  Math, fpSpreadsheet, fpsPatterns;
+  Math, fpsPatterns;
 
 { TsChartColor }
 
@@ -1403,6 +1348,11 @@ begin
   BgColor := ASource.BgColor;
 end;
 
+function TsChartFillPattern.IsClearPattern: Boolean;
+begin
+  Result := (BgColor.Transparency = 1.0);
+end;
+
 
 { TsChartFillPatternList }
 
@@ -1481,10 +1431,31 @@ begin
 end;
 
 function TsChartFillPatternList.IndexOfName(AName: String): Integer;
+var
+  s: String;
 begin
   for Result := 0 to Count-1 do
-    if SameText(Items[Result].Name, AName) then
+  begin
+    s := Items[Result].Name;
+    if SameText(s, AName) then
       exit;
+  end;
+  Result := -1;
+end;
+
+function TsChartFillPatternList.IndexOfNameAndBgColor(AName: string;
+  AColor: TsChartColor): Integer;
+var
+  s: String;
+  bkClr: TsChartColor;
+begin
+  for Result := 0 to Count-1 do
+  begin
+    s := Items[Result].Name;
+    bkClr := Items[Result].BgColor;
+    if SameText(s, AName) and (bkClr.Color = AColor.Color) and (bkClr.Transparency = AColor.Transparency) then
+      exit;
+  end;
   Result := -1;
 end;
 
@@ -1630,37 +1601,26 @@ procedure TsChartFill.SelectNoFill;
 begin
   Style := cfsNoFill;
 end;
-        (*
-{ Results in a pattern without background.
+
+{ Results in a patterned fill.
   APatternIndex is the index of the pattern in the chart's FillPatterns list
   The pattern color is already contained in the pattern referred to by
-  APatternIndex. }
+  APatternIndex.
+  The pattern's BgColor.Transparency decides whether the pattern background
+  is filled or clear. }
 procedure TsChartFill.SelectPatternFill(APatternIndex: Integer);
 begin
   Pattern := APatternIndex;
   Style := cfsPattern;
 end;
-          *)
+
 { Results in a uniform fill with the specified color. }
 procedure TsChartFill.SelectSolidFill(AColor: TsChartColor);
 begin
   Color := AColor;
   Style := cfsSolidFill;
 end;
-            (*
-{ Results in a pattern with given background color.
-  APatternIndex is the index of the pattern in the chart's FillPatterns list.
-  The background color is specified in ABackColor
-  The pattern color is already contained in the pattern referred to
-  by APatternIndex. }
-procedure TsChartFill.SelectSolidPatternFill(APatternIndex: Integer;
-  ABackColor: TsChartColor);
-begin
-  Style := cfsSolidPattern;
-  Pattern := APatternIndex;
-  //Color := ABackColor;
-end;
-*)
+
 
 { TsChartLineStyle }
 

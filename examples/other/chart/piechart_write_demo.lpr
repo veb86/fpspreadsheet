@@ -82,7 +82,7 @@ begin
     // for "Europe":
     fill := TsChartFill.Create;
 //    fill.Pattern := ch.FillPatterns.AddPattern('Pattern1', fpsGray25{HorThin}, ChartColor($00C0FF), ChartColor(scWhite));
-    fill.Style := cfsSolidPattern;
+    fill.Style := cfsPattern;
     fill.Pattern := ch.FillPatterns.AddPattern('Pattern1', fpsHorThin, ChartColor($00C0FF), ChartColor(scWhite));
     ser.DataPointStyles.AddFillAndLine(3, fill, line);      // Europe
     fill.Free;

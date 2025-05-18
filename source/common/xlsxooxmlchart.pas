@@ -904,10 +904,7 @@ begin
       pattern := fpsHatchThin;
   end;
   AFill.Pattern := AChart.FillPatterns.AddPattern(''{hatch}, pattern, fgColor, bgColor);
-  if bgColor.Transparency = 1 then
-    AFill.Style := cfsPattern
-  else
-    AFill.Style := cfsSolidPattern;
+  AFill.Style := cfsPattern;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartFillAndLineProps(ANode: TDOMNode;
@@ -3548,33 +3545,6 @@ end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
   AChart: TsChart; AFill: TsChartFill): String;
-  (*
-const
-  OOXML_PATTERN_NAMES: array[0..47] of string = (
-    'pct5', 'pct10', 'pct20', 'pct25', 'pct30',                 // 0..4
-    'pct40', 'pct50', 'pct60', 'pct70', 'pct75',                // 5..9
-    'pct80', 'pct90', 'dashDnDiag', 'dashUpDiag', 'dashHorz',   // 10..14
-    'dashVert', 'smConfetti', 'lgConfetti', 'zigZag', 'wave',   // 15..19
-    'diagBrick', 'horzBrick', 'weave', 'plaid', 'divot',        // 20..24
-    'dotGrid', 'dotDmnd', 'shingle', 'trellis', 'sphere',       // 25..29
-    'smCheck', 'lgCheck', 'solidDmnd', 'ltDnDiag', 'ltUpDiag',  // 30..34
-    'dkDnDiag', 'dkUpDiag', 'wdDnDiag', 'wdUpDiag', 'ltHorz',   // 35..39
-    'ltVert', 'narVert', 'narHorz', 'dkHorz', 'dkVert',         // 40..44
-    'smGrid', 'lgGrid', 'openDmnd'                              // 45..47
-  );
-  FPS_PATTERN_NAMES: array[0..47] of string = (
-    FPS_GRAY06, FPS_GRAY12, FPS_GRAY20, FPS_GRAY25, FPS_GRAY30,                  // pct5 ...
-    FPS_GRAY40, FPS_GRAY50, FPS_GRAY60, FPS_GRAY70, FPS_GRAY75,                  // ptc40 ...
-    FPS_GRAY80, FPS_GRAY90, FPS_DIAG_DOWN_DASH, FPS_DIAG_UP_DASH, FPS_HOR_DASH,  // pct80 ...
-    FPS_VERT_DASH, FPS_CONFETTI_SMALL, FPS_CONFETTI_LARGE, FPS_ZIGZAG, FPS_WAVE, // dashVert ...
-    FPS_BRICK_DIAG, FPS_BRICK_HOR, FPS_WEAVE, FPS_PLAID, FPS_DIVOT,              // diagBrick ...
-    FPS_CROSS_DOT, FPS_HATCH_DOT, FPS_SHINGLE, FPS_TRELLIS, FPS_SPHERE,          // dotGrid ...
-    FPS_CHECKERBOARD_SMALL, FPS_CHECKERBOARD_LARGE, FPS_DIAMOND, FPS_DIAG_DOWN_NARROW, FPS_DIAG_UP_NARROW,  //smCheck ...
-    FPS_DIAG_DOWN_THIN, FPS_DIAG_UP_THIN, FPS_DIAG_DOWN_THICK, FPS_DIAG_UP_THICK, FPS_HOR_THIN,  // dkDnDiag
-    FPS_VERT_THIN, FPS_VERT_NARROW, FPS_HOR_NARROW, FPS_HOR_THICK, FPS_VERT_NARROW,              // ltVert
-    FPS_CROSS_NARROW, FPS_CROSS_THIN, FPS_HATCH_THIN                             // smGrid ...
-  );
-    *)
 var
   indent: String;
   rawPattern: TsRawFillPattern;
@@ -3588,7 +3558,6 @@ var
   rStr: String = '';
   bStr: String = '';
   i: Integer;
-  presetIdx: Integer;
   workbook: TsWorkbook;
   embIdx, rId: Integer;
   embObj: TsEmbeddedObj;
@@ -3666,7 +3635,7 @@ begin
         end;
 
       // Hatched and pattern fills
-      cfsPattern, cfsSolidPattern:
+      cfsPattern:
         begin
           if (AFill.Pattern < 0) or (AChart.FillPatterns.Count = 0) then
             exit;
@@ -3680,31 +3649,6 @@ begin
               'CROSSED': excelName := 'lgGrid';
               'HATCH_THICK': excelName := 'openDmnd';
             end;
-(*
-         // hatch := AChart.Hatches[AFill.Hatch];
-          presetIdx := -1;
-          for i := 0 to High(OOXML_PATTERN_NAMES) do
-            if SameText(rawPattern.Name, OOXML_PATTERN_NAMES[i]) then
-            begin
-              presetIdx := i;
-              break;
-            end;
-          if presetIdx = -1 then
-            for i := 0 to High(FPS_PATTERN_NAMES) do
-              if SameText(rawPattern.Name, FPS_PATTERN_NAMES[i]) then
-              begin
-                presetIdx := i;
-                break;
-              end;
-          if presetIdx = -1 then
-            case Uppercase(rawPattern.Name) of
-              'BACKWARD': presetIdx := 33;  // ltDnDiag
-              'FORWARD': presetIdx := 36;   // ltUpDiag
-              'CROSSED',
-              'HATCH_THICK': presetIdx := 47;   // openDmnd
-            end;
-          if presetIdx > -1 then
-          *)
           if excelName <> '' then
             Result :=
               indent + '<a:pattFill prst="' + excelName + '">' + LE +
