@@ -8,6 +8,8 @@ uses
   SysUtils, Classes, Contnrs, Math,
   fpsTypes, fpsChart;
 
+{ Fill patterns }
+
 type
   TsLineFillPatternMultiplier = (lfpmSingle, lfpmDouble, lfpmTriple);
 
@@ -73,6 +75,55 @@ type
     property Items[AIndex: Integer]: TsRawFillPattern read GetItem write SetItem; default;
   end;
 
+
+  { Line patterns }
+
+  TsChartLengthUnit = (cluMillimeters, cluPercentage);
+
+  TsRawLinePatternElement = record
+    Length: Single;      // mm or % of linewidth
+    Count: Integer;
+  end;
+
+  TsRawLinePattern = class
+    Name: String;
+    ExcelName: String;
+    Element1: TsRawLinePatternElement;
+    Element2: TsRawLinePatternElement;
+    DistanceLength: Single;       // Space between elements, mm or % of linewidth
+    LengthUnit: TsChartLengthUnit;
+    constructor Create(AName: String;
+      AElement1Length: Single; AElement1Count: Integer;
+      ADistanceLength: Single; AUnit: TsChartLengthUnit); overload;
+    constructor Create(AName: String;
+      AElement1Length: Single; AElement1Count: Integer;
+      AElement2Length: Single; AElement2Count: Integer;
+      ADistanceLength: Single; AUnit: TsChartLengthUnit); overload;
+    procedure CopyFrom(ASource: TsRawLinePattern);
+  end;
+
+  TsRawLinePatternList = class(TFPObjectList)
+  private
+    function GetItem(AIndex: Integer): TsRawLinePattern;
+    procedure SetItem(AIndex: Integer; AValue: TsRawLinePattern);
+  protected
+    function AddOrReplace(APattern: TsRawLinePattern): Integer;
+  public
+    procedure AddBuiltinPatterns;
+    function AddPattern(AName: String;
+      AElement1Length: Single; AElement1Count: Integer;
+      AElement2Length: Single; AElement2Count: Integer;
+      ADistanceLength: Single; ALengthUnit: TsChartLengthUnit): Integer;
+    function FindPatternIndex(AElement1Length: Single; AElement1Count: Integer;
+      AElement2Length: Single; AElement2Count: Integer;
+      ADistanceLength: Single; ALengthUnit: TsChartLengthUnit): Integer;
+    function IndexOfName(AName: String): Integer;
+    property Items[AIndex: Integer]: TsRawLinePattern read GetItem write SetItem; default;
+  end;
+
+
+{ global fill pattern procedures }
+
 procedure CreateRawFillPatterns;
 procedure DestroyRawFillPatterns;
 
@@ -83,6 +134,29 @@ function GetRawFillPatternName(APatternStyle: TsChartFillPatternStyle): String;
 
 function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
+
+
+{ global line pattern procedures }
+
+procedure CreateRawLinePatterns;
+procedure DestroyRawLinePatterns;
+
+function GetRawLinePattern(APatternIndex: Integer): TsRawLinePattern;
+function GetRawLinePatternCount: Integer;
+function GetRawLinePatternIndex(APatternName: String): Integer;
+function GetRawLinePatternIndex(AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+function GetRawLinePatternName(APatternStyle: TsChartLinePatternStyle): String;
+
+function RegisterRawLinePattern(AName: String;
+  AElementLength: Single; AElementCount: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+function RegisterRawLinePattern(AName: String;
+  AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+
 
 implementation
 
@@ -494,7 +568,7 @@ begin
   else
   begin
     Items[idx].CopyFrom(APattern);
-    Insert(idx, APattern);
+//    Insert(idx, APattern);
     Result := idx;
   end;
 end;
@@ -610,7 +684,7 @@ begin
 end;
 
 { ------------------------------------------------------------------------------
-                          global procedures
+                        global fill pattern procedures
 -------------------------------------------------------------------------------}
 var
   RawFillPatterns: TsRawFillPatternList = nil;
@@ -682,14 +756,253 @@ end;
 function RegisterRawFillPattern(AName: String; ALineDistance, ALineAngle, ALineWidth: Single;
   AMultiplier: TsLineFillPatternMultiplier): Integer;
 begin
-  if Assigned(RawFillPatterns) then
-    Result := RawFillPatterns.AddLineFillPattern(AName, '', ALineDistance, ALineAngle, ALineWidth, AMultiplier)
+  if not Assigned(RawFillPatterns) then
+    CreateRawFillPatterns;
+  Result := RawFillPatterns.AddLineFillPattern(AName, '', ALineDistance, ALineAngle, ALineWidth, AMultiplier)
+end;
+
+
+{===============================================================================
+                             Line patterns
+===============================================================================}
+
+constructor TsRawLinePattern.Create(AName: String;
+  AElement1Length: Single; AElement1Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit);
+begin
+  inherited Create;
+  Name := AName;
+  Element1.Length := AElement1Length;
+  Element1.Count := AElement1Count;
+  Element2.Length := 0;
+  Element2.Count := 0;
+  DistanceLength := ADistanceLength;
+  LengthUnit := AUnit;
+end;
+
+constructor TsRawLinePattern.Create(AName: String;
+  AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit);
+begin
+  inherited Create;
+  Name := AName;
+  Element1.Length := AElement1Length;
+  Element1.Count := AElement1Count;
+  Element2.Length := AElement2Length;
+  Element2.Count := AElement2Count;
+  DistanceLength := ADistanceLength;
+  LengthUnit := AUnit;
+end;
+
+procedure TsRawLinePattern.CopyFrom(ASource: TsRawLinePattern);
+begin
+  Name := ASource.Name;
+  Element1 := ASource.Element1;
+  Element2 := ASource.Element2;
+  DistanceLength := ASource.DistanceLength;
+  LengthUnit := ASource.LengthUnit;
+end;
+
+
+{ TsRawLinePatternList }
+
+procedure TsRawLinePatternList.AddBuiltinPatterns;
+begin
+  // solid line
+  AddPattern(GetRawLinePatternName(clsSolid), 10, 1, 0, 0, 0, cluMillimeters);
+  // no line
+  AddPattern(GetRawLinePatternName(clsNoLine), 0, 0, 0, 0, 0, cluMillimeters);
+  // fine dots
+  AddPattern(GetRawLinePatternName(clsFineDot), 120, 1, 0, 0, 120, cluPercentage);
+  // dotted
+  AddPattern(GetRawLinePatternName(clsDot), 120, 1, 0, 0, 500, cluPercentage);
+  // dashed  (- - - - )
+  AddPattern(GetRawLinePatternName(clsDash), 800, 1, 0, 0, 600, cluPercentage);
+  // dash-dot  (- . - . - )
+  AddPattern(GetRawLinePatternName(clsDashDot), 800, 1, 120, 1, 600, cluPercentage);
+  // long dash  (--  --  --)
+  AddPattern(GetRawLinePatternName(clsLongDash), 2400, 1, 0, 0, 600, cluPercentage);
+  // long dash-dot  (-- . -- . -- . )
+  AddPattern(GetRawLinePatternName(clsLongDashDot), 2400, 1, 120, 1, 600, cluPercentage);
+  // long dash-dot-dot  (-- . . -- . . )
+  AddPattern(GetRawLinePatternName(clsLongDashDotDot), 2400, 1, 120, 2, 600, cluPercentage);
+end;
+
+function TsRawLinePatternList.AddOrReplace(APattern: TsRawLinePattern): Integer;
+var
+  idx: Integer;
+begin
+  idx := IndexOfName(APattern.Name);
+  if idx = -1 then
+    Result := Add(APattern)
+  else
+  begin
+    Items[idx].CopyFrom(APattern);
+//    Insert(idx, APattern);
+    Result := idx;
+  end;
+end;
+
+function TsRawLinePatternList.AddPattern(AName: String;
+  AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; ALengthUnit: TsChartLengthUnit): Integer;
+var
+  patt: TsRawLinePattern;
+begin
+  patt := TsRawLinePattern.Create(AName,
+    AElement1Length, AElement1Count,
+    AElement2Length, AElement2Count,
+    ADistanceLength, ALengthUnit
+  );
+//  patt.FExcelName := AExcelName;
+  Result := AddOrReplace(patt);
+end;
+
+function TsRawLinePatternList.FindPatternIndex(
+  AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; ALengthUnit: TsChartlengthUnit): Integer;
+var
+  i: Integer;
+  patt: TsRawLinePattern;
+begin
+  for i := 0 to Count-1 do
+  begin
+    patt := Items[i];
+    if SameValue(AElement1Length, patt.Element1.Length, 0.1) and
+       (AElement1Count = patt.Element1.Count) and
+       SameValue(AElement2Length, patt.Element2.Length, 0.1) and
+       (AElement2Count = patt.Element2.Count) and
+       SameValue(ADistanceLength, patt.DistanceLength, 0.1) and
+       (ALengthUnit = patt.LengthUnit) then
+    begin
+      Result := i;
+      exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+
+function TsRawLinePatternList.GetItem(AIndex: Integer): TsRawLinePattern;
+begin
+  Result := TsRawLinePattern(inherited Items[AIndex]);
+end;
+
+function TsRawLinePatternList.IndexOfName(AName: String): Integer;
+begin
+  for Result := 0 to Count-1 do
+    if Items[Result].Name = AName then
+      exit;
+  Result := -1;
+end;
+
+procedure TsRawLinePatternList.SetItem(AIndex: Integer; AValue: TsRawLinePattern);
+begin
+  TsRawLinePattern(inherited Items[AIndex]).CopyFrom(AValue);
+end;
+
+
+{-------------------------------------------------------------------------------
+                        global line pattern procedures
+-------------------------------------------------------------------------------}
+var
+  RawLinePatterns: TsRawLinePatternList = nil;
+  RawLinePatterns_ReferenceCounter: Integer = 0;
+
+procedure CreateRawLinePatterns;
+begin
+  if RawLinePatterns_ReferenceCounter = 0 then
+  begin
+    RawLinePatterns := TsRawLinePatternList.Create;
+    RawLinePatterns.AddBuiltinPatterns;
+  end;
+  inc(RawLinePatterns_ReferenceCounter);
+end;
+
+procedure DestroyRawLinePatterns;
+begin
+  dec(RawLinePatterns_ReferenceCounter);
+  if RawLinePatterns_ReferenceCounter <= 0 then
+  begin
+    FreeAndNil(RawLinePatterns);
+    RawLinePatterns_ReferenceCounter := 0;
+  end;
+end;
+
+function GetRawLinePattern(APatternIndex: Integer): TsRawLinePattern;
+begin
+  if Assigned(RawLinePatterns) then
+    Result := RawLinePatterns.Items[APatternIndex]
+  else
+    Result := nil;
+end;
+
+function GetRawLinePatternCount: Integer;
+begin
+  if Assigned(RawLinePatterns) then
+    Result := RawLinePatterns.Count
+  else
+    Result := 0;
+end;
+
+{@@ Returns the index of the line pattern with the given pattern name. }
+function GetRawLinePatternIndex(APatternName: String): Integer;
+begin
+  if Assigned(RawLinePatterns) then
+    Result := RawLinePatterns.IndexOfName(APatternName)
   else
     Result := -1;
 end;
 
+{@@ Finds the index of the line pattern having the specified parameters.
+  Returns -1 if not found. }
+function GetRawLinePatternIndex(AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+begin
+  if Assigned(RawLinePatterns) then
+    Result := RawLinePatterns.FindPatternIndex(
+      AElement1Length, AElement1Count,
+      AElement2Length, AElement2Count,
+      ADistanceLength, AUnit
+    )
+  else
+    Result := -1;
+end;
+
+function GetRawLinePatternName(APatternStyle: TsChartLinePatternStyle): String;
+const
+  PatternName: Array[TsChartLinePatternStyle] of string = (
+    'SOLID', 'NO_LINE', 'FINE_DOT', 'DOT', 'DASH', 'DASH_DOT',
+    'LONG_DASH', 'LONG_DASH_DOT', 'LONG_DASH_DOT_DOT', 'CUSTOM'
+  );
+begin
+  Result := PatternName[APatternStyle];
+end;
+
+function RegisterRawLinePattern(AName: String; AElementLength: Single; AElementCount: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+begin
+  Result := RegisterRawLinePattern(AName, AElementLength, AElementCount, 0, 0, ADistanceLength, AUnit);
+end;
+
+function RegisterRawLinePattern(AName: String;
+  AElement1Length: Single; AElement1Count: Integer;
+  AElement2Length: Single; AElement2Count: Integer;
+  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+begin
+  if not Assigned(RawLinePatterns) then
+    CreateRawLinePatterns;
+  Result := RawLinePatterns.AddPattern(AName, AElement1Length, AElement1Count, AElement2Length, AElement2Count, ADistanceLength, AUnit);
+end;
+
+
 finalization
   FreeAndNil(RawFillPatterns);
+  FreeAndNil(RawLinePatterns);
 
 end.
 

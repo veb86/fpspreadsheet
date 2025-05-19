@@ -1252,6 +1252,7 @@ var
   w, d, sp: Int64;
   dMM, spMM: Double;
   noLine: Boolean;
+  pattName: String;
 begin
   if ANode = nil then
     exit;
@@ -1273,10 +1274,7 @@ begin
               'a:noFill':
                 noLine := true;
               'a:solidFill':
-                begin
-                  AChartLine.Color := ReadChartColorDef(child.FirstChild, ChartColor(scBlack));
-                  AChartLine.Style := clsSolid;
-                end;
+                AChartLine.SelectSolidLine(ReadChartColorDef(child.FirstChild, ChartColor(scBlack)));
               'a:prstDash':
                 begin
                   s := GetAttrValue(child, 'val');
@@ -1303,7 +1301,8 @@ begin
                       begin
                         dMM := PtsToMM(d / PTS_MULTIPLIER);
                         spMM := PtsToMM(sp / PTS_MULTIPLIER);
-                        AChartLine.Style := AChart.LineStyles.Add('', dMM, 1, 0, 0, (dMM+spMM), false);
+                        pattName := Format('LinePattern%d', [GetRawLinePatternCount]);
+                        AChartLine.PatternIndex := RegisterRawLinePattern(pattName, dMM, 1, 0, 0, (dMM+spMM), cluMillimeters);
                       end;
                     end;
                   end;
@@ -1316,7 +1315,7 @@ begin
     ANode := ANode.NextSibling;
   end;
   if noLine then
-    AChartLine.Style := clsNoLine;
+    AChartLine.SelectNoLine;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2594,15 +2593,14 @@ begin
   AWorkbookAxis.DefaultTitleRotation := true;
   AWorkbookAxis.LabelRotation := 0;
   AWorkbookAxis.Visible := false;
-  AWorkbookAxis.MajorGridLines.Style := clsNoLine;
-  AWorkbookAxis.MinorGridLines.Style := clsNoLine;
+  AWorkbookAxis.MajorGridLines.SelectNoLine;
+  AWorkbookAxis.MinorGridLines.SelectNoLine;
 end;
 
 procedure TsSpreadOOXMLChartReader.SetDefaultSeriesColor(ASeries: TsChartSeries);
 begin
-  ASeries.Fill.Color := CalcDefaultSeriesColor(ASeries.Order);
-  ASeries.Fill.Style := cfsSolidFill;
-  ASeries.Line.Style := clsNoLine;
+  ASeries.Fill.SelectSolidFill(CalcDefaultSeriesColor(ASeries.Order));
+  ASeries.Line.SelectNoLine;
 end;
 
 
@@ -3742,10 +3740,14 @@ end;
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
   AChart: TsChart; ALine: TsChartline; OverrideOff: Boolean = false): String;
+const
+  OOXML_LINE_PATTERN_NAMES: array[TsChartLinePatternStyle] of string = (
+    '', '', 'sysDot', 'dot', 'dash', 'dashDot', 'lgDash', 'lgDashDot', 'lgDashDotDot',''
+  );
 var
   indent: String;
-  noLine: Boolean;
-  lineStyle: TsChartLineStyle;
+  pattern: TsRawLinePattern;
+  patternStr: String;
   w: Double;
   len1: Double;
   len2: Double;
@@ -3753,12 +3755,57 @@ var
 begin
   indent := DupeString(' ', AIndent);
 
-  if (ALine = nil) or (ALine.Style = clsNoLine) or OverrideOff then
+  if (ALine = nil) or ALine.IsHidden or OverrideOff then
     Result := indent + '<a:ln>' + LE +
               indent + '  <a:noFill/>' + LE +
               indent + '</a:ln>'
   else
   begin
+    case ALine.Style of
+      clsSolid:
+        begin
+          Result := Format(
+            indent + '<a:ln w="%.0f">' + LE +
+            GetChartColorXML(AIndent + 2, 'a:solidFill', ALine.Color) + LE,
+            [ mmToPts(ALine.Width) * PTS_MULTIPLIER ]
+          );
+        end;
+      clsCustom:
+        begin
+          pattern := GetRawLinePattern(ALine.PatternIndex);
+          if pattern.LengthUnit = cluPercentage then
+          begin
+            w := ALine.Width;
+            if w < 1 then w := 1.0;
+            len1 := w * pattern.Element1.Length * 0.01;
+            len2 := w * pattern.Element2.Length * 0.01;
+            space := w * pattern.DistanceLength * 0.01;
+          end else
+          begin
+            len1 := pattern.Element1.Length;
+            len2 := pattern.Element2.Length;
+            space := pattern.DistanceLength;
+          end;
+          Result := Result + Format(
+            indent + '  <a:custDash>' + LE +
+            indent + '    <a:ds d="%.0f" sp="%.0f"/>' + LE +
+            indent + '  </a:custDash>' + LE,
+            [ mmToPts(len1) * PTS_MULTIPLIER, mmToPts(space) * PTS_MULTIPLIER ]
+          );
+          // To do: how to handle multiple segments?
+        end;
+      else
+        begin
+          patternStr := OOXML_LINE_PATTERN_NAMES[ALine.Style];
+          Result := Format(
+            indent + '<a:ln w="%.0f">' + LE +
+            GetChartColorXML(AIndent + 2, 'a:solidFill', ALine.Color) + LE +
+            indent + '<a:prstDash val="%s"/>' + LE,
+            [ mmToPts(ALine.Width) * PTS_MULTIPLIER, patternStr ]
+          );
+        end;
+    end;
+(*
     Result := Format(
       indent + '<a:ln w="%.0f">' + LE +
                GetChartColorXML(AIndent + 2, 'a:solidFill', ALine.Color) + LE,
@@ -3766,19 +3813,19 @@ begin
     );
     if ALine.Style <> clsSolid then
     begin
-      lineStyle := AChart.LineStyles[ALine.Style];
-      if lineStyle.RelativeToLineWidth then
+      pattern := GetRawLinePattern(ALine.PatternIndex);
+      if pattern.LengthUnit = cluPercentage then
       begin
         w := ALine.Width;
         if w < 1 then w := 1.0;
-        len1 := w * lineStyle.Segment1.Length * 0.01;
-        len2 := w * lineStyle.Segment2.Length * 0.01;
-        space := w * lineStyle.Distance * 0.01;
+        len1 := w * pattern.Element1.Length * 0.01;
+        len2 := w * pattern.Element2.Length * 0.01;
+        space := w * pattern.DistanceLength * 0.01;
       end else
       begin
-        len1 := lineStyle.Segment1.Length;
-        len2 := lineStyle.Segment2.Length;
-        space := lineStyle.Distance;
+        len1 := pattern.Element1.Length;
+        len2 := pattern.Element2.Length;
+        space := pattern.DistanceLength;
       end;
       Result := Result + Format(
         indent + '  <a:custDash>' + LE +
@@ -3788,6 +3835,7 @@ begin
       );
       // To do: how to handle multiple segments?
     end;
+    *)
     Result := Result + indent + '</a:ln>';
   end;
 end;
@@ -4021,7 +4069,7 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
   var
     indent: String;
   begin
-    if ALine.Style <> clsNoLine then
+    if not ALine.IsHidden then
     begin
       indent := DupeString(' ', AIndent);
       Result := Format(

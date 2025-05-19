@@ -84,3 +84,7 @@ stock_volume_write_demo candlestick area rotated
 stock_volume_write_demo candlestick bar rotated
 stock_volume_write_demo candlestick line rotated
 echo.
+echo CHART LINE STYLES
+chart_linestyles 0.3
+chart_linestyles 1.0
+echo.

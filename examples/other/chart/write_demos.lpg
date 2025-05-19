@@ -27,6 +27,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="chart_linestyles.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="linechart_write_demo.lpi">
         <BuildModes>
           <Mode Name="Default"/>

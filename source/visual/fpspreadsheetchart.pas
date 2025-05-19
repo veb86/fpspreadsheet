@@ -256,53 +256,55 @@ begin
   Result := round(mmToIn(mm * ppi));
 end;
 
-{ Constructs a PenStyle from the TsChartLine pattern style.
+{ Constructs a PenStyle from the TsRawLinePattern data.
   Note: the conversion is only very rough... }
 procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
 var
-  sLineStyle: TsChartLineStyle;
+  pattern: TsRawLinePattern;
 
-  function IsDot(ASegment: TsChartLineSegment): Boolean;
+  function IsDot(AElement: TsRawLinePatternElement): Boolean;
   var
     len: Integer;
   begin
-    if sLineStyle.RelativeToLineWidth then
-      Result := (ASegment.Length < 200)
-    else
-    begin
-      len := mmToPx(ASegment.Length, ScreenPixelsPerInch);
-      Result := len < 4;
+    case pattern.LengthUnit of
+      cluMillimeters:
+        begin
+          len := mmToPx(AElement.Length, ScreenPixelsPerInch);
+          Result := len < 4;
+        end;
+      cluPercentage:
+        Result := (AElement.Length <= 200)
     end;
   end;
 
 var
   dot1, dot2: Boolean;
 begin
-  sLineStyle := AChart.GetLineStyle(ALine.Style);
-  if sLineStyle.Distance = 0 then
+  pattern := GetRawLinePattern(ALine.PatternIndex);
+  if pattern.DistanceLength = 0 then
     APen.Style := psSolid
   else
-  if (sLinestyle.Segment1.Count = 0) and (sLineStyle.Segment2.Count = 0) then
+  if (pattern.Element1.Count = 0) and (pattern.Element2.Count = 0) then
     APen.Style := psClear
   else
-  if (sLinestyle.Segment1.Count > 0) and (sLineStyle.Segment2.Count = 0) then
+  if (pattern.Element1.Count > 0) and (pattern.Element2.Count = 0) then
   begin
-    if IsDot(sLineStyle.Segment1) then
+    if IsDot(pattern.Element1) then
       APen.Style := psDot
     else
       APen.Style := psDash;
   end else
-  if (sLineStyle.Segment1.Count = 0) and (sLineStyle.Segment2.Count > 0) then
+  if (pattern.Element1.Count = 0) and (pattern.Element2.Count > 0) then
   begin
-    if IsDot(sLineStyle.Segment2) then
+    if IsDot(pattern.Element2) then
       APen.Style := psDot
     else
       APen.Style := psDash;
   end else
-  if (sLineStyle.Segment1.Count = 1) and (sLineStyle.Segment2.Count = 1) then
+  if (pattern.Element1.Count = 1) and (pattern.Element2.Count = 1) then
   begin
-    dot1 := IsDot(sLineStyle.Segment1);
-    dot2 := IsDot(sLineStyle.Segment2);
+    dot1 := IsDot(pattern.Element1);
+    dot2 := IsDot(pattern.Element2);
     if (dot1 and not dot2) or (not dot1 and dot2) then
       APen.Style := psDashDot
     else
@@ -1529,7 +1531,8 @@ begin
 //  FChart.OnAfterDraw := FSavedAfterDraw;
 end;
 
-{ Approximates the empty hatch patterns by the built-in TBrush styles. }
+{ Approximates the empty hatch patterns by the built-in TBrush styles which are
+  rendered without background by TAChart. }
 procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
   AFill: TsChartFill; ABrush: TBrush);
 var
@@ -2586,7 +2589,7 @@ begin
   FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color.Color);
   FChart.BackColor := Convert_sColor_to_Color(AWorkbookChart.PlotArea.Background.Color.Color);
   UpdateChartPen(AWorkbookChart, AWorkbookChart.PlotArea.Border, FChart.Frame);
-  FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
+  FChart.Frame.Visible := not AWorkbookChart.PlotArea.Border.IsHidden;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
@@ -2960,7 +2963,7 @@ begin
   if AChartSeries is TLineSeries then
   begin
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, lineSeries.LinePen);
-    lineSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
+    lineSeries.ShowLines := not AWorkbookSeries.Line.IsHidden;
     seriesPointer := lineSeries.Pointer;
     lineSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmDefault;
     if lineSeries.Source is TCalculatedChartSource then
@@ -2970,14 +2973,14 @@ begin
   if AChartSeries is TCubicSplineSeries then
   begin
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, cubicSplineSeries.Pen);
-    cubicSplineSeries.Pen.Visible := AWorkbookSeries.Line.Style <> clsNoLine;
+    cubicSplineSeries.Pen.Visible := not AWorkbookSeries.Line.IsHidden;
     seriesPointer := cubicSplineSeries.Pointer;
   end
   else
   if AChartSeries is TBSplineSeries then
   begin
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, bSplineSeries.Pen);
-    bSplineSeries.Pen.Visible := AWorkbookSeries.Line.Style <> clsNoLine;
+    bSplineSeries.Pen.Visible := not AWorkbookSeries.Line.IsHidden;
     seriesPointer := bSplineSeries.Pointer;
   end;
 

@@ -719,6 +719,14 @@ type
     lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
     lsSlantDashDot);
 
+  {@@ Line styles (used by charts), predefined indices into RawLinePatternList }
+  TsChartLinePatternStyle = (
+    clsSolid, clsNoLine, clsFineDot,
+    clsDot, clsDash, clsDashDot,
+    clsLongDash, clsLongDashDot, clsLongDashDotDot,
+    clsCustom
+  );
+
   {@@ The Cell border style reocrd contains the linestyle and color of a cell
       border. There is a CellBorderStyle for each border. 
       
@@ -765,7 +773,7 @@ type
     BgColor: TsColor;    // background color (undefined when Style=fsSolidFill)
   end;
 
-  {@@ Style for fill patterns used by charts }
+  {@@ Style for fill patterns used by charts (predefined indices into RawFillPatternList }
   TsChartFillPatternStyle = (
     fpsGray05, fpsGray10, fpsGray20, fpsGray25, fpsGray30, fpsGray40,
     fpsGray50, fpsGray60, fpsGray70, fpsGray75, fpsGray80, fpsGray90,

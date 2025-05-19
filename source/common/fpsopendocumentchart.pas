@@ -633,20 +633,25 @@ var
   so: String;
   value: Double;
   rel: Boolean;
+  idx: Integer;
 begin
   nodeName := ANode.NodeName;
 
   s := GetAttrValue(ANode, 'draw:stroke');
   case s of
     'none':
-      ALine.Style := clsNoLine;
+      ALine.SelectNoLine;
     'solid':
       ALine.Style := clsSolid;
     'dash':
       begin
         sn := GetAttrValue(ANode, 'draw:stroke-dash');
         if sn <> '' then
-          ALine.Style := AChart.LineStyles.IndexOfName(UnASCIIName(sn));
+        begin
+          idx := GetRawLinePatternIndex(UnASCIIName(sn));
+          if idx > -1 then
+            ALine.PatternIndex := idx;
+        end;
       end;
   end;
 
@@ -745,8 +750,7 @@ begin
 
   // Set defaults
   Axis.MajorTicks := [catOutside];
-  grid.Style := clsSolid;
-  grid.Color := ChartColor($c0c0c0);
+  grid.SelectSolidLine(ChartColor($c0c0c0));
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
@@ -782,8 +786,8 @@ begin
   // Default values
   axis.Visible := true;  // The presence of this node makes the axis visible.
   axis.Title.Caption := '';
-  axis.MajorGridLines.Style := clsNoLine;
-  axis.MinorGridLines.Style := clsNoLine;
+  axis.MajorGridLines.SelectNoLine;
+  axis.MinorGridLines.SelectNoLine;
   axis.MajorTicks := [catOutside];
   axis.MinorTicks := [catOutside];
 
@@ -940,7 +944,7 @@ procedure TsSpreadOpenDocChartReader.ReadChartBackgroundStyle(AStyleNode: TDOMNo
 var
   nodeName: String;
 begin
-  AElement.Border.Style := clsNoLine;
+  AElement.Border.SelectNoLine;
 
   nodeName := AStyleNode.NodeName;
   AStyleNode := AStyleNode.FirstChild;
@@ -1104,14 +1108,10 @@ begin
         if FChartType = ctStock then
         begin
           FStockSeries := TsStockSeries.Create(AChart);
-          FStockSeries.Fill.Style := cfsSolidFill;
-          FStockSeries.Fill.Color := ChartColor(scWhite);
-          FStockSeries.Line.Style := clsSolid;
-          FStockSeries.Line.Color := ChartColor(scBlack);
-          FStockSeries.RangeLine.Style := clsSolid;
-          FStockSeries.RangeLine.Color := ChartColor(scBlack);
-          FStockSeries.CandleStickDownFill.Style := cfsSolidFill;
-          FStockSeries.CandleStickDownFill.Color := ChartColor(scBlack);
+          FStockSeries.Fill.SelectSolidFill(ChartColor(scWhite));
+          FStockSeries.Line.SelectSolidLine(ChartColor(scBlack));
+          FStockSeries.RangeLine.SelectSolidLine(ChartColor(scBlack));
+          FStockSeries.CandleStickDownFill.SelectSolidFill(ChartColor(scBlack));
         end;
       end;
   end;
@@ -1144,8 +1144,8 @@ begin
   AChart.YAxis.DefaultTitleRotation := true;
   AChart.X2Axis.DefaultTitleRotation := true;
   AChart.Y2Axis.DefaultTitleRotation := true;
-  AChart.PlotArea.Border.Style := clsNoLine;
-  AChart.Floor.Border.Style := clsNoLine;
+  AChart.PlotArea.Border.SelectNoLine;
+  AChart.Floor.Border.SelectNoLine;
 
   ANode := ANode.FirstChild;
   while ANode <> nil do
@@ -1718,8 +1718,8 @@ var
   childNode1, childNode2, childNode3: TDOMNode;
 begin
   // Defaults
-  ASeries.LabelBorder.Style := clsNoLine;
-  ASeries.LabelBackground.Style := cfsNoFill;
+  ASeries.LabelBorder.SelectNoLine;
+  ASeries.LabelBackground.SelectNoFill;
 
   nodeName := AStyleNode.NodeName;
 
@@ -1744,9 +1744,8 @@ begin
           if ((ASeries is TsRadarSeries) and (ASeries.ChartType = ctRadar)) then //or (ASeries is TsCustomLineSeries) then
           begin
             // In ods, symbols and lines have the same color
-            TsRadarSeries(ASeries).SymbolFill.Style := cfsSolidFill;
-            TsRadarSeries(ASeries).SymbolFill.Color := ASeries.Line.Color;
-            TsRadarSeries(ASeries).SymbolBorder.Style := clsNoLine;
+            TsRadarSeries(ASeries).SymbolFill.SelectSolidFill(ASeries.Line.Color);
+            TsRadarSeries(ASeries).SymbolBorder.SelectNoLine;
           end else
           if (ASeries is TsScatterSeries) then
             GetChartFillProps(AStyleNode, AChart, TsScatterSeries(ASeries).SymbolFill)
@@ -1783,7 +1782,7 @@ begin
           s := GetAttrValue(AStyleNode, 'loext:label-stroke');
           if s <> '' then
             case s of
-              'none': ASeries.LabelBorder.Style := clsNoLine;
+              'none': ASeries.LabelBorder.SelectNoLine;
               else    ASeries.LabelBorder.Style := clsSolid;
             end;
 
@@ -2190,6 +2189,7 @@ var
   rel1: Boolean = false;
   rel2: Boolean = false;
   relDist: Boolean = false;
+  lenUnit: TsChartLengthUnit = cluMillimeters;
 begin
   styleName := GetAttrValue(ANode, 'draw:display-name');
   if styleName = '' then
@@ -2213,7 +2213,8 @@ begin
   if not EvalLengthstr(s, distance, relDist) then
     distance := 3.0;
 
-  AChart.LineStyles.Add(styleName, dots1Length, dots1, dots2Length, dots2, distance, rel1 or rel2 or relDist);
+  if rel1 or rel2 or relDist then lenUnit := cluPercentage;
+  RegisterRawLinePattern(styleName, dots1Length, dots1, dots2Length, dots2, distance, lenUnit);
 end;
 
 { Unzips the specified picture file from the given stream for the specified
@@ -2764,9 +2765,9 @@ var
   widthStr: String = '';
   colorStr: String = '';
   opacityStr: String = '';
-  linestyle: TsChartLineStyle;
+  pattern: TsRawLinePattern;
 begin
-  if (ALine.Style = clsNoLine) or ForceNoLine then
+  if ALine.IsHidden or ForceNoLine then
   begin
     Result := 'draw:stroke="none" ';
     exit;
@@ -2775,9 +2776,9 @@ begin
   strokeStr := 'draw:stroke="solid" ';
   if (ALine.Style <> clsSolid) then
   begin
-    linestyle := AChart.GetLineStyle(ALine.Style);
-    if linestyle <> nil then
-      strokeStr := 'draw:stroke="dash" draw:stroke-dash="' + ASCIIName(linestyle.Name) + '" ';
+    pattern := GetRawLinePattern(ALine.PatternIndex);
+    if pattern <> nil then
+      strokeStr := 'draw:stroke="dash" draw:stroke-dash="' + ASCIIName(pattern.Name) + '" ';
   end;
 
   if ALine.Width > 0 then
@@ -3088,7 +3089,7 @@ begin
       indent + '    </chart:label-separator>' + LE;
   end;
 
-  if series.LabelBorder.Style <> clsNoLine then
+  if not series.LabelBorder.IsHidden then
   begin
     chartProps := chartProps + 'loext:label-stroke="solid" ';
     chartProps := chartProps + 'loext:label-stroke-color="' + ColorToHTMLColorStr(series.LabelBorder.Color.Color) + '"';
@@ -3116,7 +3117,7 @@ begin
     lineser.SymbolFill.Color.Transparency := savedTransparency;
     if lineSer.ShowSymbols then
       graphProps := graphProps + fillProps;
-    if lineSer.ShowLines and (lineser.Line.Style <> clsNoLine) then
+    if lineSer.ShowLines and (not lineser.Line.IsHidden) then
       graphProps := graphProps + lineProps
     else
       graphProps := graphProps + 'draw:stroke="none" ';
@@ -3614,7 +3615,7 @@ begin
   end;
 
   // Major grid lines
-  if Axis.MajorGridLines.Style <> clsNoLine then
+  if not Axis.MajorGridLines.IsHidden then
   begin
     AppendToStream(AChartStream, Format(
       indent + '  <chart:grid chart:style-name="ch%d" chart:class="major"/>' + LE,
@@ -3631,7 +3632,7 @@ begin
   end;
 
   // Minor grid lines
-  if Axis.MinorGridLines.Style <> clsNoLine then
+  if not Axis.MinorGridLines.IsHidden then
   begin
     AppendToStream(AChartStream, Format(
       indent + '  <chart:grid chart:style-name="ch%d" chart:class="minor"/>' + LE,
@@ -3836,42 +3837,42 @@ end;
 procedure TsSpreadOpenDocChartWriter.WriteObjectLineStyles(AStream: TStream;
   AChart: TsChart; AIndent: Integer);
 const
-  LENGTH_UNIT: array[boolean] of string = ('mm', '%'); // relative to line width
-  DECS: array[boolean] of Integer = (1, 0);            // relative to line width
+  LENGTH_UNIT: array[TsChartLengthUnit] of string = ('mm', '%');
+  DECS: array[TsChartLengthUnit] of Integer = (1, 0);
 var
   i: Integer;
-  lineStyle: TsChartLineStyle;
-  seg1, seg2: String;
+  pattern: TsRawLinePattern;
+  element1, element2: String;
   indent: String;
 begin
   indent := DupeString(' ', AIndent);
-  for i := 0 to AChart.NumLineStyles-1 do
+  for i := 0 to GetRawLinePatternCount-1 do
   begin
-    lineStyle := AChart.GetLineStyle(i);
-    if linestyle.Segment1.Count > 0 then
-      seg1 := Format('draw:dots1="%d" draw:dots1-length="%.*f%s" ', [
-        lineStyle.Segment1.Count,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Segment1.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
+    pattern := GetRawLinePattern(i);
+    if pattern.Element1.Count > 0 then
+      element1 := Format('draw:dots1="%d" draw:dots1-length="%.*f%s" ', [
+        pattern.Element1.Count,
+        DECS[pattern.LengthUnit], pattern.Element1.Length, LENGTH_UNIT[pattern.LengthUnit]
         ], FPointSeparatorSettings
       )
     else
-      seg1 := '';
+      element1 := '';
 
-    if linestyle.Segment2.Count > 0 then
-      seg2 := Format('draw:dots2="%d" draw:dots2-length="%.*f%s" ', [
-        lineStyle.Segment2.Count,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Segment2.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
+    if pattern.Element2.Count > 0 then
+      element2 := Format('draw:dots2="%d" draw:dots2-length="%.*f%s" ', [
+        pattern.Element2.Count,
+        DECS[pattern.LengthUnit], pattern.Element2.Length, LENGTH_UNIT[pattern.LengthUnit]
         ], FPointSeparatorSettings
       )
     else
-      seg2 := '';
+      element2 := '';
 
-    if (seg1 <> '') or (seg2 <> '') then
+    if (element1 <> '') or (element2 <> '') then
       AppendToStream(AStream, indent + Format(
         '<draw:stroke-dash draw:name="%s" draw:display-name="%s" draw:style="round" draw:distance="%.*f%s" %s%s/>' + LE, [
-        ASCIIName(linestyle.Name), linestyle.Name,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Distance, LENGTH_UNIT[linestyle.RelativeToLineWidth],
-        seg1, seg2
+        ASCIIName(pattern.Name), pattern.Name,
+        DECS[pattern.LengthUnit], pattern.DistanceLength, LENGTH_UNIT[pattern.LengthUnit],
+        element1, element2
         ], FPointSeparatorSettings
       ));
   end;

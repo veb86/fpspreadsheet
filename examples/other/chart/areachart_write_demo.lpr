@@ -78,11 +78,11 @@ begin
     ch := sheet.AddChart(160, 100, 2, 3);
 
     // Chart properties
-    ch.Border.Style := clsNoLine;
+    ch.Border.SelectNoLine;
     ch.Title.Caption := 'School Grades';
     ch.Title.Font.Style := [fssBold];
     ch.Title.Font.Color := scBlue;
-    ch.Legend.Border.Style := clsNoLine;
+    ch.Legend.Border.SelectNoLine;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := 'Grade points';
     ch.YAxis.AxisLine.Color := ChartColor(scSilver);

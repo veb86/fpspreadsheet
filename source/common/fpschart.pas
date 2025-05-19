@@ -8,6 +8,7 @@ interface
 uses
   Classes, SysUtils, Contnrs, FPImage, fpsTypes, fpsUtils;
 
+  (*
 const
   clsNoLine = -2;
   clsSolid = -1;
@@ -23,7 +24,7 @@ var
   clsLongDash: Integer = -1;
   clsLongDashDot: Integer = -1;
   clsLongDashDotDot: Integer = -1;
-
+    *)
 const
   DEFAULT_CHART_LINEWIDTH = 0.75;  // pts
   DEFAULT_CHART_FONT = 'Arial';
@@ -55,14 +56,22 @@ type
   TsChartSeries = class;
 
   TsChartLine = class
-    Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
-    Width: Double;         // mm
+  private
+    function GetStyle: TsChartLinePatternStyle;
+    procedure SetStyle(AValue: TsChartLinePatternStyle);
+  public
+    PatternIndex: Integer;  // Index into global RawLinePatternList
+    Width: Single;         // mm
     Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
     constructor Create;
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
-    procedure SelectPatternLine(ALineStyle: Integer; AColor: TsChartColor; ALineWidth: Double = -1.0);
-    procedure SelectSolidLine(AColor: TsChartColor; ALineWidth: Double = -1.0);
+    function IsHidden: Boolean;
+    procedure SelectNoLine;
+    procedure SelectPatternLine(ALineStyle: TsChartLinePatternStyle; AColor: TsChartColor; ALineWidth: Single = -1.0);
+    procedure SelectPatternLine(APatternIndex: Integer; AColor: TsChartColor; ALineWidth: Single = -1.0);
+    procedure SelectSolidLine(AColor: TsChartColor; ALineWidth: Single = -1.0);
+    property Style: TsChartLinePatternStyle read GetStyle write SetStyle;
   end;
 
   TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular, cgsShape);
@@ -200,9 +209,8 @@ type
     procedure SelectNoFill;
     procedure SelectPatternFill(APatternIndex: Integer);
     procedure SelectSolidFill(AColor: TsChartColor);
-//    procedure SelectSolidPatternFill(APatternIndex: Integer; ABackColor: TsChartColor);
   end;
-
+                   (*
   TsChartLineSegment = record
     Length: Double;       // mm or % of linewidth
     Count: Integer;
@@ -229,7 +237,7 @@ type
       ADistance: Double; ARelativeToLineWidth: Boolean): Integer;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartLineStyle read GetItem write SetItem; default;
-  end;
+  end;        *)
 
   TsChartCellAddr = class
   private
@@ -568,6 +576,7 @@ type
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
     function GetCount: Integer;
+    function GetDefaultSeriesColor: TsChartColor;
     function GetXAxis: TsChartAxis;
     function GetYAxis: TsChartAxis;
     function GetXCount: Integer;
@@ -823,7 +832,6 @@ type
     FLegend: TsChartLegend;
     FSeriesList: TsChartSeriesList;
 
-    FLineStyles: TsChartLineStyleList;
     FGradients: TsChartGradientList;
     FFillPatterns: TsChartFillPatternList;
     FImages: TsChartImageList;
@@ -841,9 +849,9 @@ type
     procedure DeleteSeries(AIndex: Integer);
 
     function GetChartType: TsChartType;
-    function GetLineStyle(AIndex: Integer): TsChartLineStyle;
+//    function GetLineStyle(AIndex: Integer): TsChartLineStyle;
     function IsScatterChart: Boolean;
-    function NumLineStyles: Integer;
+//    function NumLineStyles: Integer;
 
     { Name for internal purposes to identify the chart during reading from file }
     property Name: String read FName write FName;
@@ -913,7 +921,6 @@ type
     property Series: TsChartSeriesList read FSeriesList write FSeriesList;
 
     { Style lists }
-    property LineStyles: TsChartLineStyleList read FLineStyles;
     property Gradients: TsChartGradientList read FGradients;
     property FillPatterns: TsChartFillPatternList read FFillPatterns;
     property Images: TsChartImageList read FImages;
@@ -962,7 +969,7 @@ end;
 constructor TsChartLine.Create;
 begin
   inherited Create;
-  SelectSolidLine(ChartColor(scBlack), DEFAULT_CHART_LINEWIDTH);
+  SelectSolidLine(ChartColor(scBlack), PtsToMM(DEFAULT_CHART_LINEWIDTH));
 end;
 
 { Creates a line with solid "pattern". }
@@ -982,14 +989,49 @@ begin
   end;
 end;
 
-{ Assigns a patterned line to the TsChartLine instance.
-  - ALineStyle ... Index into the charts LineStyles list, see also clsXXXX variables
+function TsChartLine.GetStyle: TsChartLinePatternStyle;
+begin
+  if (PatternIndex >= 0) and (PatternIndex < ord(clsCustom)) then
+    Result := TsChartLinePatternStyle(PatternIndex)
+  else
+    Result := clsCustom;
+end;
+
+{@@ Returns true when the line is hidden, i.e. its style is set to clsNoLine }
+function TsChartLine.IsHidden: Boolean;
+begin
+  Result := (PatternIndex = ord(clsNoLine));
+end;
+
+{@@ Switches the line to be hidden. }
+procedure TsChartLine.SelectNoLine;
+begin
+  Style := clsNoLine;
+end;
+
+{@@ Assigns a predefined patterned line to the TsChartLine instance.
+  - ALineStyle ... a clsXXXX enumeration element of TsChartLinePatternStyle
   - AColor ....... Color of the line
   - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
-procedure TsChartLine.SelectPatternLine(ALineStyle: Integer;
-  AColor: TsChartColor; ALineWidth: Double = -1.0);
+procedure TsChartLine.SelectPatternLine(ALineStyle: TsChartLinePatternStyle;
+  AColor: TsChartColor; ALineWidth: Single = -1.0);
 begin
   Style := ALineStyle;
+  Color := AColor;
+  if ALineWidth < 0 then
+    Width := PtsToMM(DEFAULT_CHART_LINEWIDTH)
+  else
+    Width := ALineWidth;
+end;
+
+{ Assigns a patterned line to the TsChartLine instance.
+  - APatternIndex . Index into the global RawLinePatterns list, see also clsXXXX variables
+  - AColor ........ Color of the line
+  - ALineWidth .... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+procedure TsChartLine.SelectPatternLine(APatternIndex: Integer;
+  AColor: TsChartColor; ALineWidth: Single = -1.0);
+begin
+  PatternIndex := APatternIndex;
   Color := AColor;
   if ALineWidth = -1.0 then
     Width := PtsToMM(DEFAULT_CHART_LINEWIDTH)
@@ -1000,9 +1042,14 @@ end;
 { Makes the TsChartLine instance a solid line:
   - AColor ....... Color of the line
   - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
-procedure TsChartLine.SelectSolidline(AColor: TsChartColor; ALineWidth: Double = -1.0);
+procedure TsChartLine.SelectSolidline(AColor: TsChartColor; ALineWidth: Single = -1.0);
 begin
   SelectPatternLine(clsSolid, AColor, ALineWidth);
+end;
+
+procedure TsChartLine.SetStyle(AValue: TsChartLinePatternStyle);
+begin
+  PatternIndex := ord(AValue);
 end;
 
 
@@ -1558,6 +1605,9 @@ begin
   inherited Create;
   Style := cfsSolidFill;
   Color := ChartColor(scBlack);
+  Gradient := -1;
+  Pattern := -1;
+  Image := -1;
 end;
 
 constructor TsChartFill.CreateSolidFill(AColor: TsChartColor);
@@ -1621,7 +1671,7 @@ begin
   Style := cfsSolidFill;
 end;
 
-
+          (*
 { TsChartLineStyle }
 
 procedure TsChartLineStyle.CopyFrom(ASource: TsChartLineStyle);
@@ -1694,7 +1744,7 @@ end;
 procedure TsChartLineStyleList.SetItem(AIndex: Integer; AValue: TsChartLineStyle);
 begin
   TsChartLineStyle(inherited Items[AIndex]).CopyFrom(AValue);
-end;
+end;          *)
 
 
 { TsChartCellAddr }
@@ -1820,14 +1870,9 @@ constructor TsChartFillElement.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FBackground := TsChartFill.Create;
-  FBackground.Style := cfsSolidFill;
-  FBackground.Color := ChartColor(scWhite);
-  FBackground.Gradient := -1;
-  FBackground.Pattern := -1;
+  FBackground.SelectSolidFill(ChartColor(scWhite));
   FBorder := TsChartLine.Create;
-  FBorder.Style := clsSolid;
-  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FBorder.Color := ChartColor(scBlack);
+  FBorder.SelectSolidLine(ChartColor(scBlack));
 end;
 
 destructor TsChartFillElement.Destroy;
@@ -1871,8 +1916,8 @@ end;
 constructor TsChartText.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
-  FBorder.Style := clsNoLine;
-  FBackground.Style := cfsNoFill;
+  FBorder.SelectNoLine;
+  FBackground.SelectNoFill;
 
   FFont := TsFont.Create;
   FFont.Size := 10;
@@ -1931,22 +1976,16 @@ begin
   FShowLabels := true;
 
   FAxisLine := TsChartLine.Create;
-  FAxisLine.Color := ChartColor(scBlack);
-  FAxisLine.Style := clsSolid;
-  FAxisLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FAxisLine.SelectSolidLine(ChartColor(scBlack));
 
   FMajorTicks := [catOutside];
   FMinorTicks := [];
 
   FMajorGridLines := TsChartLine.Create;
-  FMajorGridLines.Color := ChartColor(scSilver);
-  FMajorGridLines.Style := clsSolid;
-  FMajorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FMajorGridLines.SelectSolidLine(ChartColor(scSilver));
 
   FMinorGridLines := TsChartLine.Create;
-  FMinorGridLines.Color := ChartColor(scSilver);
-  FMinorGridLines.Style := clsDash;
-  FMinorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FMinorGridLines.SelectPatternLine(clsDash, ChartColor(scSilver));
 
   FLogarithmic := false;
   FLogBase := 10.0;
@@ -2258,9 +2297,7 @@ begin
   inherited Create(ASeries.Chart);
   FSeries := ASeries;
   FLine := TsChartLine.Create;
-  FLine.Style := clsSolid;
-  FLine.Color := ChartColor(scBlack);
-  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FLine.SelectSolidLine(ChartColor(scBlack));
   FRange[0] := TsChartRange.Create(ASeries.Chart);
   FRange[1] := TsChartRange.Create(ASeries.Chart);
   FShow[0] := false;
@@ -2398,15 +2435,12 @@ begin
   FGroupIndex := -1;
 
   FFill := TsChartFill.Create;
-  FFill.Style := cfsSolidFill;
-  FFill.Color := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
+  FFill.SelectSolidFill(GetDefaultSeriesColor);
   FFill.Gradient := -1;
   FFill.Pattern := -1;
 
   FLine := TsChartLine.Create;
-  FLine.Style := clsSolid;
-  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FLine.Color := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
+  FLine.SelectSolidLine(GetDefaultSeriesColor);
 
   FDataPointStyles := TsChartDataPointStyleList.Create(AChart);
 
@@ -2414,12 +2448,11 @@ begin
   FLabelFont.Size := 9;
 
   FLabelBorder := TsChartLine.Create;
-  FLabelBorder.Color := ChartColor(scBlack);
-  FLabelBorder.Style := clsNoLine;
+  FLabelBorder.SelectNoLine;
 
   FLabelBackground := TsChartFill.Create;
   FLabelBackground.Color := ChartColor(scWhite);
-  FLabelBackground.Style := cfsNoFill;
+  FLabelBackground.SelectNoFill;
 
   FLabelSeparator := ' ';
   FLabelFormatPercent := '0%';
@@ -2458,6 +2491,11 @@ end;
 function TsChartSeries.GetCount: Integer;
 begin
   Result := GetYCount;
+end;
+
+function TsChartSeries.GetDefaultSeriesColor: TsChartColor;
+begin
+  Result := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
 end;
 
 function TsChartSeries.GetXAxis: TsChartAxis;
@@ -2725,12 +2763,10 @@ begin
   FShowLines := true;
 
   FSymbolBorder := TsChartLine.Create;
-  FSymbolBorder.Style := clsSolid;
-  FSymbolBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FSymbolBorder.Color := ChartColor(scBlack);
+  FSymbolBorder.SelectSolidLine(ChartColor(scBlack));
 
   FSymbolFill := TsChartFill.Create;
-  FSymbolFill.Style := cfsNoFill;
+  FSymbolFill.SelectNoFill;
 end;
 
 destructor TsCustomLineSeries.Destroy;
@@ -2804,11 +2840,9 @@ begin
   Font := TsFont.Create;
   Font.Size := 9;
   Border := TsChartLine.Create;
-  Border.Style := clsNoLine;
-  Border.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  Border.Color := ChartColor(scBlack);
+  Border.SelectNoLine;
   Fill := TsChartFill.Create;
-  Fill.Color := ChartColor(scWhite);
+  Fill.SelectSolidFill(ChartColor(scWhite));
   XName := 'x';
   YName := 'f(x)';
 end;
@@ -2823,12 +2857,12 @@ end;
 
 function TsTrendlineEquation.DefaultBorder: Boolean;
 begin
-  Result := Border.Style = clsNoLine;
+  Result := (Border.Style = clsNoLine);
 end;
 
 function TsTrendlineEquation.DefaultFill: Boolean;
 begin
-  Result := Fill.Style = cfsNoFill;
+  Result := (Fill.Style = cfsNoFill);
 end;
 
 function TsTrendlineEquation.DefaultFont: Boolean;
@@ -2864,9 +2898,7 @@ begin
   inherited Create;
 
   Line := TsChartLine.Create;
-  Line.Style := clsSolid;
-  Line.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  Line.Color := ChartColor(scBlack);
+  Line.SelectSolidLine(ChartColor(scBlack));
 
   Equation := TsTrendlineEquation.Create;
 end;
@@ -2993,7 +3025,9 @@ begin
   inherited Create(nil);
 
   CreateRawFillPatterns;
+  CreateRawLinePatterns;
 
+  {
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
   clsDot := FLineStyles.Add('dot', 500, 1, 0, 0, 500, true);
@@ -3002,6 +3036,7 @@ begin
   clsLongDash := FLineStyles.Add('long dash', 2400, 1, 0, 0, 800, true);
   clsLongDashDot := FLineStyles.Add('long dash-dot', 1600, 1, 800, 1, 800, true);
   clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 1600, 1, 800, 2, 800, true);
+  }
    {
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
   clsDot := FLineStyles.Add('dot', 150, 1, 0, 0, 150, true);
@@ -3086,8 +3121,8 @@ begin
   FImages.Free;
   FFillPatterns.Free;
   FGradients.Free;
-  FLineStyles.Free;
 
+  DestroyRawLinePatterns;
   DestroyRawFillPatterns;
 
   inherited;
@@ -3127,25 +3162,26 @@ begin
   end else
     Result := ctEmpty;
 end;
-
+                     {
 function TsChart.GetLineStyle(AIndex: Integer): TsChartLineStyle;
 begin
   if AIndex >= 0 then
     Result := FLineStyles[AIndex]
   else
     Result := nil;
-end;
+end;                  }
 
 function TsChart.IsScatterChart: Boolean;
 begin
   Result := GetChartType = ctScatter;
 end;
 
+{
 function TsChart.NumLineStyles: Integer;
 begin
   Result := FLineStyles.Count;
 end;
-
+}
 
 { TsChartList }
 

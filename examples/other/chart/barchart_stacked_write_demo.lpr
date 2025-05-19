@@ -21,7 +21,7 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
-  fn: String;
+  fn, dir: String;
   i: Integer;
   rotated: Boolean = false;
   stackedPercentage: Boolean = false;
@@ -43,6 +43,9 @@ begin
           fn := fn + '-percentage';
         end;
     end;
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
 
   book := TsWorkbook.Create;
   try
@@ -83,7 +86,7 @@ begin
     ser.SetLabelRange(3, 0, 6, 0);
     ser.SetYRange(3, 1, 6, 1);
     ser.Fill.Color := ChartColor($3810F3);
-    ser.Line.Style := clsNoLine;
+    ser.Line.SelectNoLine;
 
     // Add 2nd bar series ("Product B")
     ser := TsBarSeries.Create(ch);
@@ -93,10 +96,10 @@ begin
     ser.Fill.Color := ChartColor($4200A8);
     ser.Line.Style := clsNoLine;
 
-    book.WriteToFile(fn + '.xlsx', true);
+    book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('Data saved with chart in ', fn + '.xlsx');
 
-    book.WriteToFile(fn + '.ods', true);
+    book.WriteToFile(dir + fn + '.ods', true);
     WriteLn('Data saved with chart in ', fn + '.ods');
   finally
     book.Free;
