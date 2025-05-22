@@ -1982,10 +1982,10 @@ begin
   FMinorTicks := [];
 
   FMajorGridLines := TsChartLine.Create;
-  FMajorGridLines.SelectSolidLine(ChartColor(scSilver));
+  FMajorGridLines.SelectSolidLine(ChartColor($b3b3b3));
 
   FMinorGridLines := TsChartLine.Create;
-  FMinorGridLines.SelectPatternLine(clsDash, ChartColor(scSilver));
+  FMinorGridLines.SelectSolidLine(ChartColor($dddddd));
 
   FLogarithmic := false;
   FLogBase := 10.0;

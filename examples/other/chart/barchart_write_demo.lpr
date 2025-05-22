@@ -79,7 +79,7 @@ begin
     sheet.WriteText( 9, 0, 'Physics');   sheet.WriteNumber( 9, 1, 12);          sheet.WriteNumber( 9, 2, 19);
     sheet.WriteText(10, 0, 'Computer');  sheet.WriteNumber(10, 1, 16);          sheet.WriteNumber(10, 2, 18);
 
-    // Create chart: left/top in cell D4, 160 mm x 100 mm
+    // Create chart: 160 mm x 100 mm, left/top corner in cell D4
     ch := sheet.AddChart(160, 100, 2, 3);
 
     // Chart properties

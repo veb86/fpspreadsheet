@@ -814,19 +814,32 @@ begin
   // no line
   AddPattern(GetRawLinePatternName(clsNoLine), 0, 0, 0, 0, 0, cluMillimeters);
   // fine dots
-  AddPattern(GetRawLinePatternName(clsFineDot), 120, 1, 0, 0, 120, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsFineDot), 120, 1, 0, 0, 160, cluPercentage);
   // dotted
-  AddPattern(GetRawLinePatternName(clsDot), 120, 1, 0, 0, 500, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsDot), 120, 1, 0, 0, 340, cluPercentage);
   // dashed  (- - - - )
-  AddPattern(GetRawLinePatternName(clsDash), 800, 1, 0, 0, 600, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsDash), 400, 1, 0, 0, 340, cluPercentage);
   // dash-dot  (- . - . - )
-  AddPattern(GetRawLinePatternName(clsDashDot), 800, 1, 120, 1, 600, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsDashDot), 400, 1, 90, 1, 340, cluPercentage);
   // long dash  (--  --  --)
-  AddPattern(GetRawLinePatternName(clsLongDash), 2400, 1, 0, 0, 600, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsLongDash), 820, 1, 0, 0, 340, cluPercentage);
   // long dash-dot  (-- . -- . -- . )
-  AddPattern(GetRawLinePatternName(clsLongDashDot), 2400, 1, 120, 1, 600, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsLongDashDot), 820, 1, 90, 1, 340, cluPercentage);
   // long dash-dot-dot  (-- . . -- . . )
-  AddPattern(GetRawLinePatternName(clsLongDashDotDot), 2400, 1, 120, 2, 600, cluPercentage);
+  AddPattern(GetRawLinePatternName(clsLongDashDotDot), 820, 1, 90, 2, 340, cluPercentage);
+
+  (*
+  // dashed  (- - - - )
+  AddPattern(GetRawLinePatternName(clsDash), 600, 1, 0, 0, 500, cluPercentage);
+  // dash-dot  (- . - . - )
+  AddPattern(GetRawLinePatternName(clsDashDot), 600, 1, 120, 1, 500, cluPercentage);
+  // long dash  (--  --  --)
+  AddPattern(GetRawLinePatternName(clsLongDash), 1200, 1, 0, 0, 600, cluPercentage);
+  // long dash-dot  (-- . -- . -- . )
+  AddPattern(GetRawLinePatternName(clsLongDashDot), 1200, 1, 120, 1, 600, cluPercentage);
+  // long dash-dot-dot  (-- . . -- . . )
+  AddPattern(GetRawLinePatternName(clsLongDashDotDot), 1200, 1, 120, 2, 600, cluPercentage);
+  *)
 end;
 
 function TsRawLinePatternList.AddOrReplace(APattern: TsRawLinePattern): Integer;
