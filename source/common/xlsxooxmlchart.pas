@@ -1274,7 +1274,7 @@ begin
               'a:noFill':
                 noLine := true;
               'a:solidFill':
-                AChartLine.SelectSolidLine(ReadChartColorDef(child.FirstChild, ChartColor(scBlack)));
+                AChartLine.SelectSolidLine(ReadChartColorDef(child.FirstChild, ChartColor(scBlack)), AChartLine.Width);
               'a:prstDash':
                 begin
                   s := GetAttrValue(child, 'val');
