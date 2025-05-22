@@ -239,7 +239,7 @@ procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 procedure InitFormatRecord(out AValue: TsCellFormat);
 function InitFormatSettings(AWorkbook: TsBasicWorkbook): TFormatSettings;
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
-  AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
+  AOffsetX, AOffsetY, AScaleX, AScaleY: Double; ARotationAngle: Double = 0.0);
 procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
 
 //procedure CopyCellValue(AFromCell, AToCell: PCell);
@@ -2839,7 +2839,7 @@ end;
   @returns TsImage record containing these values.
 -------------------------------------------------------------------------------}
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
-  AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
+  AOffsetX, AOffsetY, AScaleX, AScaleY: Double; ARotationAngle: Double = 0.0);
 begin
   AValue.Row := ARow;
   AValue.Col := ACol;
@@ -2847,6 +2847,7 @@ begin
   AValue.OffsetY := AOffsetY;
   AValue.ScaleX := AScaleX;
   AValue.ScaleY := AScaleY;
+  AValue.RotationAngle := ARotationAngle;
   AValue.Picture := nil;     // to be initialized by viewing application
   AValue.Index := -1;
   AValue.HyperlinkTarget := '';

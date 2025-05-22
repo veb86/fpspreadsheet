@@ -129,7 +129,7 @@ type
     procedure ReadDifferentialFormat(ANode: TDOMNode);
     procedure ReadDifferentialFormats(ANode: TDOMNode);
     procedure ReadDimension(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadDrawing(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadDrawingXML(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDrawingRels(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadEmbeddedObjs(AStream: TStream);
     procedure ReadFileVersion(ANode: TDOMNode);
@@ -146,7 +146,7 @@ type
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
+    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARowIndex: Cardinal);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetList(ANode: TDOMNode);
@@ -443,6 +443,7 @@ type
     XPos, YPos, Width, Height: Double;
     FromRow, FromCol, ToRow, ToCol: Cardinal;
     FromRowOffs, FromColOffs, ToRowOffs, ToColOffs: Double;
+    RotationAngle: Double;
     // This part is for header/footer images.
     HFImgPosition: string; // 'LH', 'CH', 'RH', 'LF', 'CF', 'RF';
     HFImgWidth: Double;
@@ -2716,7 +2717,7 @@ end;
 
 { Reads the parameters of the embedded images defined as children of the 
   specified node which is in a drawingX.xml file. }
-procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode; 
+procedure TsSpreadOOXMLReader.ReadDrawingXML(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 
   procedure ReadXdrFromTo(ANode: TDOMNode;
@@ -2742,13 +2743,22 @@ procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode;
     end;
   end;
 
-  procedure ReadXdrPic(ANode: TDOMNode; out rId: String; out AFileName: String);
+  procedure ReadXdrPic(ANode: TDOMNode; out rId: String; out AFileName: String;
+    out AWidth, AHeight: Double; out ARotationAngle: Double);
   var
     nodeName: String;
-    child: TDOMNode;
+    child, child1: TDOMNode;
+    s: String;
   begin
+    rID := '';
+    AFileName := '';
+    AWidth := 0.0;
+    AHeight := 0.0;
+    ARotationAngle := 0.0;
+
     if ANode = nil then
       exit;
+
     while Assigned(ANode) do
     begin
       nodeName := ANode.NodeName;
@@ -2772,6 +2782,32 @@ procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode;
               nodeName := child.NodeName;
               if nodeName = 'xdr:cNvPr' then
                 AFileName := GetAttrValue(child, 'descr');
+              child := child.NextSibling;
+            end;
+          end;
+        'xdr:spPr':
+          begin
+            child := ANode.FirstChild;
+            while Assigned(child) do begin
+              nodeName := child.NodeName;
+              if nodeName = 'a:xfrm' then
+              begin
+                // Rotation of the image. 60000 is 1 degree.
+                ARotationAngle := StrToFloatDef(GetAttrValue(child, 'rot'), 0, FPointSeparatorSettings) / 60000;
+                child1 := child.FirstChild;
+                while Assigned(child1) do
+                begin
+                  nodename := child1.NodeName;
+                  if nodeName = 'a:ext' then
+                  begin
+                    // 'cx' is the width of the image in EMUs.
+                    AWidth := EMUToMM(StrToInt64Def(GetAttrValue(child1, 'cx'), 0));
+                    // 'cy' is the height of hte image in EMUs.
+                    AHeight := EMUToMM(StrToInt64Def(GetAttrValue(child1, 'cy'), 0));
+                  end;
+                  child1 := child1.NextSibling;
+                end;
+              end;
               child := child.NextSibling;
             end;
           end;
@@ -2840,7 +2876,7 @@ var
   node: TDOMNode;
   nodeName: String = '';
   rID, fileName: String;
-  xPos, yPos, horExt, vertExt: Double;
+  xPos, yPos, horExt, vertExt, rotAngle: Double;
   fromCol, fromRow, toCol, toRow: Cardinal;
   fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
   isChart: Boolean;
@@ -2857,7 +2893,6 @@ begin
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
-    nodeName := ANode.NodeName;
     xPos := 0.0;                             yPos := 0.0;
     horExt := -1.0;                          vertExt := -1.0;
     fromCol := UNASSIGNED_ROW_COL_INDEX;     fromColOffs := 0.0;
@@ -2867,6 +2902,7 @@ begin
     rID := '';                               fileName := '';
     isChart := false;
     graphicFrameName := '';
+    nodeName := ANode.NodeName;
     if nodeName = 'xdr:absoluteAnchor' then
     begin
       node := ANode.FirstChild;
@@ -2888,8 +2924,27 @@ begin
         end;
         node := node.NextSibling
       end;
-    end
-    else
+    end else
+    if nodeName = 'xdr:oneCellAnchor' then
+    begin
+      node := ANode.FirstChild;
+      while Assigned(node) do begin
+        nodeName := node.NodeName;
+        case nodeName of
+          'xdr:from':
+            ReadXdrFromTo(node.FirstChild, fromRow, fromCol, fromRowOffs, fromColOffs);
+          'xdr:pic':
+            begin
+              ReadXdrPic(node.FirstChild, rId, fileName, horExt, vertExt, rotAngle);
+              toColOffs := toColOffs + horExt;
+              toRowOffs := toRowOffs + vertExt;
+            end;
+        end;
+        node := node.NextSibling;
+      end;
+      toCol:=fromCol;
+      toRow:=fromRow;
+    end else
     if nodeName = 'xdr:twoCellAnchor' then
     begin
       node := ANode.FirstChild;
@@ -2901,7 +2956,7 @@ begin
           'xdr:to':
             ReadXdrFromTo(node.FirstChild, toRow, toCol, toRowOffs, toColOffs);
           'xdr:pic':
-            ReadXdrPic(node.FirstChild, rID, filename);
+            ReadXdrPic(node.FirstChild, rID, filename, horExt, vertExt, rotAngle);
           'xdr:graphicFrame':
             ReadXdrGraphicFrame(node.FirstChild, graphicFrameName, rID, isChart);
         end;
@@ -2930,9 +2985,13 @@ begin
       data.FromRowOffs := fromRowOffs;
       data.ToRow := toRow;
       data.ToRowOffs := toRowOffs;
+      data.RotationAngle := rotAngle;
       data.RelId := rId;
-      data.FileName := fileName;
       data.MediaName := MakeXLPath(sheetData.DrawingRels.FindTarget(rID));
+      if fileName <> '' then
+        data.FileName := filename
+      else
+        data.FileName := ExtractFileName(data.MediaName);
       data.ImgIndex := -1;
       data.Worksheet := AWorksheet;
       data.IsChart := isChart;
@@ -3029,7 +3088,7 @@ begin
             raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
           ReadXMLStream(doc, XMLStream);
           relsFn := RelsFileFor(fn);
-          ReadDrawing(doc.DocumentElement, sheet);
+          ReadDrawingXML(doc.DocumentElement, sheet);
           FreeAndNil(doc);
         finally
           XMLStream.Free;
@@ -3133,7 +3192,8 @@ begin
           sheet.WriteImage(data.FromRow, data.FromCol,
             data.ImgIndex,
             data.FromColOffs, data.FromRowOffs,
-            scaleX, scaleY
+            scaleX, scaleY,
+            data.RotationAngle
           );
         end;
       end;
@@ -3854,7 +3914,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadRow(ANode: TDOMNode;
-  AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
+  AWorksheet: TsBasicWorksheet; ARowIndex: Cardinal);
 var
   s: String;
   r: Cardinal;
@@ -4695,6 +4755,7 @@ begin
     end;
     rownode := rownode.NextSibling;
   end;
+
   FixCols(AWorksheet);
   FixRows(AWorksheet);
 end;

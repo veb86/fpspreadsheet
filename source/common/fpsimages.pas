@@ -55,6 +55,7 @@ type
     FImageType: TsImageType;  // image type, see itXXXX
     FWidth: Double;           // image width, in mm
     FHeight: Double;          // image height, in mm
+    FRotAngle: Double;        // Rotation angle, in degrees
     FBelongsToChart: Integer; // > -1 indicates that obj belongs to a chart having this index, needed by ODS.
   protected
     function CheckStream(AImageType: TsImageType): Boolean;
@@ -69,6 +70,7 @@ type
     property ImageType: TsImagetype read FImageType;
     property ImageWidth: Double read FWidth write FWidth;
     property ImageHeight: Double read FHeight write FHeight;
+    property RotationAngle: Double read FRotAngle write FRotAngle;
     property Stream: TMemoryStream read FStream;
   end;
 

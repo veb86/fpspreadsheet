@@ -30,36 +30,6 @@ begin
   AScaleX := AWidth / embObj.ImageWidth;
   AScaleY := AHeight / embObj.ImageHeight;
 end;
-(*
-var
-  colW, rowH, sum: Double;
-  embobj: TsEmbeddedObj;
-begin
-  ACol := 0;
-  sum := 0;
-  colW := GetColWidth(0, FWorkbook.Units);
-  while (sum + colW < x) do begin
-    sum := sum + colW;
-    inc(ACol);
-    colW := GetColWidth(ACol, FWorkbook.Units);
-  end;
-  AColOffs := x - sum;
-
-  ARow := 0;
-  sum := 0;
-  rowH := CalcRowHeight(0);
-  while (sum + rowH < y) do begin
-    sum := sum + rowH;
-    inc(ARow);
-    rowH := CalcRowHeight(ARow);
-  end;
-  ARowOffs := y - sum;
-
-  embObj := FWorkbook.GetEmbeddedObj(AIndex);
-  AScaleX := AWidth / embObj.ImageWidth;
-  AScaleY := AHeight / embObj.ImageHeight;
-end;
-*)
 
 { Calculates the row/col indices of the top/left corner of an embedded object
   or chart (...) for which the x and y coordinates are given in millimeters.
@@ -270,12 +240,13 @@ end;
 
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
-  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0;
+  ARotationAngle: Double = 0.0): Integer;
 var
   img: PsImage;
 begin
   New(img);
-  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
+  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY, ARotationAngle);
   img^.Index := AImageIndex;
   Result := FImages.Add(img);
 end;

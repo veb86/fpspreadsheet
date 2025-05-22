@@ -1108,6 +1108,7 @@ type
     @member  OffsetY            Vertical displacement of the image relative to the top/left corner of the anchor cell (in millimeters)
     @member  ScaleX             Horizontal scaling factor of the image
     @member  ScaleY             Vertical scaling factor of the image
+    @member  RotationAngle      Rotation angle of the image, in degrees
     @member  Picture            Used internally by TPicture to display the image in the worksheet grid
     @member  HyperlinkTarget    Hyperlink assigned to the image
     @member  HyperlinkToolTip   Tooltip for the hyperlink of the image }
@@ -1115,7 +1116,8 @@ type
     Row, Col: Cardinal;       
     Index: Integer;           
     OffsetX, OffsetY: Double; 
-    ScaleX, ScaleY: Double;   
+    ScaleX, ScaleY: Double;
+    RotationAngle: Double;
     Picture: TObject;         
     HyperlinkTarget: String;  
     HyperlinkToolTip: String; 

@@ -4271,9 +4271,8 @@ begin
       for i:=0 to AWorkbook.GetEmbeddedObjCount-1 do
       begin
         embObj := AWorkbook.GetEmbeddedObj(i);
-        AStrings.Add('  Filename='+embobj.FileName);
-        AStrings.Add(Format('  ImageWidth=%.2f mm', [embObj.ImageWidth]));
-        AStrings.Add(Format('  ImageHeight=%.2f mm', [embObj.ImageHeight]));
+        AStrings.Add('  Image%d=%s, w=%.2f mm, h=%.2f mm', [
+          i, embobj.FileName, embObj.ImageWidth, embObj.ImageHeight]);
       end;
     end else
       AStrings.Add('(+) Images=(dblclick for more...)');
@@ -4517,6 +4516,7 @@ begin
         AStrings.Add(Format('  OffsetY=%.2f mm', [img.OffsetY]));
         AStrings.Add(Format('  ScaleX=%.2f', [img.ScaleX]));
         AStrings.Add(Format('  ScaleY=%.2f', [img.ScaleY]));
+        AStrings.Add(Format('  RotationAngle=%.1f°', [img.RotationAngle]));
         AStrings.Add(Format('  HyperlinkTarget=%s', [img.HyperlinkTarget]));
         AStrings.Add(Format('  HyperlinkTooltip=%s', [img.HyperlinkToolTip]));
       end;

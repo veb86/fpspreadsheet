@@ -4907,9 +4907,10 @@ var
 
 begin
   Unused(AData);
-  if WorkbookSource.UsesBuiltinWorkbook then
+  {
+  if WorkbookSource.UsesBuiltinWorkbook then        // wp: removed 2025-05-25. Why was this here?
     exit;
-
+   }
   {$IFDEF GRID_DEBUG}
   if Worksheet <> nil then
     DebugNotification('BEFORE ListenerNotification WorksheetGrid "' + Worksheet.Name + '":');

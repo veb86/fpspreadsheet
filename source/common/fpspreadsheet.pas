@@ -635,7 +635,7 @@ type
       AScaleY: Double = 1.0; ASize: Int64 = -1): Integer; overload;
     function WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
-      AScaleY: Double = 1.0): Integer; overload;
+      AScaleY: Double = 1.0; ARotationAngle: Double = 0.0): Integer; overload;
     procedure AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
       AToolTip: String = '');
 
