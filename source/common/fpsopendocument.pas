@@ -5111,16 +5111,59 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
   ARow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
   ACol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
 
+  // Example for s: skewX (7.75940943781828E-017) rotate (1.0471975511966) translate (0.014cm -0.023cm)
+  procedure AnalyzeTransform(s: String; var SkewX, RotAngle, dX, dY: Double);
+  var
+    sa: TStringArray;
+    i: Integer;
+    valueStr: String;
+    relative: Boolean;
+  begin
+    SkewX := 0.0;
+    RotAngle := 0.0;
+    dX := 0.0;
+    dy := 0.0;
+    sa := s.Split(' ');
+    for i := 0 to High(sa) do
+      case sa[i] of
+        'skewX':
+          begin
+            valueStr := Copy(sa[i+1], 2, Length(sa[+1])-2);
+            SkewX := StrToFloatDef(valueStr, 0.0, FPointSeparatorSettings);
+          end;
+        'rotate':
+          begin
+            valueStr := Copy(sa[i+1], 2, Length(sa[+1])-2);
+            RotAngle := RadToDeg(StrToFloatDef(valueStr, 0.0, FPointSeparatorSettings));
+          end;
+        'translate':
+          begin
+            valueStr := Copy(sa[i+1], 2, Length(sa[+1])-2);
+            EvalLengthStr(valueStr, dX, relative);
+            valueStr := Copy(sa[i+2], 2, Length(sa[+2])-2);
+            EvalLengthStr(valueStr, dX, relative);
+          end;
+      end;
+  end;
+
   procedure ReadDrawFrame(ANode: TDOMNode; AHLink: String);
   var
     r, c: Cardinal;
-    x, y, w, h: Double;
-    nodeName: String;
+    x: Double = 0.0;
+    y: Double = 0.0;
+    w: Double = 0.0;
+    h: Double = 0.0;
     dx: Double = 0.0;
     dy: Double = 0.0;
     sx: Double = 1.0;
     sy: Double = 1.0;
+    attr: String = '';
+    transfSkew: Double = 0.0;
+    transfAngle: Double = 0.0;
+    transfDX: Double = 0.0;
+    transfDY: Double = 0.0;
     childNode: TDOMNode;
+    nodeName: String;
     i, idx: Integer;
     href: String;
     img: PsImage;
@@ -5131,10 +5174,14 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
    {$ENDIF}
   begin
     nodeName := ANode.NodeName;
-    x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:x')));
-    y := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:y')));
-    w := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:width')));
-    h := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:height')));
+    attr := GetAttrValue(ANode, 'svg:x');
+    if attr <> '' then x := PtsToMM(HTMLLengthStrToPts(attr));
+    attr := GetAttrValue(ANode, 'svg:y');
+    if attr <> '' then y := PtsToMM(HTMLLengthStrToPts(attr));
+    attr := GetAttrValue(ANode, 'svg:width');
+    if attr <> '' then h := PtsToMM(HTMLLengthStrToPts(attr));
+    attr := GetAttrValue(ANode, 'draw:transform');
+    if attr <> '' then AnalyzeTransform(attr, transfSkew, transfAngle, transfDX, transfDY);
     childNode := ANode.FirstChild;
     while Assigned(childNode) do
     begin
@@ -5185,10 +5232,10 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
                 dx := x;
               end;
               idx := WriteImage(r, c, idx, dx, dy, sx, sy);
-              if AHLink <> '' then begin
-                img := GetPointerToImage(idx);
+              img := GetPointerToImage(idx);
+              img^.RotationAngle := transfAngle;
+              if AHLink <> '' then
                 img^.HyperlinkTarget := AHLink;
-              end;
             end;
         end;
       end;

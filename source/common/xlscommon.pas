@@ -342,20 +342,20 @@ type
 
   TDateMode = (dm1900, dm1904); //DATEMODE values, 5.28
 
-  // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
-  function ConvertExcelDateTimeToDateTime
-    (const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
+// Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
+function ConvertExcelDateTimeToDateTime
+  (const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
 
-  // Adjusts TDateTime with the file's base date to get
-  // an Excel float value representing a time/date/datetime
-  function ConvertDateTimeToExcelDateTime
-    (const ADateTime: TDateTime; ADateMode: TDateMode): Double;
+// Adjusts TDateTime with the file's base date to get
+// an Excel float value representing a time/date/datetime
+function ConvertDateTimeToExcelDateTime
+  (const ADateTime: TDateTime; ADateMode: TDateMode): Double;
 
-  // Converts the error byte read from cells or formulas to fps error value
-  function ConvertFromExcelError(AValue: Byte): TsErrorValue;
+// Converts the error byte read from cells or formulas to fps error value
+function ConvertFromExcelError(AValue: Byte): TsErrorValue;
 
-  // Converts an fps error value to the byte code needed in xls files
-  function ConvertToExcelError(AValue: TsErrorValue): byte;
+// Converts an fps error value to the byte code needed in xls files
+function ConvertToExcelError(AValue: TsErrorValue): byte;
 
 type
   { TsSheetData }
@@ -5983,7 +5983,6 @@ begin
   for i:=1 to TsWorkbook(FWorkbook).GetNumCellFormats - 1 do
     WriteXF(AStream, TsWorkbook(Workbook).GetPointerToCellFormat(i), 0);
 end;
-
 
 end.
 

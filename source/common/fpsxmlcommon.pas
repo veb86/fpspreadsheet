@@ -62,6 +62,8 @@ function CreateTempStream(AWorkbook: TsBasicWorkbook;
   AFileNameBase: String): TStream;
 procedure DestroyTempStream(AStream: TStream);
 
+function EvalLengthStr(AText: String; out AValue: Double; out Relative: Boolean): Boolean;
+
 
 implementation
 
@@ -231,6 +233,51 @@ begin
   else
     Result := '';
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Extracts the length from an ods length string, e.g. "3.5cm" or "300%". In the
+  ormer case AValue become 35 (in millimeters), in the latter case AValue is
+  00 and Relative becomes true
+
+  @param   AText     Length string to be analyzed, e.g. "3.5cm"
+  @param   AValue    Numerical value, in cm, or as integer percentage
+  @param   Relative  If true the parameter AValue is a percentage, otherwise a length in millimeters
+-------------------------------------------------------------------------------}
+function EvalLengthStr(AText: String; out AValue: Double; out Relative: Boolean): Boolean;
+var
+  i: Integer;
+  res: Integer;
+  units: String;
+begin
+  Result := false;
+
+  if AText = '' then
+    exit;
+
+  units := '';
+  for i := Length(AText) downto 1 do
+    if AText[i] in ['%', 'm', 'c', 'p', 't', 'i', 'n'] then
+    begin
+      units := AText[i] + units;
+      Delete(AText, i, 1);
+    end;
+  Val(AText, AValue, res);
+  Result := (res = 0);
+  if res = 0 then
+  begin
+    Relative := false;
+    case units of
+      '%': Relative := true;
+      'mm': ;
+      'cm': AValue := AValue * 10;
+      'pt': AValue := PtsToMM(AValue);
+      'in': AValue := InToMM(AValue);
+      else  Result := false;
+    end;
+  end;
+end;
+
+
 {------------------------------------------------------------------------------}
 {                                 Unzipping                                    }
 {------------------------------------------------------------------------------}
