@@ -722,7 +722,7 @@ type
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     {@@ Number of frozen rows which do not scroll }
     property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
-    {@@ Zoom factor }
+    {@@ Zoom factor (a "factor", not a "percentage") }
     property  ZoomFactor: Double read FZoomFactor write SetZoomFactor;
     {@@ Event fired when cell contents or formatting changes }
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
