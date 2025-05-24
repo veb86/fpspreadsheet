@@ -6672,6 +6672,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     descr: String;
     hlink: String;
     xdr_cNvPr: String;
+    rotStr: String = '';
   begin
     book := FWorkbook as TsWorkbook;
     sheet := TsWorksheet(AWorksheet);
@@ -6687,6 +6688,8 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
 
     descr := ExtractFileName(book.GetEmbeddedObj(img.index).Filename);
     if descr = '' then descr := 'image';
+
+    if img.RotationAngle <> 0.0 then rotStr := Format(' rot="%.0f"', [img.RotationAngle * 60000]);
 
     // This part defines the relationship to the graphic and, if available, to
     // a hyperlink.
@@ -6730,7 +6733,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
         '        </a:stretch>' + LE +
         '      </xdr:blipFill>' + LE +
         '      <xdr:spPr>' + LE +
-        '        <a:xfrm>' + LE +
+        '        <a:xfrm%s>' + LE +
         '          <a:off x="%d" y="%d"/>' + LE +
         '          <a:ext cx="%d" cy="%d"/>' + LE +  // size in EMU
         '        </a:xfrm>' + LE +
@@ -6742,6 +6745,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
         '    <xdr:clientData/>' + LE, [
        // i + 3, i+2, descr,
         SCHEMAS_DOC_RELS, RelID,
+        rotStr,                                    // img.RotationAngle
         mmToEMU(x), mmToEMU(y),
         mmToEMU(w), mmToEMU(h)
     ]));
