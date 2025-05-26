@@ -150,8 +150,7 @@ function GetRawLinePatternIndex(AElement1Length: Single; AElement1Count: Integer
 function GetRawLinePatternName(APatternStyle: TsChartLinePatternStyle): String;
 
 function RegisterRawLinePattern(AName: String;
-  AElementLength: Single; AElementCount: Integer;
-  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
+  AElementLength: Single;  ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
 function RegisterRawLinePattern(AName: String;
   AElement1Length: Single; AElement1Count: Integer;
   AElement2Length: Single; AElement2Count: Integer;
@@ -996,10 +995,10 @@ begin
   Result := PatternName[APatternStyle];
 end;
 
-function RegisterRawLinePattern(AName: String; AElementLength: Single; AElementCount: Integer;
+function RegisterRawLinePattern(AName: String; AElementLength: Single;
   ADistanceLength: Single; AUnit: TsChartLengthUnit): Integer;
 begin
-  Result := RegisterRawLinePattern(AName, AElementLength, AElementCount, 0, 0, ADistanceLength, AUnit);
+  Result := RegisterRawLinePattern(AName, AElementLength, 1, 0, 0, ADistanceLength, AUnit);
 end;
 
 function RegisterRawLinePattern(AName: String;

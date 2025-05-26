@@ -773,7 +773,7 @@ type
     BgColor: TsColor;    // background color (undefined when Style=fsSolidFill)
   end;
 
-  {@@ Style for fill patterns used by charts (predefined indices into RawFillPatternList }
+  {@@ Style for fill patterns used by charts (pre-defined indices into RawFillPatternList }
   TsChartFillPatternStyle = (
     fpsGray05, fpsGray10, fpsGray20, fpsGray25, fpsGray30, fpsGray40,
     fpsGray50, fpsGray60, fpsGray70, fpsGray75, fpsGray80, fpsGray90,
