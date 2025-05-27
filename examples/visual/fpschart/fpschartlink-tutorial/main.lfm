@@ -1,0 +1,86 @@
+object Form1: TForm1
+  Left = 350
+  Height = 400
+  Top = 152
+  Width = 800
+  Caption = 'Form1'
+  ClientHeight = 400
+  ClientWidth = 800
+  LCLVersion = '4.99.0.0'
+  OnCreate = FormCreate
+  object Chart1: TChart
+    Left = 400
+    Height = 400
+    Top = 0
+    Width = 400
+    AxisList = <    
+      item
+        Marks.LabelBrush.Style = bsClear
+        Minors = <>
+        Title.LabelFont.Orientation = 900
+        Title.LabelBrush.Style = bsClear
+      end    
+      item
+        Alignment = calBottom
+        Marks.LabelBrush.Style = bsClear
+        Minors = <>
+        Title.LabelBrush.Style = bsClear
+      end>
+    Align = alRight
+    Visible = False
+  end
+  object sWorkbookTabControl1: TsWorkbookTabControl
+    Left = 0
+    Height = 400
+    Top = 0
+    Width = 395
+    TabIndex = 0
+    Tabs.Strings = (
+      'Tabelle1'
+    )
+    Align = alClient
+    TabOrder = 1
+    WorkbookSource = sWorkbookSource1
+    object sWorksheetGrid1: TsWorksheetGrid
+      Left = 2
+      Height = 375
+      Top = 23
+      Width = 391
+      FrozenCols = 0
+      FrozenRows = 0
+      PageBreakPen.Color = clBlue
+      PageBreakPen.Style = psDash
+      ReadFormulas = False
+      TextOverflow = True
+      WorkbookSource = sWorkbookSource1
+      Align = alClient
+      Anchors = [akTop, akLeft, akBottom]
+      DefaultColWidth = 64
+      DefaultRowHeight = 22
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goThumbTracking, goSmoothScroll]
+      TabOrder = 1
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 395
+    Height = 400
+    Top = 0
+    Width = 5
+    Align = alRight
+    ResizeAnchor = akRight
+    ResizeStyle = rsPattern
+  end
+  object sWorkbookSource1: TsWorkbookSource
+    FileFormat = sfUser
+    Options = []
+    Left = 182
+    Top = 75
+  end
+  object sWorkbookChartLink1: TsWorkbookChartLink
+    Chart = Chart1
+    WorkbookChartIndex = -1
+    WorkbookSource = sWorkbookSource1
+    Left = 490
+    Top = 84
+  end
+end
