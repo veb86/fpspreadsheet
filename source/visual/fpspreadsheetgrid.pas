@@ -10,7 +10,7 @@
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
            distribution, for details about the license.
 -------------------------------------------------------------------------------}
-unit fpspreadsheetgrid;
+unit fpSpreadsheetGrid;
 
 {$mode objfpc}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}

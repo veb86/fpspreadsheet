@@ -10,7 +10,7 @@ LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
          distribution, for details about the license.
 -------------------------------------------------------------------------------}
 
-unit fpspreadsheetchart;
+unit fpSpreadsheetChart;
 
 {$mode objfpc}{$H+}
 {$include ..\fps.inc}

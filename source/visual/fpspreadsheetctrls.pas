@@ -20,7 +20,7 @@
   in the file, and the _WorksheetGrid_ displays the worksheet according
   to the selected tab.
 -------------------------------------------------------------------------------}
-unit fpspreadsheetctrls;
+unit fpSpreadsheetCtrls;
 
 {$MODE objfpc}{$H+}
 {$include ..\fps.inc}

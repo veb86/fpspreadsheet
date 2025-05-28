@@ -25,28 +25,39 @@
 - You also have to copy the OpenSSL DLLs libeay32.dll and ssleay32.dll of the
   correct bitness to the folder docs/wiki of the fpspreadsheed installation.
   
-- Run the script "make_docs.bat" (no Linux script at the moment)
+- Run the script "make_docs.bat" (no Linux script at the moment, but it should
+  be easy to write one...)
 
 - This script downloads the current fpspreadsheet wiki articles and creates
   a chm help file. 
   
   
 --------------------------------------------------------------------------------
-  How to create fpspreadsheet-api (Windows-only)
+  How to create fpspreadsheet-api
 --------------------------------------------------------------------------------
-- Download the program "Doc-o-matic Express" from the site
-  http://www.doc-o-matic.com/download.shtml
+- Download the program "PasDoc" from the site https://pasdoc.github.io/
+  This is a source code documentation tool which extracts documentation from 
+  the comments in the source code.
+  
+- Unzip the download and copy the file "pasdoc.exe" into the "docs/api" subfolder
+  of the FPSpreadsheet installation.
 
-- This is a source code documentation and help authoring tool which constructs
-  a chm help file from comments embedded into the source code.
-
-- Install the program
-
-- Change the variable DOX_CMD in the batch file "builddoc.bat" to point to the 
-  correct folder.
-
+- If not yet done already, compile the program "chmcmd" in folder
+  "packages\chm\src\" of the FPC installation and copy the binary into the 
+  folder "docs/api" of the FPSpreadsheet installation.
+  
 - Run the batch file "builddoc.bat" which extracts the documentation code from
-  the sources and creates the chm file. It may take some time...
+  the sources and creates html files. (If you're not on Windows you must write a
+  corresponding shell script for this task.)
   
+- Run the batch file "make_chm.bat" which compiles a chm file from the html
+  files created in the previous step. There may be some error messages which
+  can be ignored. (If you are not on Windows you must write a corresponding
+  shell script for this task.)
   
+- Alternatively to chmcmd you can also use the Microsoft Help Workshop on
+  Windows: Download the file "htmlhelp.exe" from
+  https://learn.microsoft.com/en-us/previous-versions/windows/desktop/htmlhelp/microsoft-html-help-downloads
+  and install it. In the "make_chm.bat" file activate the corresponding
+  instruction (using hhc.exe) and comment out the chmcmd instruction.
 --------------------------------------------------------------------------------

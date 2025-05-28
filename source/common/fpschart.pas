@@ -1,3 +1,12 @@
+{@@ ----------------------------------------------------------------------------
+  Unit **fpsChart** implements support for charts embedded in spreadsheets.
+
+  AUTHOR:  Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
+
 unit fpsChart;
 
 {$mode objfpc}{$H+}
@@ -8,38 +17,25 @@ interface
 uses
   Classes, SysUtils, Contnrs, FPImage, fpsTypes, fpsUtils;
 
-  (*
 const
-  clsNoLine = -2;
-  clsSolid = -1;
-
-var
-  {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
-    list. Get their value in the constructor of TsChart. Default here to -1
-    which is the code for a solid line, just in case that something goes wrong }
-  clsFineDot: Integer = -1;
-  clsDot: Integer = -1;
-  clsDash: Integer = -1;
-  clsDashDot: Integer = -1;
-  clsLongDash: Integer = -1;
-  clsLongDashDot: Integer = -1;
-  clsLongDashDotDot: Integer = -1;
-    *)
-const
+  {@@ Default width of lines in charts, in Points }
   DEFAULT_CHART_LINEWIDTH = 0.75;  // pts
+
+  {@@ Default font in charts }
   DEFAULT_CHART_FONT = 'Arial';
 
+  {@@ Default colors used by chart series (type @link(TsColor)) }
   DEFAULT_SERIES_COLORS: array[0..7] of TsColor = (
     scRed, scBlue, scGreen, scMagenta, scPurple, scTeal, scBlack, scGray
   );
 
 type
   {@@ Data type alias for transparency of chart colors:
-    Should range between 0.0 and 1.0 (but is not enforced).
-    0.0 is opaque, 1.0 is fully transparent }
+    Single precision value that should range between 0.0 (opaque) and 1.0 (fully transparent)
+    (but this range is not enforced). }
   TsChartTransparency = single;
 
-  {@@ Record describing a color used by charts, includes a Transparency element }
+  {@@ Record describing a color used by charts (@link(TsColor)), includes a Transparency element (@link(TsChartTransparency))}
   TsChartColor = record
     Transparency: TsChartTransparency;
     case Integer of
@@ -48,6 +44,7 @@ type
     end;
 
 const
+  {@@ Chart color which is fully transparent, i.e. inivisible. }
   sccTransparent: TsChartColor = (Transparency: 1.0; Color: 0);
 
 type
@@ -55,14 +52,19 @@ type
   TsChartAxis = class;
   TsChartSeries = class;
 
+  {@@ Class containing the parameters of a line in charts }
   TsChartLine = class
   private
     function GetStyle: TsChartLinePatternStyle;
     procedure SetStyle(AValue: TsChartLinePatternStyle);
   public
-    PatternIndex: Integer;  // Index into global RawLinePatternList
-    Width: Single;         // mm
-    Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
+    {@@ Index into the global raw line pattern list implemented in unit fpsPatterns. }
+    PatternIndex: Integer;
+    {@@ Line width, in millimeters }
+    Width: Single;
+    {@@ Color of the line. This is a @link(TsChartColor) including a Transparency value. }
+    Color: TsChartColor;
+
     constructor Create;
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
@@ -74,41 +76,71 @@ type
     property Style: TsChartLinePatternStyle read GetStyle write SetStyle;
   end;
 
+  {@@ Enumeration of the gradient style supported by charts
+   @value  cgsLinear       Linear gradient
+   @value  cgsAxial        Axial gradient
+   @value  cgsRadial       Radial gradient
+   @value  cgsElliptic     Elliptic gradient
+   @value  cgsSquare       Special case of a rectangular gradient (squar)
+   @value  cgsRectangular  Rectangular gradient
+   @value  cgsShape        Gradient following the shape the filled chart element. }
   TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular, cgsShape);
 
+  {@@ Record describing the properties of a gradient start, end, or intermediate point
+
+   @member  Color   The color at this gradient step position. This is a @link(TsChartColor) including a Transparency value.
+   @member(Value    A floating point value ranging between 0.0 and 1.0,
+                    identifies the relative position in the filled area at which
+                    the specified color is used.)
+   @member  Intensity The intensity of the color a this gradient step, a floating point value between 0.0 and 1.0.
+  }
   TsChartGradientStep = record
-    Value: Double;         // 0.0 ... 1.0
+    Value: Single;         // 0.0 ... 1.0
     Color: TsChartColor;
     Intensity: Double;     // 0.0 ... 1.0
   end;
 
+  {@@ Array of @link(TsChartGradientStep) elements }
   TsChartGradientSteps = array of TsChartGradientStep;
 
+  {@@ Class containing all parameters of a gradient as used by spreadsheet charts. }
   TsChartGradient = class
   private
     FSteps: TsChartGradientSteps;
-    function GetBorder(AIndex: Integer): Double;
+    function GetBorder(AIndex: Integer): Single;
     function GetColor(AIndex: Integer): TsChartColor;
     function GetSteps(AIndex: Integer): TsChartGradientStep;
-    procedure SetBorder(AIndex: Integer; AValue: Double);
+    procedure SetBorder(AIndex: Integer; AValue: Single);
     procedure SetStep(AIndex: Integer; AValue: Double; AColor: TsChartColor);
   public
+    {@@ Name of the gradient. Must be unique. }
     Name: String;
+    {@@ A value of the @link(TsChartGradientStyle) enumeration to define the gradient type: linear, radial, etc.}
     Style: TsChartGradientStyle;
-    CenterX, CenterY: Double;  // 0.0 ... 1.0  ( for gradients which are not linear )
-    Angle: Double;             // for linear gradient in degrees, 0° = horizontal, grows CCW, from start to end color
+    {@@ For non-linear gradients the x coordinate of the gradient center point. Value 0.0 ... 1.0}
+    CenterX: Single;
+    {@@ For non-linear gradients the y coordinate of the gradient center point. Values 0.0 ... 1.0 }
+    CenterY: Single;
+    {@@  For linear gradients the direction of the gradient in degrees from start to end color. 0° is horizontal, growing in CCW direction }
+    Angle: Double;
     constructor Create;
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartGradient);
-    procedure AddStep(AValue: Double; AColor: TsChartColor);
+    procedure AddStep(AValue: Single; AColor: TsChartColor);
     function NumSteps: Integer;
+    {@@ A @link(TsChartGradientStep) array element containing all parameters of the start, end, or an intermediate step. The first array element is the starting, the last element the ending step of the gradien. }
     property Steps[AIndex: Integer]: TsChartGradientStep read GetSteps;
-    property StartBorder: Double index 0 read GetBorder write SetBorder;
-    property EndBorder: Double index 1 read GetBorder write SetBorder;
+    {@@ The numerical value relative to the shape's size at which the gradient starts. }
+    property StartBorder: Single index 0 read GetBorder write SetBorder;
+    {@@ The numerical value relative to the shape's size at which the gradient ends. }
+    property EndBorder: Single index 1 read GetBorder write SetBorder;
+    {@@ The color at which the gradient starts (see @link(TsChartColor)).}
     property StartColor: TsChartColor index 0 read GetColor;
+    {@@ The color at which the gradient ends (see @link(TsChartColor)). }
     property EndColor: TsChartColor index 1 read GetColor;
   end;
 
+  {@@ A list collecting all gradient definitions used by a chart (see @link(TsChartGradient)). }
   TsChartGradientList = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsChartGradient;
@@ -135,21 +167,37 @@ type
     property Items[AIndex: Integer]: TsChartGradient read GetItem write SetItem; default;
   end;
 
+  {@@ Defines the style of hatch patterns as used by LibreOffice Calc
+   @value chsDot     Hatch lines are dotted
+   @value chsSingle  The pattern uses single hatch links.
+   @value chsDouble  The pattern uses two hatch lines rotated by 90° to each other.
+   @value chsTripe   The pattern uses three hatch lines rotated by 45 and 90°.
+  }
   TsChartHatchStyle = (chsDot, chsSingle, chsDouble, chsTriple);
 
+  {@@ Record for a point with coordinages X and Y given in single precision.
+    @member X  X coordinate of the point
+    @member Y  Y coordinate of the point
+  }
   TSngPoint = record X, Y: Single; end;
 
-  // A combination of pattern (taken from global FillPatternList) and color
+  {@@ The class TsChartFillPattern represents a combination of pattern
+    (taken from global raw fill pattern list) and foreground/background colors. }
   TsChartFillPattern = class
+    {@@ Name of the fill pattern (must be unique).}
     Name: String;
-    Index: Integer;           // Index into fpsPatterns.FillPatternList
-    FgColor: TsChartColor;    // Color of pattern
-    BgColor: TsChartColor;    // Color of background
+    {@@ Pattern index into the global raw fill patterns list. }
+    Index: Integer;
+    {@@ Foreground color of the pattern (see @link(TsChartColor)) }
+    FgColor: TsChartColor;
+    {@@ Background color of the pattern (see @link(TsChartColor)). Use @link(sscTransparent) to achieve a non-filled background (not supported by all patterns and formats).}
+    BgColor: TsChartColor;
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartFillPattern);
     function IsClearPattern: Boolean;
   end;
 
+  {@@ List collecting all fill patterns used by the chart to which it belongs. }
   TsChartFillPatternList = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsChartFillPattern;
@@ -172,14 +220,22 @@ type
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
   end;
 
+  {@@ Represents data for an image by which the associated shape is filled
+    in a tiled way. }
   TsChartImage = class
+    {@@ Name of the image instance. Must be unique. }
     Name: String;
-    EmbeddedObjIndex: Integer;     // Index into the workbook's EmbeddedObj list
-    Width, Height: Single;         // Size as used in the chart, in mm
+    {@@ Index of the image stream into the workbook's EmbeddedObj list }
+    EmbeddedObjIndex: Integer;
+    {@@ Width as used in the chart, in millimeters }
+    Width: Single;
+    {@@ Height of the image as used in the chart, in millimeters }
+    Height: Single;
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartImage);
   end;
 
+  {@@ List collecting all images used in a chart for filling purposes. }
   TsChartImagelist = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsChartImage;
@@ -192,14 +248,26 @@ type
     property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
   end;
 
+  {@@ Specifies the way a shape is filled with color or structure
+   @value  cfsNoFill     The shape is not filled at all.
+   @value  cfsSolidFill  The shape is filled by a uniform color.
+   @value  cfsGradient   The shape is filled by a color gradient.
+   @value  cfsPattern    The shape is filled by a tiled colored pattern.
+   @value  cfsPattern    The shpae is filled by an arbitrary tiled image. }
   TsChartFillStyle = (cfsNoFill, cfsSolidFill, cfsGradient, cfsPattern, cfsImage);
 
+  {@@ Class which defines how an area or shape is filled by color or by a pattern. }
   TsChartFill = class
   public
+    {@@ Element of the @link(TsChartFillStyle) enumeration identifying the type of the fill }
     Style: TsChartFillStyle;
+    {@@ Index into the chart's Gradients list containing all fill gradient parameters }
     Gradient: Integer;
+    {@@ Index into the chart's FillPatterns list containing all (colored) fill patterns }
     Pattern: Integer;
+    {@@ Index into the chart's Images list containing all images used for filling }
     Image: Integer;
+    {@@ Color to be used in the solid-fill case (@link(Style) = @link(cfsSolidFill))}
     Color: TsChartColor;
     constructor Create;
     constructor CreateSolidFill(AColor: TsChartColor);
@@ -210,34 +278,6 @@ type
     procedure SelectPatternFill(APatternIndex: Integer);
     procedure SelectSolidFill(AColor: TsChartColor);
   end;
-                   (*
-  TsChartLineSegment = record
-    Length: Double;       // mm or % of linewidth
-    Count: Integer;
-  end;
-
-  TsChartLineStyle = class
-    Name: String;
-    Segment1: TsChartLineSegment;
-    Segment2: TsChartLineSegment;
-    Distance: Double;     // mm or % of linewidth
-    RelativeToLineWidth: Boolean;
-    procedure CopyFrom(ASource: TsChartLineStyle);
-    function GetID: String;
-  end;
-
-  TsChartLineStyleList = class(TFPObjectList)
-  private
-    function GetItem(AIndex: Integer): TsChartLineStyle;
-    procedure SetItem(AIndex: Integer; AValue: TsChartLineStyle);
-  public
-    function Add(AName: String;
-      ASeg1Length: Double; ASeg1Count: Integer;
-      ASeg2Length: Double; ASeg2Count: Integer;
-      ADistance: Double; ARelativeToLineWidth: Boolean): Integer;
-    function IndexOfName(AName: String): Integer;
-    property Items[AIndex: Integer]: TsChartLineStyle read GetItem write SetItem; default;
-  end;        *)
 
   TsChartCellAddr = class
   private
@@ -946,15 +986,17 @@ uses
 
 { TsChartColor }
 
-{@@ Helper function to create a record with a color for the fpspreadsheet charts.
-  The record contains a Transparency field in addition to the standard TsColor
-  field.
+{@@ ----------------------------------------------------------------------------
+  Helper function to create a @link(TsChartColor) record as used for colors
+  in the fpspreadsheet charts.
+  The record contains a Transparency field in addition to the standard
+  @link(TsColor) field.
 
   @param    AColor         RGB color
-  @param    ATransparency  Transparency of the color, value between 0.0 and 1.0
+  @param    ATransparency  Transparency of the color, value between 0.0 and 1.0. Default: 0.0 (opaque)
 
   @returns  A TsChartColor record
-  @seeAlso  TsColor }
+-------------------------------------------------------------------------------}
 function ChartColor(
   AColor: TsColor;
   ATransparency: TsChartTransparency = 0.0): TsChartColor;
@@ -966,19 +1008,33 @@ end;
 
 { TsChartLine }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartLine class.
+
+  Defaults to a solid black line of default line width.
+-------------------------------------------------------------------------------}
 constructor TsChartLine.Create;
 begin
   inherited Create;
   SelectSolidLine(ChartColor(scBlack), PtsToMM(DEFAULT_CHART_LINEWIDTH));
 end;
 
-{ Creates a line with solid "pattern". }
+{@@ ----------------------------------------------------------------------------
+  Creates a line with solid, un-patterned line.
+
+  @param  AColor   Color of the line. This is a chart color containing a Transparency element.
+  @param  AWidth   Linewidth, in millimeters. }
 constructor TsChartLine.CreateSolid(AColor: TsChartColor; AWidth: Double);
 begin
   inherited Create;
   SelectSolidLine(AColor, AWidth);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the parameters from the specified line
+
+  @param  ALine   Line instance to be copied.
+-------------------------------------------------------------------------------}
 procedure TsChartLine.CopyFrom(ALine: TsChartLine);
 begin
   if ALine <> nil then
@@ -997,22 +1053,29 @@ begin
     Result := clsCustom;
 end;
 
-{@@ Returns true when the line is hidden, i.e. its style is set to clsNoLine }
+{@@ ----------------------------------------------------------------------------
+  Returns true when the line is hidden, i.e. its style is set to clsNoLine
+-------------------------------------------------------------------------------}
 function TsChartLine.IsHidden: Boolean;
 begin
   Result := (PatternIndex = ord(clsNoLine));
 end;
 
-{@@ Switches the line to be hidden. }
+{@@ ----------------------------------------------------------------------------
+  Switches the line to be hidden.
+-------------------------------------------------------------------------------}
 procedure TsChartLine.SelectNoLine;
 begin
   Style := clsNoLine;
 end;
 
-{@@ Assigns a predefined patterned line to the TsChartLine instance.
-  - ALineStyle ... a clsXXXX enumeration element of TsChartLinePatternStyle
-  - AColor ....... Color of the line
-  - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+{@@ ----------------------------------------------------------------------------
+  Assigns a predefined patterned line to the TsChartLine instance.
+
+  @param ALineStyle   A clsXXXX enumeration element of TsChartLinePatternStyle
+  @param AColor       Color of the line
+  @param ALineWidth   Line width, in mm. If omitted (or -1) the default linewidth is used.
+-------------------------------------------------------------------------------}
 procedure TsChartLine.SelectPatternLine(ALineStyle: TsChartLinePatternStyle;
   AColor: TsChartColor; ALineWidth: Single = -1.0);
 begin
@@ -1024,10 +1087,13 @@ begin
     Width := ALineWidth;
 end;
 
-{ Assigns a patterned line to the TsChartLine instance.
-  - APatternIndex . Index into the global RawLinePatterns list, see also clsXXXX variables
-  - AColor ........ Color of the line
-  - ALineWidth .... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+{@@ ----------------------------------------------------------------------------
+  Assigns a patterned line to the TsChartLine instance.
+
+  @param  APatternIndex  Index into the global raw line patterns list, see also clsXXXX variables
+  @param  AColor         Color of the line
+  @param  ALineWidth     Line width, in mm. If omitted (or -1) the default linewidth is used.
+-------------------------------------------------------------------------------}
 procedure TsChartLine.SelectPatternLine(APatternIndex: Integer;
   AColor: TsChartColor; ALineWidth: Single = -1.0);
 begin
@@ -1039,9 +1105,12 @@ begin
     Width := ALineWidth;
 end;
 
-{ Makes the TsChartLine instance a solid line:
-  - AColor ....... Color of the line
-  - ALineWidth ... Line width, in mm. If omitted (or -1) the default linewidth is used. }
+{@@ ----------------------------------------------------------------------------
+  Makes the TsChartLine instance a solid line:
+
+  @param  AColor      Color of the line
+  @param  ALineWidth  Line width, in mm. If omitted (or -1) the default linewidth is used.
+-------------------------------------------------------------------------------}
 procedure TsChartLine.SelectSolidline(AColor: TsChartColor; ALineWidth: Single = -1.0);
 begin
   SelectPatternLine(clsSolid, AColor, ALineWidth);
@@ -1055,6 +1124,9 @@ end;
 
 { TsChartGradient }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the gradient. Adds a begin and an end step of the gradient.
+-------------------------------------------------------------------------------}
 constructor TsChartGradient.Create;
 begin
   inherited Create;
@@ -1063,16 +1135,26 @@ begin
   SetStep(1, 1.0, ChartColor(scWhite));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the @type(TsChartGradient) class.
+-------------------------------------------------------------------------------}
 destructor TsChartGradient.Destroy;
 begin
   Name := '';
   inherited;
 end;
 
-{ Adds a new color step to the gradient. The new color is inserted at the
+{@@ ----------------------------------------------------------------------------
+  Adds a new color step to the gradient. The new color is inserted at the
   correct index according to its value so that all values in the steps are
-  ordered. If the exact value is already existing the gradient step is replaced.}
-procedure TsChartGradient.AddStep(AValue: Double; AColor: TsChartColor);
+  ordered. If the exact step value is already existing the gradient step is replaced.
+
+  @param  AValue  A floating point value between 0 and 1 determining at which position the specified color is used.
+  @param  AColor  Color used at position AValue of the gradient.
+-------------------------------------------------------------------------------}
+procedure TsChartGradient.AddStep(AValue: Single; AColor: TsChartColor);
+const
+  EPS = 1E-6;
 var
   i, j, idx: Integer;
 begin
@@ -1083,7 +1165,7 @@ begin
   begin
     for i := 0 to High(FSteps) do
     begin
-      if FSteps[i].Value = AValue then
+      if SameValue(FSteps[i].Value, AValue, EPS) then
       begin
         idx := i;
         break;
@@ -1105,6 +1187,9 @@ begin
   SetStep(idx, AValue, AColor);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the gradient parameters from ASource
+-------------------------------------------------------------------------------}
 procedure TsChartGradient.CopyFrom(ASource: TsChartGradient);
 var
   i: Integer;
@@ -1119,7 +1204,7 @@ begin
   Angle := ASource.Angle;
 end;
 
-function TsChartGradient.GetBorder(AIndex: Integer): Double;
+function TsChartGradient.GetBorder(AIndex: Integer): Single;
 begin
   case AIndex of
     0: Result := FSteps[0].Value;
@@ -1142,12 +1227,15 @@ begin
   Result := FSteps[AIndex];
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the number of steps (pre-defined colors) used by the gradient
+-------------------------------------------------------------------------------}
 function TsChartGradient.NumSteps: Integer;
 begin
   Result := Length(FSteps);
 end;
 
-procedure TsChartGradient.SetBorder(AIndex: Integer; AValue: Double);
+procedure TsChartGradient.SetBorder(AIndex: Integer; AValue: Single);
 begin
   FSteps[AIndex].Value := AValue;
 end;
@@ -1164,7 +1252,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Creates an axial gradient and adds it to the gradient list.
-  This kind of gradient combines two linear gradient running from the outside and meeting at the center of shape
+  This kind of gradient combines two linear gradient running from the outside
+  and meeting at the center of shape
 
   Not supported by xlsx where it is replaced by a rectangular gradient.
 
@@ -1185,11 +1274,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Creates an elliptical gradient and adds it to the gradient list.
-  In this kind of gradient the lines of constant color are ellipses shrinking towards the center.
+  In this kind of gradient the lines of constant color are ellipses with size shrinking towards the center.
 
   @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
-  @param  AStartColor  Color of the outermost gradient ellipse
-  @param  AEndColor    Color in the center of the gradient ellipse
+  @param  AStartColor  Color of the outermost gradient ellipse (and beyond, if StartBorder > 0)
+  @param  AEndColor    Color in the center of the gradient ellipse (and beyond, if EndBorder < 1)
   @param  ACenterX     Horizontal center point of the ellipses. Relative to the width of the filled shape (0.0 ... 1.0)
   @param  ACenterY     Vertical center point of the ellipses. Relative to the height of the filled shape (0.0 ... 1.0)
   @param  AAngle       Rotation angle of the ellipses, in degrees. Measured relative to x axis and increases in CCW direction.
@@ -1347,6 +1436,12 @@ begin
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Searches for a gradient in the list by its name.
+
+  @param    AName   Name of the gradient
+  @returns  The found gradient instance, or nil if not found.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.FindByName(AName: String): TsChartGradient;
 var
   idx: Integer;
@@ -1363,6 +1458,12 @@ begin
   Result := TsChartGradient(inherited Items[AIndex]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Searches for a gradient in the list by its name.
+
+  @param    AName   Name of the gradient
+  @returns  Index of the found gradient instance, or -1 if not found.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.IndexOfName(AName: String): Integer;
 begin
   for Result := 0 to Count-1 do
@@ -1379,12 +1480,20 @@ end;
 
 { TsChartFillPattern}
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartFillPattern class.
+-------------------------------------------------------------------------------}
 destructor TsChartFillPattern.Destroy;
 begin
   Name := '';
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the fill pattern from another @link(TsChartFillPattern) instance ASource.
+
+  @param  ASource  Fill pattern instance from which the parameters are to be copied.
+-------------------------------------------------------------------------------}
 procedure TsChartFillPattern.CopyFrom(ASource: TsChartFillPattern);
 var
   i: Integer;
@@ -1395,6 +1504,12 @@ begin
   BgColor := ASource.BgColor;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when the pattern has not background, i.e. when the shape is filled
+  by an empty, clear pattern.
+
+  @returns  true when the pattern's background color is fully transparent.
+-------------------------------------------------------------------------------}
 function TsChartFillPattern.IsClearPattern: Boolean;
 begin
   Result := (BgColor.Transparency = 1.0);
@@ -1403,12 +1518,28 @@ end;
 
 { TsChartFillPatternList }
 
+{@@ ----------------------------------------------------------------------------
+  Adds a non-filled pre-defined pattern to the chart's FillPattern list.
+
+  @param AName          Name of the pattern. Must be unique.
+  @param(APatternStyle  A @link(TsChartFillPatternStyle) enumeration value
+                        identifying the pre-defined pattern type.)
+  @param APatternColor  Color of the pattern (@link(TsChartColor)).
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternStyle: TsChartFillPatternStyle; APatternColor: TsChartColor): Integer;
 begin
   Result := AddPattern(AName, APatternStyle, APatternColor, ChartColor(scWhite, 1.0));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Adds a filled pre-defined pattern to the chart's FillPattern list.
+
+  @param AName          Name of the pattern. Must be unique.
+  @param(APatternStyle  A @link(TsChartFillPatternStyle) enumeration value identifying the pre-defined pattern type.)
+  @param APatternColor  Color of the pattern (@link(TsChartColor)).
+  @param ABackColor     Color of the pattern background (@link(TsChartColor)).
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternStyle: TsChartFillPatternStyle; APatternColor, ABackColor: TsChartColor): Integer;
 var
@@ -1427,7 +1558,15 @@ begin
   pattern.BgColor := ABackColor;
 end;
 
-{ Add a transparent pattern (no background) }
+{@@ ----------------------------------------------------------------------------
+  Adds a non-filled user-defined pattern to the chart's FillPattern list.
+
+  @param AName            Name of the pattern. Must be unique.
+  @param(ARawPatternIndex Index of the user-defined fill-pattern (@link(TsChartFillPatternStyle))
+                          into the raw fill pattern list. This index is
+                          returned by the RegisterRawFillPattern routine.)
+  @param APatternColor    Color of the pattern (@link(TsChartColor)).
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   ARawPatternIndex: Integer; APatternColor: TsChartColor): Integer;
 begin
@@ -1435,7 +1574,16 @@ begin
   // Do not use scBlack here - will hide the entire pattern in xlsx.
 end;
 
-{ Add a solid pattern (with background color) }
+{@@ ----------------------------------------------------------------------------
+  Adds a filled user-defined pattern to the chart's FillPattern list.
+
+  @param AName            Name of the pattern. Must be unique.
+  @param(ARawPatternIndex Index of the user-defined fill-pattern (@link(TsChartFillPatternStyle))
+                          into the raw fill pattern list.
+                          This index is returned by the RegisterRawFillPattern routine.)
+  @param APatternColor    Color of the pattern (@link(TsChartColor)).
+  @param ABackColor       Background color of the pattern (@TsChartColor)).
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   ArawPatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
 var
@@ -1448,19 +1596,24 @@ begin
   pattern.Index := ARawPatternIndex;
   pattern.FgColor := APatternColor;
   pattern.BgColor := ABackColor;
-  {
-  if (ABackColor.Color = scBlack) and (ABackColor.Transparency = 0) then
-    pattern.BgColor := ChartColor(scWhite, 0.0)
-  else
-    pattern.BgColor := ABackColor;
-    }
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the name of the pattern which is used when no specific name is defined.
+
+  @returns  Name of the pattern
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.DefaultPatternName: String;
 begin
   Result := 'Pattern' + IntToStr(Count+1);
 end;
 
+{@@ ----------------------------------------------------------------------------
+ Finds the pattern having the specified name.
+
+ @param    AName   Name of the pattern to be found.
+ @returns          Instance of the pattern having the specified name.
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.FindByName(AName: String): TsChartFillPattern;
 var
   idx: Integer;
@@ -1477,6 +1630,12 @@ begin
   Result := TsChartFillPattern(inherited Items[AIndex]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+ Finds the pattern having the specified name.
+
+ @param AName  Name of the pattern to be found.
+ @returns      Index of the pattern having the specified name.
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.IndexOfName(AName: String): Integer;
 var
   s: String;
@@ -1490,6 +1649,13 @@ begin
   Result := -1;
 end;
 
+{@@ ----------------------------------------------------------------------------
+ Finds the pattern having a specific name and background color
+
+ @param AName   Name of the pattern to be found.
+ @param AColor  Background color of the pattern to be found.
+ @returns       Index of the pattern having the specified name and background color.
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.IndexOfNameAndBgColor(AName: string;
   AColor: TsChartColor): Integer;
 var
@@ -1506,6 +1672,12 @@ begin
   Result := -1;
 end;
 
+{ ------------------------------------------------------------------------------
+  Creates a new pattern with the specified name and adds it to the list.
+
+  @param    AName   Name of the pattern to be added.
+  @returns  Index of the nex pattern in the pattern list.
+-------------------------------------------------------------------------------}
 function TsChartFillPatternList.NewPattern(AName: String): integer;
 var
   pattern: TsChartFillPattern;
@@ -1527,6 +1699,9 @@ end;
 
 { TsChartImage }
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the @link(TsChartImage) class
+-------------------------------------------------------------------------------}
 destructor TsChartImage.Destroy;
 begin
   Name := '';
@@ -1534,6 +1709,11 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the parameters from another image, ASource.
+
+  @param  ASource   @link(TsChartImage) instance to be copied
+-------------------------------------------------------------------------------}
 procedure TsChartImage.CopyFrom(ASource: TsChartImage);
 begin
   Name := ASource.Name;
@@ -1546,9 +1726,18 @@ end;
 
 { TsChartImageList }
 
-// Add an image defined by the AEmbeddedObjIndex to the chart. AImgWidth and
-// AImgHeight are the image width and height (in millimeters) in which the
-// image will appear in the chart. Use -1 to request the original image size.
+{@@ ----------------------------------------------------------------------------
+  Creates a @link(TsChartImage) instance and adds it to the chart's Images list.
+  The image itself must have been added to the workbook's embedded objects list before.
+  The returned index then is used here as AEmbeddedObjIndex.
+
+  @param AName             Name of the image, must be unique.
+  @param AEmbeddedObjIndex Index of the image in the workbook's embedded objects list
+  @param(AImgWidth         Image width, in millimeters, in which the image
+                           will appear in the chart. Use -1 to request original width.)
+  @param(AImgHeight        Image height, in millimeters, that the image will
+                           have in the chart. Use -1 to request original height.)
+-------------------------------------------------------------------------------}
 function TsChartImageList.AddImage(AName: String; AEmbeddedObjIndex: Integer;
   AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
 var
@@ -1568,6 +1757,12 @@ begin
   Items[Result].Height := AImgHeight;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Finds an image in the image list by its name.
+
+  @param    AName   Name of the image to be found.
+  @returns  Instance of the image having the requested name.
+-------------------------------------------------------------------------------}
 function TsChartImageList.FindByName(AName: String): TsChartImage;
 var
   idx: Integer;
@@ -1584,6 +1779,12 @@ begin
   Result := TsChartImage(inherited Items[AIndex]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Finds an image in the image list by its name.
+
+  @param    AName   Name of the image to be found.
+  @returns  Index of the image instance having the requested name.
+-------------------------------------------------------------------------------}
 function TsChartImageList.IndexOfName(AName: String): Integer;
 begin
   for Result := 0 to Count-1 do
@@ -1600,6 +1801,11 @@ end;
 
 { TsChartFill }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the @link(TsChartFill) class
+
+  Initializes as solid black fill.
+-------------------------------------------------------------------------------}
 constructor TsChartFill.Create;
 begin
   inherited Create;
@@ -1610,6 +1816,11 @@ begin
   Image := -1;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates an instance of @link(TsChartFill) representing a uniform fill by the specified color.
+
+  @param AColor @link(TsChartColor) record defining the uniform fill of the associated shape.
+-------------------------------------------------------------------------------}
 constructor TsChartFill.CreateSolidFill(AColor: TsChartColor);
 begin
   inherited Create;
@@ -1617,6 +1828,11 @@ begin
   Color := AColor;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the fill paramters from another @link(TsChartFill) instance.
+
+  @param  AFill  @linkl(TsChartFill) instance to be copied.
+-------------------------------------------------------------------------------}
 procedure TsChartFill.CopyFrom(AFill: TsChartFill);
 begin
   if AFill <> nil then
@@ -1629,16 +1845,25 @@ begin
   end;
 end;
 
-{ Results in a gradient fill using the gradient defined in the chart's Gradients
-  list at the specified index index. }
+{@@ ----------------------------------------------------------------------------
+  Selects gradient fill parameters.
+  The gradient is defined by its index into the chart's Gradients list.
+
+  @param(AGradientIndex  Index of the gradient in the chart's Gradients list
+                         to be used for filling the associated shape.) }
 procedure TsChartFill.SelectGradientFill(AGradientIndex: Integer);
 begin
   Style := cfsGradient;
   Gradient := AGradientIndex;
 end;
 
-{ Results in an image fill using the image from the chart's Images list referred
-  to by AImageIndex. }
+{@@ ----------------------------------------------------------------------------
+  Selects parameters for filling the shape by a tiled image.
+
+  The image is specified by its index in the chart's Images list.
+
+  @param  AImageIndex  Index of the image parameters in the chart's Images list
+-------------------------------------------------------------------------------}
 procedure TsChartFill.SelectImageFill(AImageIndex: Integer);
 begin
   inherited Create;
@@ -1646,105 +1871,41 @@ begin
   Image := AImageIndex;
 end;
 
-{ Does NOT fill the corresponding area at all. }
+{@@ ----------------------------------------------------------------------------
+  Clears the associated area/shape from any filling.
+-------------------------------------------------------------------------------}
 procedure TsChartFill.SelectNoFill;
 begin
   Style := cfsNoFill;
 end;
 
-{ Results in a patterned fill.
-  APatternIndex is the index of the pattern in the chart's FillPatterns list
-  The pattern color is already contained in the pattern referred to by
-  APatternIndex.
-  The pattern's BgColor.Transparency decides whether the pattern background
-  is filled or clear. }
+{@@ ----------------------------------------------------------------------------
+  Selects a pattern fill for the associated shape or area.
+
+  The pattern is determined by its index in the chart's FillPatterns list.
+
+  Pattern and background colors are already included in the pattern parameters.
+  When the pattern's background is fully transparent (@link(BgColor.Transparency) = 1)
+  the pattern is shown without background.
+
+  @param  APatternIndex  Index of the pattern in the chart's FillPattern list.
+-------------------------------------------------------------------------------}
 procedure TsChartFill.SelectPatternFill(APatternIndex: Integer);
 begin
   Pattern := APatternIndex;
   Style := cfsPattern;
 end;
 
-{ Results in a uniform fill with the specified color. }
+{@@ ----------------------------------------------------------------------------
+  Selects a uniform color for filling the shape / area.
+
+  @param AColor @link(TsChartColor) record defining the color and transparency to be used for filling the shape.
+-------------------------------------------------------------------------------}
 procedure TsChartFill.SelectSolidFill(AColor: TsChartColor);
 begin
   Color := AColor;
   Style := cfsSolidFill;
 end;
-
-          (*
-{ TsChartLineStyle }
-
-procedure TsChartLineStyle.CopyFrom(ASource: TsChartLineStyle);
-begin
-  Name := ASource.Name;
-  Segment1 := ASource.Segment1;
-  Segment2 := ASource.Segment2;
-  Distance := ASource.Distance;
-  RelativeToLineWidth := ASource.RelativeToLineWidth;
-end;
-
-function TsChartLineStyle.GetID: String;
-var
-  i: Integer;
-begin
-  Result := Name;
-  for i:=1 to Length(Result) do
-    if Result[i] in [' ', '-'] then Result[i] := '_';
-  Result := 'FPS' + Result;
-end;
-
-
-{ TsChartLineStyleList }
-
-function TsChartLineStyleList.Add(AName: String;
-  ASeg1Length: Double; ASeg1Count: Integer;
-  ASeg2Length: Double; ASeg2Count: Integer;
-  ADistance: Double; ARelativeToLineWidth: Boolean): Integer;
-var
-  ls: TsChartLineStyle;
-  i: Integer;
-begin
-  Result := -1;
-  for i := 0 to Count-1 do
-    if TsChartLineStyle(Items[i]).Name = AName then
-    begin
-      Result := i;
-      break;
-    end;
-
-  if Result = -1 then
-  begin
-    ls := TsChartLineStyle.Create;
-    Result := inherited Add(ls);
-  end else
-    ls := TsChartlineStyle(Items[Result]);
-
-  ls.Name := AName;
-  ls.Segment1.Count := ASeg1Count;
-  ls.Segment1.Length := ASeg1Length;
-  ls.Segment2.Count := ASeg2Count;
-  ls.Segment2.Length := ASeg2Length;
-  ls.Distance := ADistance;
-  ls.RelativeToLineWidth := ARelativeToLineWidth;
-end;
-
-function TsChartLineStyleList.GetItem(AIndex: Integer): TsChartLineStyle;
-begin
-  Result := TsChartLineStyle(inherited);
-end;
-
-function TsChartLineStyleList.IndexOfName(AName: String): Integer;
-begin
-  for Result := 0 to Count-1 do
-    if Items[Result].Name = AName then
-      exit;
-  Result := -1;
-end;
-
-procedure TsChartLineStyleList.SetItem(AIndex: Integer; AValue: TsChartLineStyle);
-begin
-  TsChartLineStyle(inherited Items[AIndex]).CopyFrom(AValue);
-end;          *)
 
 
 { TsChartCellAddr }
