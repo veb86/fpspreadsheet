@@ -83,7 +83,7 @@ end;
 
   All dimensions are in workbook units
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
+procedure TsWorksheet.CalcImageExtent(AIndex: Integer;// UsePixels: Boolean;
   out ARow1, ACol1, ARow2, ACol2: Cardinal;
   out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
   out x,y, AWidth, AHeight: Double);
@@ -101,7 +101,7 @@ begin
   AWidth := obj.ImageWidth * img.ScaleX;    // in workbook units
   AHeight := obj.ImageHeight * img.ScaleY;  // in workbook units
 
-  CalcDrawingExtent(UsePixels, AWidth, AHeight, ARow1, ACol1, ARow2, ACol2,
+  CalcDrawingExtent(AWidth, AHeight, ARow1, ACol1, ARow2, ACol2,
     ARowOffs1, AColOffs1, ARowOffs2, AColOffs2, x, y);
 end;
 

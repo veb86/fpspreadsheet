@@ -6681,7 +6681,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     if book.GetEmbeddedObj(img.Index).ImageType = itUnknown then
       exit;
 
-    sheet.CalcImageExtent(AIndex, true,
+    sheet.CalcImageExtent(AIndex, //true,
       r1, c1, r2, c2,
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm;
@@ -6756,8 +6756,12 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
   procedure DoWriteChart(AStream: TStream; AChart: TsChart;
     AChartNoInSheet: Integer; var RelID: Integer);
   var
-    r1, c1, r2, c2: Cardinal;
-    roffs1, coffs1, roffs2, coffs2: Double;
+    r1, c1: Cardinal;
+    r2: Cardinal = 0;
+    c2: Cardinal = 0;
+    roffs1, coffs1: Double;
+    roffs2: Double = 0.0;
+    coffs2: Double = 0.0;
     x, y, w, h: Double;
     sheet: TsWorksheet;
     guid: TGUID;
@@ -6775,7 +6779,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     w := AChart.Width;
     h := AChart.Height;
     sheet := TsWorksheet(AChart.Worksheet);
-    sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
+    sheet.CalcDrawingExtent(w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
 
     AppendToStream(AStream,
       '  <xdr:twoCellAnchor>' + LE);

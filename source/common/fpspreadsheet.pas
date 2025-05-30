@@ -616,7 +616,7 @@ type
     { Embedded images }
     procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
       out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
-    procedure CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
+    procedure CalcImageExtent(AIndex: Integer; //UsePixels: Boolean;
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
       out x, y, AWidth, AHeight: Double);
@@ -639,8 +639,8 @@ type
     procedure AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
       AToolTip: String = '');
 
-    procedure CalcDrawingExtent(
-      UsePixels: Boolean; AWidth, AHeight: Double;
+    procedure CalcDrawingExtent(//UsePixels: Boolean;
+      AWidth, AHeight: Double;
       var ARow1, ACol1: Cardinal; out ARow2, ACol2: Cardinal;
       ARowOffs1, AColOffs1: Double; out ARowOffs2, AColOffs2: Double;
       out x,y: Double);
@@ -1496,41 +1496,74 @@ end;
   All dimensions are in workbook units
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcDrawingExtent(
-  UsePixels: Boolean; AWidth, AHeight: Double;
+  //UsePixels: Boolean;
+  AWidth, AHeight: Double;
   var ARow1, ACol1: Cardinal; out ARow2, ACol2: Cardinal;
   ARowOffs1, AColOffs1: Double; out ARowOffs2, AColOffs2: Double;
   out x,y: Double);
 var
-  colW, rowH: Double;
-  totW, totH: Double;
+//  colW, rowH: Double;
+//  totW, totH: Double;
   r, c: Integer;
-  w_px, h_px: Integer;
-  totH_px, rowH_px: Integer;
-  totW_px, colW_px: Integer;
-  ppi: Integer;
+//  w_px, h_px: Integer;
+//  totH_px, rowH_px: Integer;
+//  totW_px, colW_px: Integer;
+//  ppi: Integer;
   u: TsSizeUnits;
+  colPos1, colPos2, rowPos1, rowPos2: Double;
+  x2, y2: Double;
 begin
   ARowOffs2 := 0.0;
   AColOffs2 := 0.0;
 
   // Abbreviations
-  ppi := ScreenPixelsPerInch;
+  //ppi := ScreenPixelsPerInch;
   u := FWorkbook.Units;
 
   // Find x coordinate of left graphic edge, in workbook units
-  x := AColOffs1;
+  x := 0;
   for c := 0 to ACol1-1 do
-  begin
-    colW := GetColWidth(c, u);
-    x := x + colW;
-  end;
+    x := x + GetColWidth(c, u);
+  colPos1 := x;
+  colPos2 := colPos1 + GetColWidth(ACol1, u);
+  x := x + AColOffs1;
+  x2 := x + AWidth;
+
   // Find y coordinate of top image edge, in workbook units.
-  y := ARowOffs1;
+  y := 0;
   for r := 0 to ARow1 - 1 do
+    y := y + CalcRowHeight(r);
+  rowPos1 := y;
+  rowPos2 := rowPos1 + CalcRowHeight(ARow1);
+  y := y + ARowOffs1;
+  y2 := y + AWidth;
+
+  // Find column index and offset for right edge of image
+  ACol2 := ACol1 + 1;
+  while (x2 > colPos2) do
   begin
-    rowH := CalcRowHeight(r);
-    y := y + rowH;
+    colPos1 := colPos2;
+    colPos2 := colPos1 + GetColWidth(ACol2, u);
+    inc(ACol2);
   end;
+  dec(ACol2);
+  AColOffs2 := x2 - colPos1;
+
+  // Find row index and offset for bottom edge of image
+  ARow2 := ARow1 + 1;
+  while (y2 > rowPos2) do
+  begin
+    rowPos1 := rowPos2;
+    rowPos2 := rowPos1 + CalcRowHeight(ARow2);
+    inc(ARow2);
+  end;
+  dec(ARow2);
+  ARowOffs2 := y2 - rowPos1;
+  (*
+
+
+    x2 := GetColWidth(ACol2, u);
+
 
   if UsePixels then
   // Use pixels for calculation. Better for Excel, maybe due to rounding error?
@@ -1600,6 +1633,7 @@ begin
       inc(ARow2);
     end;
   end;
+  *)
 end;
 
 {@@ ----------------------------------------------------------------------------

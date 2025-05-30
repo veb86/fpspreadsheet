@@ -44,13 +44,13 @@ begin
       begin
         img := worksheet.GetPointerToImage(j);
         embObj := workbook.GetEmbeddedObj(img^.Index);
-        WriteLn('  Image Index=', img^.Index, 
-          ', Cell=', GetCellString(img^.Row, img^.Col),
-          ', File=', ExtractFileName(embObj.FileName), 
-          ', Width=', embobj.ImageWidth:0:1, 'mm',
-          ', Height=', embObj.ImageHeight:0:1,'mm',
-          ', ScaleX=', img^.ScaleX:0:2,
-          ', ScaleY=', img^.ScaleY:0:2
+        WriteLn('  #', img^.Index,
+          ': in ', GetCellString(img^.Row, img^.Col),
+          ' (OffsetX: ', img^.OffsetX:0:2,'mm, OffsetY: ', img^.OffsetY:0:2,'mm)'
+        );
+        WriteLn('      File: ', ExtractFileName(embObj.Filename));
+        WriteLn('      Width: ', embobj.ImageWidth:0:1, 'mm, Height: ', embObj.ImageHeight:0:1, 'mm');
+        WriteLn('      ScaleX: ', img^.ScaleX:0:2, ', ScaleY: ', img^.ScaleY:0:2
         );
         if embObj.FileName <> '' then
           embobj.Stream.SaveToFile(ExtractFileName(embobj.FileName));

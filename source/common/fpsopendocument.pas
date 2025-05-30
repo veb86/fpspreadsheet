@@ -2510,8 +2510,9 @@ var
   nodeName: String;
   s: String;
   range: TsCellRange = (Row1: Cardinal(-1); Col1: Cardinal(-1); Row2: Cardinal(-1); Col2: Cardinal(-1));
-  sheet1, sheet2: string;
-  flags: TsRelFlags;
+  sheet1: String = '';
+  sheet2: string = '';
+  flags: TsRelFlags = [];
 begin
   ANode := ANode.FindNode('calcext:conditional-formats');
   if ANode = nil then
@@ -2647,7 +2648,7 @@ var
   r1, c1, r2, c2: Cardinal;
   sheetName1, sheetName2: String;
   sheetIdx1, sheetIdx2, p: Integer;
-  flags: TsRelFlags;
+  flags: TsRelFlags = [];
   err: TsErrorValue;
 
   procedure ErrorRange(ASheetName: String);
@@ -9368,7 +9369,7 @@ begin
     cOffs1 := chart.OffsetX;
     w := chart.Width;
     h := chart.Height;
-    sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
+    sheet.CalcDrawingExtent(w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
 
     if chart.Series.Count > 0 then
     begin
@@ -9434,7 +9435,7 @@ begin
     if imgType = itUnknown then
       Continue;
 
-    (ASheet as TsWorksheet).CalcImageExtent(i, false,  // not clear if UsePixels=false is correct. Not harmful at least
+    (ASheet as TsWorksheet).CalcImageExtent(i, //false,  // not clear if UsePixels=false is correct. Not harmful at least
       r1, c1, r2, c2,
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm
