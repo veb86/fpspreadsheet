@@ -972,7 +972,7 @@ var
   stylesFile: String = '';
   XMLStream: TStream;
   doc: TXMLDocument = nil;
-  chart: TsChart;
+  chart: TsChart = nil;
   ok: Boolean;
   lReader: TsSpreadOpenDocReader;
 begin
@@ -1000,7 +1000,10 @@ begin
 
   // Chart not found
   if chart = nil then
-    raise Exception.Create('Chart in "' + contentfile + '" not found.');
+  begin
+    Reader.Workbook.AddErrorMsg('No chart found in "' + contentfile + '".');
+    exit;
+  end;
 
   // Read the Object/styles.xml file
   if stylesFile <> '' then

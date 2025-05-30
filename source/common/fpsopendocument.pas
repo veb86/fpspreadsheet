@@ -9334,13 +9334,15 @@ var
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
-  xRngAddr, yRngAddr, titleAddr: String;
   xml: String;
   target, bookmark: String;
   u: TURI;
  {$IFDEF FPS_CHARTS}
   chart: TsChart;
   series: TsChartSeries;
+  xRngAddr: String = '';
+  yRngAddr: String = '';
+  titleAddr: String = '';
  {$ENDIF}
 begin
   if (sheet.GetImageCount = 0) {$IFDEF FPS_CHARTS}and (sheet.GetChartCount = 0){$ENDIF} then
@@ -9355,8 +9357,10 @@ begin
     chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
     if chart.Worksheet <> sheet then
       Continue;
+      {
     if chart.Series.Count = 0 then
       Continue;
+       }
 
     r1 := chart.Row;
     c1 := chart.Col;
@@ -9366,36 +9370,37 @@ begin
     h := chart.Height;
     sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
 
-    series := chart.Series[0];
-    if (series.XRange.Row1 <> series.XRange.Row2) or (series.XRange.Col1 <> series.XRange.Col2) then
-      xRngAddr := GetSheetCellRangeString_ODS(
+    if chart.Series.Count > 0 then
+    begin
+      series := chart.Series[0];
+      if (series.XRange.Row1 <> series.XRange.Row2) or (series.XRange.Col1 <> series.XRange.Col2) then
+        xRngAddr := GetSheetCellRangeString_ODS(
+          sheet.Name, sheet.Name,
+          series.XRange.Row1, series.XRange.Col1,
+          series.XRange.Row2, series.XRange.Col2,
+          rfAllRel, false
+        )
+      else
+        xRngAddr := GetSheetCellRangeString_ODS(
+          sheet.Name, sheet.Name,
+          series.LabelRange.Row1, series.LabelRange.Col1,
+          series.LabelRange.Row2, series.LabelRange.Col2,
+          rfAllRel, false
+        );
+      yRngAddr := GetSheetCellRangeString_ODS(
         sheet.Name, sheet.Name,
-        series.XRange.Row1, series.XRange.Col1,
-        series.XRange.Row2, series.XRange.Col2,
-        rfAllRel, false
-      )
-    else
-      xRngAddr := GetSheetCellRangeString_ODS(
-        sheet.Name, sheet.Name,
-        series.LabelRange.Row1, series.LabelRange.Col1,
-        series.LabelRange.Row2, series.LabelRange.Col2,
+        series.YRange.Row1, series.YRange.Col1,
+        series.YRange.Row2, series.YRange.Col2,
         rfAllRel, false
       );
-    yRngAddr := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
-      series.YRange.Row1, series.YRange.Col1,
-      series.YRange.Row2, series.YRange.Col2,
-      rfAllRel, false
-    );
-    if series.TitleAddr.IsUsed then
-      titleAddr := GetSheetCellRangeString_ODS(
-        sheet.Name, sheet.Name,
-        series.TitleAddr.row, series.TitleAddr.Col,
-        series.TitleAddr.row, series.TitleAddr.Col,
-        rfAllRel, false
-      )
-    else
-      titleAddr := '';
+      if series.TitleAddr.IsUsed then
+        titleAddr := GetSheetCellRangeString_ODS(
+          sheet.Name, sheet.Name,
+          series.TitleAddr.row, series.TitleAddr.Col,
+          series.TitleAddr.row, series.TitleAddr.Col,
+          rfAllRel, false
+        );
+    end;
 
     xml := Format(
       '<draw:frame draw:z-index="%d" ' +
@@ -9412,7 +9417,7 @@ begin
       i+1,
       w, h,
       x, y,
-      xRngAddr + ' ' + titleAddr + ' ' + yrngAddr,
+      xRngAddr + ' ' + titleAddr + ' ' + yRngAddr,
       chart.Index+1
     ], FPointSeparatorSettings);
 

@@ -171,7 +171,7 @@ type
    @value chsDot     Hatch lines are dotted
    @value chsSingle  The pattern uses single hatch links.
    @value chsDouble  The pattern uses two hatch lines rotated by 90° to each other.
-   @value chsTripe   The pattern uses three hatch lines rotated by 45 and 90°.
+   @value chsTriple  The pattern uses three hatch lines rotated by 45 and 90°.
   }
   TsChartHatchStyle = (chsDot, chsSingle, chsDouble, chsTriple);
 
@@ -190,7 +190,7 @@ type
     Index: Integer;
     {@@ Foreground color of the pattern (see @link(TsChartColor)) }
     FgColor: TsChartColor;
-    {@@ Background color of the pattern (see @link(TsChartColor)). Use @link(sscTransparent) to achieve a non-filled background (not supported by all patterns and formats).}
+    {@@ Background color of the pattern (see @link(TsChartColor)). Use @link(sccTransparent) to achieve a non-filled background (not supported by all patterns and formats).}
     BgColor: TsChartColor;
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartFillPattern);
@@ -253,7 +253,7 @@ type
    @value  cfsSolidFill  The shape is filled by a uniform color.
    @value  cfsGradient   The shape is filled by a color gradient.
    @value  cfsPattern    The shape is filled by a tiled colored pattern.
-   @value  cfsPattern    The shpae is filled by an arbitrary tiled image. }
+   @value  cfsImage      The shpae is filled by an arbitrary tiled image. }
   TsChartFillStyle = (cfsNoFill, cfsSolidFill, cfsGradient, cfsPattern, cfsImage);
 
   {@@ Class which defines how an area or shape is filled by color or by a pattern. }
@@ -261,11 +261,11 @@ type
   public
     {@@ Element of the @link(TsChartFillStyle) enumeration identifying the type of the fill }
     Style: TsChartFillStyle;
-    {@@ Index into the chart's Gradients list containing all fill gradient parameters }
+    {@@ Index into the chart's @link(TsChart.Gradients) list containing all fill gradient parameters }
     Gradient: Integer;
-    {@@ Index into the chart's FillPatterns list containing all (colored) fill patterns }
+    {@@ Index into the chart's @link(TsChart.FillPatterns) list containing all (colored) fill patterns }
     Pattern: Integer;
-    {@@ Index into the chart's Images list containing all images used for filling }
+    {@@ Index into the chart's @link(TsChart.Images) list containing all images used for filling }
     Image: Integer;
     {@@ Color to be used in the solid-fill case (@link(Style) = @link(cfsSolidFill))}
     Color: TsChartColor;
@@ -279,12 +279,18 @@ type
     procedure SelectSolidFill(AColor: TsChartColor);
   end;
 
+  {@@ Class which defines a cell address which can be evaluated in the chart.
+    Useful for series titles. }
   TsChartCellAddr = class
   private
     FChart: TsChart;
   public
+    {@@ Name of the worksheet which contains the referenced cell address }
     Sheet: String;
-    Row, Col: Cardinal;
+    {@@ Row index of the referenced cell address }
+    Row: Cardinal;
+    {@@ Column index of the referenced cell address }
+    Col: Cardinal;
     constructor Create(AChart: TsChart);
     procedure CopyFrom(ASource: TsChartCellAddr);
     function GetSheetName: String;
@@ -292,21 +298,35 @@ type
     property Chart: TsChart read FChart;
   end;
 
+  {@@ Class which defines a 3d cell range.
+    Needed by series x, y and label ranges. }
   TsChartRange = class
   private
     FChart: TsChart;
   public
-    Sheet1, Sheet2: String;
-    Row1, Col1, Row2, Col2: Cardinal;
+    {@@ Name of the worksheet containing the first cell of the range (top/left corner) }
+    Sheet1: String;
+    {@@ Name of the worksheet containing the last cell of the range (bottom/right corner) }
+    Sheet2: String;
+    {@@ Row index of the top-most cell of the range }
+    Row1: Cardinal;
+    {@@ Column index of the left-most cell of the range }
+    Col1: Cardinal;
+    {@@ Row index of the bottom-most cell of the range }
+    Row2: Cardinal;
+    {@@ Column index of the right-most cell of the range }
+    Col2: Cardinal;
     constructor Create(AChart: TsChart);
     procedure CopyFrom(ASource: TsChartRange);
-    function NumCells: Integer;
     function GetSheet1Name: String;
     function GetSheet2Name: String;
     function IsEmpty: Boolean;
+    function NumCellsPerSheet: Integer;
+    {@@ Chart in which this cell range is used. }
     property Chart: TsChart read FChart;
   end;
 
+  {@@ A chart consists of several elements: title, footer, plotarea, axes, series, legend. }
   TsChartElement = class
   private
     FChart: TsChart;
@@ -317,10 +337,13 @@ type
   public
     constructor Create(AChart: TsChart);
     procedure CopyFrom(ASource: TsChartElement); virtual;
+    {@@ Chart to which this element belongs. }
     property Chart: TsChart read FChart;
+    {@@ Allows to show/hide the element. }
     property Visible: Boolean read GetVisible write SetVisible;
   end;
 
+  {@@ General @link(TsChartElement) which has a border line and filled background. }
   TsChartFillElement = class(TsChartElement)
   private
     FBackground: TsChartFill;
@@ -329,10 +352,15 @@ type
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartElement); override;
+    {@@ Fill properties for the background of the element }
     property Background: TsChartFill read FBackground write FBackground;
+    {@@ Line properties for the border of the element }
     property Border: TsChartLine read FBorder write FBorder;
   end;
 
+  {@@ General chart element which can display some text. It has a (rotatable)
+    Font and, since it descends from TsChartFillElement, a background and a
+    border. }
   TsChartText = class(TsChartFillElement)
   private
     FCaption: String;
@@ -343,21 +371,58 @@ type
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartElement); override;
+    {@@ Text displayed by this element }
     property Caption: String read FCaption write FCaption;
+    {@@ Font used to draw the text. }
     property Font: TsFont read FFont write FFont;
+    {@@ Rotation angle for text painting, in degrees }
     property RotationAngle: single read FRotationAngle write FRotationAngle;
+    {@@ X coordinate of the position of the top/left corner of the element, in millimeters }
     property PosX: Double read FPosX write FPosX;
+    {@@ Y coordinate of the position of the top/left corner of the element, in millimeters }
     property PosY: Double read FPosY write FPosY;
     property Visible;
   end;
 
+  {@@ Enumeration which defines where an axis can be positioned in a chart
+   @value caaLeft  Axis at the left (y axis)
+   @value caaTop   Axis at the top (alternative x axis)
+   @value caaRight Axis at the right (alternative y axis)
+   @value caaBottom Axis at the bottom (x axis) }
   TsChartAxisAlignment = (caaLeft, caaTop, caaRight, caaBottom);
+
+  {@@ Enumeration defining the position of an axis relative to the other orthogonal axis
+   @value capStart   The other axis crosses at the start (Min).
+   @value capEnd     The other axis crosses at the end (Max).
+   @value capValue   The other axis crosses at the @link(TsChartAxis.PositionValue) of the axis. }
   TsChartAxisPosition = (capStart, capEnd, capValue);
+
+  {@@ Enumeration of the position of axis ticks relative to the axis.
+   @value catInside  The axis tick is drawn inside the chart area.
+   @value catOutside The axis tick is drawn outside the chart area. }
   TsChartAxisTick = (catInside, catOutside);
+
+  {@@ Set containing the possible axis tick positions at an axis, inside or outside the plot area. }
   TsChartAxisTicks = set of TsChartAxisTick;
+
+  {@@ Enumeration of the basic chart types
+   @value ctEmpty   Empty chart, i.e. no series definied so far
+   @value ctBar     Bar chart
+   @value ctLine    Line chart
+   @value ctArea    Area chart
+   @value ctBarLine The chart contains bar and line series
+   @value ctScatter Scatter plot
+   @value ctBubble  Bubble chart
+   @value ctRadar   Radial chart
+   @value ctFilledRadar Like ctRadar, but the area enclosed by the series is filled.
+   @value ctPie     Pie chart
+   @value ctRing    Like pie chart, but with an inner hole
+   @value ctStock   Financial chart }
   TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble,
     ctRadar, ctFilledRadar, ctPie, ctRing, ctStock);
 
+  {@@ The TsChartAxis class represents all elements required to characterize a
+    chart axis. }
   TsChartAxis = class(TsChartFillElement)
   private
     FAlignment: TsChartAxisAlignment;
@@ -406,45 +471,85 @@ type
     function GetRotatedAxis: TsChartAxis;
     procedure SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    {@@ Position of the axis: left, top, right, bottom side of the chart area }
     property Alignment: TsChartAxisAlignment read FAlignment write FAlignment;
+    {@@ If true, the axis maximum is determined automatically from the plotted data. Otherwise the @link(Max) must be specified. }
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
+    {@@ If true, the axis minimum is determined automatically from the plotted data. Otherwise the @link(Min) must be specified. }
     property AutomaticMin: Boolean read FAutomaticMin write FAutomaticMin;
+    {@@ If true, the major axis tick interval is determined automatically from the plotted data. Otherwise the @link(MajorInterval) must be specified. }
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
+    {@@ If true, the minor axis tick interval is determined automatically from the plotted data. Otherwise the @link(MinorInterval) must be specified. }
     property AutomaticMinorInterval: Boolean read FAutomaticMinorInterval write FAutomaticMinorInterval;
+    {@@ If true, the count of minor axis ticks is determined automatically from the plotted data. Otherwise the @link(MinorCount) must be specified. }
     property AutomaticMinorSteps: Boolean read FAutomaticMinorSteps write FAutomaticMinorSteps;
+    {@@ Describes the style and width of the axis line }
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
+    {@@ Cell range which provides the axis categories (x axis text labels). }
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
+    {@@ When true the axis plots date/time values. }
     property DateTime: Boolean read FDateTime write FDateTime;
+    {@@ When true the axis title is rotated by default. }
     property DefaultTitleRotation: Boolean read FDefaultTitleRotation write FDefaultTitleRotation;
+    {@@ If true the axis runs in the opposite direction from maximum to minimum, rather than from minimum to maximum }
     property Inverted: Boolean read FInverted write FInverted;
+    {@@ Defines the font used to write the axis labels. }
     property LabelFont: TsFont read FLabelFont write FLabelFont;
+    {@@ Format mask used to convert the axis values to numeric strings. }
     property LabelFormat: String read FLabelFormat write FLabelFormat;
+    {@@ Format mask used to convert the axis values to date/time strings. }
     property LabelFormatDateTime: String read FLabelFormatDateTime write FLabelFormatDateTime;
+    {@@ If true, label formatting is taken from the corresponding cells. }
     property LabelFormatFromSource: Boolean read FLabelFormatFromSource write FLabelFormatFromSource;
+    {@@ Format maks used to convert the axis values to percentage strings. }
     property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
+    {@@ Angle, in degrees, by which axis labels are rotated. }
     property LabelRotation: Single read FLabelRotation write FLabelRotation;
+    {@@ When true the axis is labeled in a logarithmic scale, otherwise in a linear scale. }
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
+    {@@ Base of the logarithms when the axis is in @link(Logarithmic) mode. }
     property LogBase: Double read FLogBase write FLogBase;
+    {@@ Style and width of the minor grid lines running perpendicular to the axis. }
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
+    {@@ Interval between the major ticks. Used when @link(AutomaticMajorInterval) is true. }
     property MajorInterval: Double read FMajorInterval write SetMajorInterval;
+    {@@ Defines whether major ticks are drawn inside, outside or at both sides of the plot area. }
     property MajorTicks: TsChartAxisTicks read FMajorTicks write FMajorTicks;
+    {@@ Value where the axis is forced to end when @link(AutomaticMax) is true. }
     property Max: Double read FMax write SetMax;
+    {@@ Value where the axis is forced go begin when @link(AutomaticMin) is true. }
     property Min: Double read FMin write SetMin;
+    {@@ Style and width of the minor grid lines running perpendicular to the axis. }
     property MinorGridLines: TsChartLine read FMinorGridLines write FMinorGridLines;
+    {@@ Number of minor ticks between consecutive major ticks. Used when @link(AutomaticMinorSteps) is true. }
     property MinorCount: Integer read FMinorCount write SetMinorCount;
+    {@@ Interval between the minor ticks. Used when @link(AutomaticMinorInterval) is true. }
     property MinorInterval: Double read FMinorInterval write SetMinorInterval;
+    {@@ Defines whether minor ticks are drawn inside, outside or at both sides of the plot area. }
     property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
-    // Position and PositionValue define where the axis is crossed by the other axis
+    {@@ Defines the position where the axis is crossed by the other (orthogonal) axis: start, end, or specific value }
     property Position: TsChartAxisPosition read FPosition write FPosition;
+    {@@ Value at which the axis is crossed by the other (orthogonal) axis when Position is @link(capValue). }
     property PositionValue: Double read FPositionValue write FPositionValue;
+    {@@ Allows to show/hide the axis labels. }
     property ShowLabels: Boolean read FShowLabels write FShowLabels;
+    {@@ Text displayed as title along the axis }
     property Title: TsChartText read FTitle write FTitle;
+    {@@ Angle by which the axis title is rotated. }
     property TitleRotationAngle: Single read GetTitleRotationAngle;
+    {@@ Allows to show/hide the entire axis}
     property Visible;
   end;
 
+  {@@ Enumeration of the possible legend positions
+   @value lpRight  Legend at the right side of the plot area
+   @value lpTop    Legend above the plot area
+   @value lpBottom Legend below the plot area
+   @value lpLeft   Legend at the left side of the plot area }
   TsChartLegendPosition = (lpRight, lpTop, lpBottom, lpLeft);
 
+  {@@ TsChartLegend collects all parameters needed for displaying the chart legend.
+    It descends from @link(TsChartFillElement). }
   TsChartLegend = class(TsChartFillElement)
   private
     FFont: TsFont;
@@ -455,10 +560,15 @@ type
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartElement); override;
+    {@@ When false the legend is drawn outside the plot area. }
     property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
+    {@@ Font used to draw the legend item texts }
     property Font: TsFont read FFont write FFont;
+    {@@ Position of the legend: at the right, top, bottom or left of the chart area. }
     property Position: TsChartLegendPosition read FPosition write FPosition;
+    {@@ X shift of the legend from its default position }
     property PosX: Double read FPosX write FPosX;
+    {@@ Y shift of the legend from its default position }
     property PosY: Double read FPosY write FPosY;
     // There is also a "legend-expansion" but this does not seem to have a visual effect in Calc.
   end;
@@ -833,6 +943,7 @@ type
     property CloseRange: TsChartRange read FYRange;
   end;
 
+  {@@ List class storing the series of a chart. }
   TsChartSeriesList = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsChartSeries;
@@ -841,8 +952,13 @@ type
     property Items[AIndex: Integer]: TsChartSeries read GetItem write SetItem; default;
   end;
 
+  {@@ Enumeration for enabling stacking of bar and area series
+   @value csmDefault  No stacking
+   @value csmStacked  Data points are stacked at the same x value
+   @value csmStackedPercentage Data points are stacked and recalculated as percentages of the total sum. }
   TsChartStackMode = (csmDefault, csmStacked, csmStackedPercentage);
 
+  {@@ The main chart class. Here all elements and properties are put together. }
   TsChart = class(TsChartFillElement)
   private
     FName: String;
@@ -889,83 +1005,83 @@ type
     procedure DeleteSeries(AIndex: Integer);
 
     function GetChartType: TsChartType;
-//    function GetLineStyle(AIndex: Integer): TsChartLineStyle;
     function IsScatterChart: Boolean;
-//    function NumLineStyles: Integer;
 
-    { Name for internal purposes to identify the chart during reading from file }
+    {@@ Name for internal purposes to identify the chart during reading from file }
     property Name: String read FName write FName;
-    { Index of chart in workbook's chart list. }
+    {@@ Index of chart in workbook's chart list. }
     property Index: Integer read FIndex write FIndex;
-    { Worksheet into which the chart is embedded }
+    {@@ Worksheet into which the chart is embedded }
     property Worksheet: TsBasicWorksheet read FWorksheet write FWorksheet;
-    (*
-    { Index of worksheet sheet which contains the chart. }
-    property SheetIndex: Integer read FSheetIndex write FSheetIndex;
-    *)
-    { Row index of the cell in which the chart has its top/left corner (anchor) }
+    {@@ Row index of the cell in which the chart has its top/left corner (anchor) }
     property Row: Cardinal read FRow write FRow;
-    { Column index of the cell in which the chart has its top/left corner (anchor) }
+    {@@ Column index of the cell in which the chart has its top/left corner (anchor) }
     property Col: Cardinal read FCol write FCol;
-    { Offset of the left chart edge relative to the anchor cell, in mm }
+    {@@ Offset of the left chart edge relative to the anchor cell, in mm }
     property OffsetX: double read FOffsetX write FOffsetX;
-    { Offset of the top chart edge relative to the anchor cell, in mm }
+    {@@ Offset of the top chart edge relative to the anchor cell, in mm }
     property OffsetY: double read FOffsetY write FOffsetY;
-    { Width of the chart, in mm }
+    {@@ Width of the chart, in mm }
     property Width: double read FWidth write FWidth;
-    { Height of the chart, in mm }
+    {@@ Height of the chart, in mm }
     property Height: double read FHeight write FHeight;
-    { Workbook to which the chart belongs }
+    {@@ Workbook to which the chart belongs }
     property Workbook: TsBasicWorkbook read FWorkbook write FWorkbook;
 
-    { Attributes of the entire chart background }
+    {@@ Attributes of the entire chart background }
     property Background: TsChartFill read FBackground write FBackground;
     property Border: TsChartLine read FBorder write FBorder;
 
-    { Attributes of the plot area (rectangle enclosed by axes) }
+    {@@ Attributes of the plot area (rectangle enclosed by axes) }
     property PlotArea: TsChartFillElement read FPlotArea write FPlotArea;
-    { Attributes of the floor of a 3D chart }
+    {@@ Attributes of the floor of a 3D chart }
     property Floor: TsChartFillElement read FFloor write FFloor;
 
-    { Attributes of the chart's title }
+    {@@ Attributes of the chart's title }
     property Title: TsChartText read FTitle write FTitle;
-    { Attributes of the chart's subtitle }
+    {@@ Attributes of the chart's subtitle }
     property Subtitle: TsChartText read FSubtitle write FSubTitle;
-    { Attributs of the chart's legend }
+    {@@ Attributes of the chart's legend }
     property Legend: TsChartLegend read FLegend write FLegend;
 
-    { Attributes of the plot's primary x axis (bottom) }
+    {@@ Attributes of the plot's primary x axis (bottom) }
     property XAxis: TsChartAxis read FXAxis write FXAxis;
-    { Attributes of the plot's secondary x axis (top) }
+    {@@ Attributes of the plot's secondary x axis (top) }
     property X2Axis: TsChartAxis read FX2Axis write FX2Axis;
-    { Attributes of the plot's primary y axis (left) }
+    {@@ Attributes of the plot's primary y axis (left) }
     property YAxis: TsChartAxis read FYAxis write FYAxis;
-    { Attributes of the plot's secondary y axis (right) }
+    {@@ Attributes of the plot's secondary y axis (right) }
     property Y2Axis: TsChartAxis read FY2Axis write FY2Axis;
 
-    { Gap between bars/bar groups, as percentage of single bar width }
+    {@@ Gap between bars/bar groups, as percentage of single bar width }
     property BarGapWidthPercent: Integer read FBarGapWidthPercent write FBarGapWidthPercent;
-    { Overlapping of bars, as percentage of single bar width }
+    {@@ Overlapping of bars, as percentage of single bar width }
     property BarOverlapPercent: Integer read FBarOverlapPercent write FBarOverlapPercent;
 
-    { Connecting line between data points (for line and scatter series) }
+    {@@ Characterizes the connecting line between data points (for line and scatter series) }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
-    { x and y axes exchanged (mainly for bar series, but works also for scatter and bubble series) }
+    {@@ When true, x and y axes are exchanged (mainly for bar series, but works also for scatter and bubble series) }
     property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
-    { Stacking of series (for bar and area series ) }
+    {@@ Allows stacking of bar and area series }
     property StackMode: TsChartStackMode read FStackMode write FStackMode;
 
+    {@@ Cell range which defines the labels at the category axis (x axis) }
     property CategoryLabelRange: TsChartRange read GetCategoryLabelRange;
 
     { Attributes of the series }
+    {@@ List containing all the series which are displayed by the chart. }
     property Series: TsChartSeriesList read FSeriesList write FSeriesList;
 
     { Style lists }
+    {@@ List containing all the fill gradients which have been defined for the chart. }
     property Gradients: TsChartGradientList read FGradients;
+    {@@ List containing all the fill patterns which have been defined for the chart. }
     property FillPatterns: TsChartFillPatternList read FFillPatterns;
+    {@@ List containing all the images which have been provided for filling purposes. }
     property Images: TsChartImageList read FImages;
   end;
 
+  {@@ A list of charts. The stored charts are automatically destroyed by the list. }
   TsChartList = class(TObjectList)
   private
     function GetItem(AIndex: Integer): TsChart;
@@ -974,6 +1090,7 @@ type
     property Items[AIndex: Integer]: TsChart read GetItem write SetItem; default;
   end;
 
+  {@@ An dynamic array of charts }
   TsChartArray = array of TsChart;
 
 
@@ -1136,7 +1253,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Destructor of the @type(TsChartGradient) class.
+  Destructor of the TsChartGradient class.
 -------------------------------------------------------------------------------}
 destructor TsChartGradient.Destroy;
 begin
@@ -1522,9 +1639,9 @@ end;
   Adds a non-filled pre-defined pattern to the chart's FillPattern list.
 
   @param AName          Name of the pattern. Must be unique.
-  @param(APatternStyle  A @link(TsChartFillPatternStyle) enumeration value
+  @param(APatternStyle  A TsChartFillPatternStyle enumeration value
                         identifying the pre-defined pattern type.)
-  @param APatternColor  Color of the pattern (@link(TsChartColor)).
+  @param APatternColor  Color of the pattern.
 -------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternStyle: TsChartFillPatternStyle; APatternColor: TsChartColor): Integer;
@@ -1537,8 +1654,8 @@ end;
 
   @param AName          Name of the pattern. Must be unique.
   @param(APatternStyle  A @link(TsChartFillPatternStyle) enumeration value identifying the pre-defined pattern type.)
-  @param APatternColor  Color of the pattern (@link(TsChartColor)).
-  @param ABackColor     Color of the pattern background (@link(TsChartColor)).
+  @param APatternColor  Color of the pattern.
+  @param ABackColor     Color of the pattern background.
 -------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   APatternStyle: TsChartFillPatternStyle; APatternColor, ABackColor: TsChartColor): Integer;
@@ -1565,7 +1682,7 @@ end;
   @param(ARawPatternIndex Index of the user-defined fill-pattern (@link(TsChartFillPatternStyle))
                           into the raw fill pattern list. This index is
                           returned by the RegisterRawFillPattern routine.)
-  @param APatternColor    Color of the pattern (@link(TsChartColor)).
+  @param APatternColor    Color of the pattern.
 -------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   ARawPatternIndex: Integer; APatternColor: TsChartColor): Integer;
@@ -1581,8 +1698,8 @@ end;
   @param(ARawPatternIndex Index of the user-defined fill-pattern (@link(TsChartFillPatternStyle))
                           into the raw fill pattern list.
                           This index is returned by the RegisterRawFillPattern routine.)
-  @param APatternColor    Color of the pattern (@link(TsChartColor)).
-  @param ABackColor       Background color of the pattern (@TsChartColor)).
+  @param APatternColor    Color of the pattern.
+  @param ABackColor       Background color of the pattern.
 -------------------------------------------------------------------------------}
 function TsChartFillPatternList.AddPattern(AName: String;
   ArawPatternIndex: Integer; APatternColor, ABackColor: TsChartColor): Integer;
@@ -1831,7 +1948,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Copies the fill paramters from another @link(TsChartFill) instance.
 
-  @param  AFill  @linkl(TsChartFill) instance to be copied.
+  @param  AFill  @link(TsChartFill) instance to be copied.
 -------------------------------------------------------------------------------}
 procedure TsChartFill.CopyFrom(AFill: TsChartFill);
 begin
@@ -1885,8 +2002,8 @@ end;
   The pattern is determined by its index in the chart's FillPatterns list.
 
   Pattern and background colors are already included in the pattern parameters.
-  When the pattern's background is fully transparent (@link(BgColor.Transparency) = 1)
-  the pattern is shown without background.
+  When the pattern's background color is fully transparent the pattern is
+  shown without background.
 
   @param  APatternIndex  Index of the pattern in the chart's FillPattern list.
 -------------------------------------------------------------------------------}
@@ -1910,6 +2027,11 @@ end;
 
 { TsChartCellAddr }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartCellAddr class.
+  Initializes the row and column indices of the referenced cell with the
+  UNASSIGNED_ROW_COL_INDEX value.
+-------------------------------------------------------------------------------}
 constructor TsChartCellAddr.Create(AChart: TsChart);
 begin
   FChart := AChart;
@@ -1918,6 +2040,9 @@ begin
   Col := UNASSIGNED_ROW_COL_INDEX;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the cell address properties from another instance of the class.
+-------------------------------------------------------------------------------}
 procedure TsChartCellAddr.CopyFrom(ASource: TsChartCellAddr);
 begin
   Sheet := ASource.Sheet;
@@ -1925,6 +2050,10 @@ begin
   Col := ASource.Col;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the name of the worksheet which contains the referenced cell.
+  The returned string is quoted if the name contains illegal characters.
+-------------------------------------------------------------------------------}
 function TsChartCellAddr.GetSheetName: String;
 begin
   if Sheet <> '' then
@@ -1935,6 +2064,10 @@ begin
     Result := QuotedStr(Result);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE when the referenced cell address has been changed to be different
+  from the default.
+-------------------------------------------------------------------------------}
 function TsChartCellAddr.IsUsed: Boolean;
 begin
   Result := (Row <> UNASSIGNED_ROW_COL_INDEX) and (Col <> UNASSIGNED_ROW_COL_INDEX);
@@ -1943,6 +2076,12 @@ end;
 
 { TsChartRange }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartRange class
+
+  Initializes the worksheet names with empty strings and the row and column
+  indices with the value UNASSIGNED_ROW_COL_INDEX.
+-------------------------------------------------------------------------------}
 constructor TsChartRange.Create(AChart: TsChart);
 begin
   FChart := AChart;
@@ -1954,6 +2093,9 @@ begin
   Col2 := UNASSIGNED_ROW_COL_INDEX;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the range parameters from another range
+-------------------------------------------------------------------------------}
 procedure TsChartRange.CopyFrom(ASource: TsChartRange);
 begin
   Sheet1 := ASource.Sheet1;
@@ -1964,6 +2106,10 @@ begin
   Col2 := ASource.Col2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the name of the worksheet which contains the first cell of the range.
+  The returned string is quoted if the name contains illegal characters.
+-------------------------------------------------------------------------------}
 function TsChartRange.GetSheet1Name: String;
 begin
   if Sheet1 <> '' then
@@ -1974,6 +2120,10 @@ begin
     Result := QuotedStr(Result);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the name of the worksheet which contains the last cell of the range
+  The returned string is quoted if the name contains illegal characters.
+-------------------------------------------------------------------------------}
 function TsChartRange.GetSheet2Name: String;
 begin
   if Sheet2 <> '' then
@@ -1984,6 +2134,9 @@ begin
     Result := QuotedStr(Result);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE when the cell range has not been assigned so far.
+-------------------------------------------------------------------------------}
 function TsChartRange.IsEmpty: Boolean;
 begin
   Result :=
@@ -1991,7 +2144,10 @@ begin
     (Row2 = UNASSIGNED_ROW_COL_INDEX) and (Col2 = UNASSIGNED_ROW_COL_INDEX);
 end;
 
-function TsChartRange.NumCells: Integer;
+{@@ ----------------------------------------------------------------------------
+  Calculates the number of cells contained in each worksheet of the range.
+-------------------------------------------------------------------------------}
+function TsChartRange.NumCellsPerSheet: Integer;
 begin
   if IsEmpty then
     Result := 0
@@ -1999,8 +2155,14 @@ begin
     Result := (Col2 - Col1 + 1) * (Row2 - Row1 + 1);
 end;
 
+
 { TsChartElement }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartElement
+
+  @param  AChart  Chart to which the element belongs.
+-------------------------------------------------------------------------------}
 constructor TsChartElement.Create(AChart: TsChart);
 begin
   inherited Create;
@@ -2008,6 +2170,9 @@ begin
   FVisible := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies all element properties from another TsChartElement
+-------------------------------------------------------------------------------}
 procedure TsChartElement.CopyFrom(ASource: TsChartElement);
 begin
   if ASource <> nil then
@@ -2027,6 +2192,11 @@ end;
 
 { TsChartFillElement }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartFillElement class
+
+  Initializes the background as white solid fill and the border a black solid line
+-------------------------------------------------------------------------------}
 constructor TsChartFillElement.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -2036,6 +2206,9 @@ begin
   FBorder.SelectSolidLine(ChartColor(scBlack));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartFillElement class
+-------------------------------------------------------------------------------}
 destructor TsChartFillElement.Destroy;
 begin
   FBorder.Free;
@@ -2043,6 +2216,9 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the element properties from another TsChartElement instance
+-------------------------------------------------------------------------------}
 procedure TsChartFillElement.CopyFrom(ASource: TsChartElement);
 var
   srcElement: TsChartFillElement;
@@ -2074,6 +2250,11 @@ end;
 
 { TsChartText }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartText class
+
+  Initializes the default font of the text and hides the background and border.
+-------------------------------------------------------------------------------}
 constructor TsChartText.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -2088,12 +2269,18 @@ begin
   FVisible := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartText class
+-------------------------------------------------------------------------------}
 destructor TsChartText.Destroy;
 begin
   FFont.Free;
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the text style properties from another TsChartText instance
+-------------------------------------------------------------------------------}
 procedure TsChartText.CopyFrom(ASource: TsChartElement);
 begin
   inherited CopyFrom(ASource);
@@ -2110,6 +2297,9 @@ end;
 
 { TsChartAxis }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartAxis class
+-------------------------------------------------------------------------------}
 constructor TsChartAxis.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -2152,6 +2342,9 @@ begin
   FLogBase := 10.0;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartAxis class
+-------------------------------------------------------------------------------}
 destructor TsChartAxis.Destroy;
 begin
   FMinorGridLines.Free;
@@ -2163,6 +2356,9 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the axis parameters from another axis.
+-------------------------------------------------------------------------------}
 procedure TsChartAxis.CopyFrom(ASource: TsChartElement);
 begin
   inherited CopyFrom(ASource);
@@ -2219,7 +2415,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the axis in the other direction when the chart is rotate.
+  Returns the axis in the other direction when the chart is rotated, i.e. when
+  the primary x axis is rotated it returns the primary y axis.
 -------------------------------------------------------------------------------}
 function TsChartAxis.GetRotatedAxis: TsChartAxis;
 begin
@@ -2253,11 +2450,29 @@ begin
     Result := FTitle.RotationAngle;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range containing the axis categories
+
+  @param  ARow1  Top row of the range
+  @param  ACol1  Left column of the range
+  @param  ARow2  Bottom row of the range
+  @param  ACol2  Right column of the range
+-------------------------------------------------------------------------------}
 procedure TsChartAxis.SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetCategoryRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a 3d cell range containing the axis categories
+
+  @param  ASheet1 Name of the worksheet containing the cell at ARow1/ACol1
+  @param  ARow1   Top row of the range
+  @param  ACol1   Left column of the range
+  @param  ASheet2 Name of the worksheet containing the cell at ARow2/ACol2
+  @param  ARow2   Bottom row of the range
+  @param  ACol2   Right column of the range
+-------------------------------------------------------------------------------}
 procedure TsChartAxis.SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -2330,6 +2545,9 @@ end;
 
 { TsChartLegend }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the chart legend.
+-------------------------------------------------------------------------------}
 constructor TsChartLegend.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -2342,12 +2560,18 @@ begin
   // arranging several items per row. And .ods uses lpRight anyway...
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartLegend class
+-------------------------------------------------------------------------------}
 destructor TsChartLegend.Destroy;
 begin
   FFont.Free;
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies all parameters from another legend instance
+-------------------------------------------------------------------------------}
 procedure TsChartLegend.CopyFrom(ASource: TsChartElement);
 begin
   inherited CopyFrom(ASource);

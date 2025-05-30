@@ -1548,7 +1548,7 @@ begin
       totW_px := totW_px + colW_px;
       if totW_px > w_px then
       begin
-        AColOffs2 := FWorkbook.ConvertUnits(pxToPts(colW_px - (totW_px - w_px), ppi), suPoints, u);
+        AColOffs2 := FWorkbook.ConvertUnits(pxToPts(colW_px - (totW_px - w_px), ppi), suPoints, u) + AColOffs1;
         break;
       end;
       inc(ACol2);
@@ -1563,7 +1563,7 @@ begin
       totH_px := totH_px + rowH_px;
       if totH_px > h_px then
       begin
-        ARowOffs2 := FWorkbook.ConvertUnits(pxToPts(rowH_px - (totH_px - h_px), ppi), suPoints, u);
+        ARowOffs2 := FWorkbook.ConvertUnits(pxToPts(rowH_px - (totH_px - h_px), ppi), suPoints, u) + ARowOffs1;
         break;
       end;
       inc(ARow2);
@@ -1580,7 +1580,7 @@ begin
       totW := totW + colW;
       if totW >= AWidth then
       begin
-        AColOffs2 := colW - (totW - AWidth);
+        AColOffs2 := colW - (totW - AWidth) + AColOffs1;
         break;
       end;
       inc(ACol2);
@@ -1594,7 +1594,7 @@ begin
       totH := totH + rowH;
       if totH >= AHeight then
       begin
-        ARowOffs2 := rowH - (totH - AHeight);
+        ARowOffs2 := rowH - (totH - AHeight) + ARowOffs1;
         break;
       end;
       inc(ARow2);

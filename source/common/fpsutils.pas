@@ -1493,7 +1493,7 @@ function GetSheetCellRangeString_ODS(ASheet1, ASheet2: String;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel;
   WithBrackets: Boolean = true): String;
 begin
-  if (ASheet1 = '') and (ASheet2 = '') and
+  if //(ASheet1 = '') and (ASheet2 = '') and
     (ARow1 = UNASSIGNED_ROW_COL_INDEX) and (ACol1 = UNASSIGNED_ROW_COL_INDEX) and
     (ARow2 = UNASSIGNED_ROW_COL_INDEX) and (ACol2 = UNASSIGNED_ROW_COL_INDEX) then
   begin

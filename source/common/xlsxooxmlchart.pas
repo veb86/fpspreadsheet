@@ -8,7 +8,7 @@ interface
 {$ifdef FPS_CHARTS}
 
 uses
-  Classes, SysUtils, StrUtils, Contnrs, FPImage,
+  Classes, SysUtils, StrUtils, Contnrs, FPImage, Math,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
   fpSpreadsheet, fpsTypes, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
@@ -249,7 +249,7 @@ var
   c: TsColor;
   idx, modif: Integer;
 begin
-  idx := AIndex div Length(XLSX_SERIES_COLORS);
+  idx := AIndex mod Length(XLSX_SERIES_COLORS);
   modif := AIndex mod Length(XLSX_SERIES_COLORS);
   c := LumModOff(XLSX_SERIES_COLORS[idx], LUM[modif], OFFS[modif]);
   Result := ChartColor(c);
@@ -4529,7 +4529,7 @@ begin
       AppendToStream(AStream, Format(
         indent + '    <c:numCache>' + LE +
         indent + '      <c:ptCount val="%d"/>' + LE,
-        [ ARange.NumCells ]
+        [ ARange.NumCellsPerSheet ]
       ));
       idx := 0;
       // Column range
@@ -4597,6 +4597,9 @@ var
   posInGroup: Integer;
 begin
   Result := false;
+
+  if AChart.Series.Count = 0 then
+    exit;
 
   // Collect all series attached to the same y axis, depending on PrimaryAxis parameter.
   SetLength(axisGroup, AChart.Series.Count);
