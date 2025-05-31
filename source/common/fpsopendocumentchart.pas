@@ -211,8 +211,9 @@ const
     'single', 'double', 'triple'
   );
 
+  // lpDefault, lpAbove, lpBelow, lpCenter, lpOutside, lpInside, lpNearOrigin, lpLeft, lpRight, lpAvoidOverlap
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
-    '', 'outside', 'inside', 'center', 'top', 'bottom', 'near-origin');
+    '', 'top', 'below', 'center', 'outside', 'inside', 'near-origin', 'left', 'right', 'avoid-overlap');
 
   LEGEND_POSITION: array[TsChartLegendPosition] of string = (
     'end', 'top', 'bottom', 'start'
@@ -1733,7 +1734,10 @@ begin
             'center': ASeries.LabelPosition := lpCenter;
             'top': ASeries.LabelPosition := lpAbove;
             'bottom': ASeries.LabelPosition := lpBelow;
+            'left': ASeries.LabelPosition := lpLeft;
+            'right': ASeries.LabelPosition := lpRight;
             'near-origin': ASeries.LabelPosition := lpNearOrigin;
+            'avoid-overlap': ASeries.LabelPosition := lpAvoidOverlap;
           end;
 
           // Label border color
@@ -2848,18 +2852,18 @@ begin
 
   numStyle := GetNumberFormatID(AEquation.NumberFormat);
 
-  if not AEquation.DefaultXName then
+  if not AEquation.IsDefaultXName then
     chartprops := chartprops + Format('loext:regression-x-name="%s" ', [AEquation.XName]);
-  if not AEquation.DefaultYName then
+  if not AEquation.IsDefaultYName then
     chartprops := chartprops + Format('loext:regression-y-name="%s" ', [AEquation.YName])          ;
 
-  if not AEquation.DefaultBorder then
+  if not AEquation.IsDefaultBorder then
     lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, AEquation.Border);
 
-  if not AEquation.DefaultFill then
+  if not AEquation.IsDefaultFill then
     fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, AEquation.Fill);
 
-  if not AEquation.DefaultFont then
+  if not AEquation.IsDefaultFont then
     textprops := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(AEquation.Font);
 
   Result := Format(
@@ -4213,10 +4217,10 @@ begin
 
       if trendline.DisplayEquation or trendline.DisplayRSquare then
       begin
-        if (not trendline.Equation.DefaultXName) or (not trendline.Equation.DefaultYName) or
-           (not trendline.Equation.DefaultBorder) or (not trendline.Equation.DefaultFill) or
-           (not trendline.Equation.DefaultFont) or (not trendline.Equation.DefaultNumberFormat) or
-           (not trendline.Equation.DefaultPosition) then
+        if (not trendline.Equation.IsDefaultXName) or (not trendline.Equation.IsDefaultYName) or
+           (not trendline.Equation.IsDefaultBorder) or (not trendline.Equation.IsDefaultFill) or
+           (not trendline.Equation.IsDefaultFont) or (not trendline.Equation.IsDefaultNumberFormat) or
+           (not trendline.Equation.IsDefaultPosition) then
         begin
           trendlineEquStyleID := nextStyleID;
           trendlineEquation := trendlineEquation + Format('chart:style-name="ch%d" ', [ trendlineEquStyleID ]);
@@ -4230,7 +4234,7 @@ begin
 
       if trendlineEquation <> '' then
       begin
-        if not trendline.Equation.DefaultPosition then
+        if not trendline.Equation.IsDefaultPosition then
           trendlineEquation := trendlineEquation + Format(
             'svg:x="%.2fmm" svg:y="%.2fmm" ',
             [ trendline.Equation.Left, trendline.Equation.Top ],

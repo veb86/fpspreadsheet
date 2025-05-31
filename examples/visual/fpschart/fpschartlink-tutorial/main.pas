@@ -93,7 +93,7 @@ begin
 
   // Show the legend
   wChart.Legend.Visible := true;
-  wChart.Legend.Position := lpBottom;
+  wChart.Legend.Position := legBottom;
 
   // Chart title
   wChart.Title.Caption := 'Sales Report';

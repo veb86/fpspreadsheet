@@ -2679,10 +2679,10 @@ procedure TsWorkbookChartLink.UpdateChartLegend(AWorkbookLegend: TsChartLegend;
   ALegend: TChartLegend);
 const
   LEG_POS: array[TsChartLegendPosition] of TLegendAlignment = (
-    laCenterRight,   // lpRight
-    laTopCenter,     // lpTop
-    laBottomCenter,  // lpBottom
-    laCenterLeft     // lpLeft
+    laCenterRight,   // legRight
+    laTopCenter,     // legTop
+    laBottomCenter,  // legBottom
+    laCenterLeft     // legLeft
   );
 begin
   if (AWorkbookLegend <> nil) and (ALegend <> nil) then

@@ -46,7 +46,7 @@ begin
     ch.Title.Caption := 'School Grades';
     ch.Title.Font.Style := [fssBold];
     ch.Legend.Border.Style := clsNoLine;
-    ch.Legend.Position := lpBottom;
+    ch.Legend.Position := legBottom;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := '';
     ch.YAxis.AxisLine.Color := ChartColor(scSilver);

@@ -190,8 +190,9 @@ const
   TRENDLINE_TYPES: Array[TsTrendlineType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
     // 'movingAvg' and 'log' not supported, so far
 
-  LABEL_POS: Array[TsChartLabelPosition] of string = ('', '', 'inEnd', 'ctr', '', 'inBase', 'inBase');
-    // lpDefault, lpOutside, lpInside, lpCenter, lpAbove, lpBelow, lpNearOrigin
+  LABEL_POS: Array[TsChartLabelPosition] of string = (
+    '', 't', 'b', 'ctr', 'outEnd', 'inEnd', 'inBase', 'l', 'r', 'inEnd');
+    // lpDefault, lpAbove, lpBelow, lpCenter, lpOutside, lpInside, lpNearOrigin, lpLeft, lpRight, lpAvoidOverlap
 
   DEFAULT_TEXT_DIR: array[boolean, TsChartAxisAlignment] of Integer = (
     (90, 0, 90, 0),  // not rotated for: caaLeft, caaTop, caaRight, caaBottom
@@ -1930,10 +1931,15 @@ begin
         end;
       'c:dlblPos':
         case s of
-          '': ASeries.LabelPosition := lpOutside;
           'ctr': ASeries.LabelPosition := lpCenter;
           'inBase': ASeries.LabelPosition := lpNearOrigin;
           'inEnd': ASeries.LabelPosition := lpInside;
+          'outEnd': ASeries.LabelPosition := lpOutside;
+          'l': ASeries.LabelPosition := lpLeft;
+          'r': ASeries.LabelPosition := lpRight;
+          't': ASeries.LabelPosition := lpAbove;
+          'b': ASeries.LabelPosition := lpBelow;
+          else ASeries.LabelPosition := lpDefault;
         end;
       'c:showLegendKey':
         if (s = '1') then

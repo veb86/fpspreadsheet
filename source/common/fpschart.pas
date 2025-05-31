@@ -164,6 +164,7 @@ type
       AAngle, ACenterX, ACenterY: Double): Integer;
     function IndexOfName(AName: String): Integer;
     function FindByName(AName: String): TsChartGradient;
+    {@@ List element cast to the TsChartGradient class }
     property Items[AIndex: Integer]: TsChartGradient read GetItem write SetItem; default;
   end;
 
@@ -217,6 +218,7 @@ type
     function FindByName(AName: String): TsChartFillPattern;
     function IndexOfName(AName: String): Integer;
     function IndexOfNameAndBgColor(AName: String; AColor: TsChartColor): Integer;
+    {@@ List element cast to the TsChartFillPattern class }
     property Items[AIndex: Integer]: TsChartFillPattern read GetItem write SetItem; default;
   end;
 
@@ -245,6 +247,7 @@ type
       AImgWidth: Single = -1.0; AImgHeight: Single = -1.0): Integer;
     function FindByName(AName: String): TsChartImage;
     function IndexOfName(AName: String): Integer;
+    {@@ List element cast to the TsChartImage class }
     property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
   end;
 
@@ -542,11 +545,11 @@ type
   end;
 
   {@@ Enumeration of the possible legend positions
-   @value lpRight  Legend at the right side of the plot area
-   @value lpTop    Legend above the plot area
-   @value lpBottom Legend below the plot area
-   @value lpLeft   Legend at the left side of the plot area }
-  TsChartLegendPosition = (lpRight, lpTop, lpBottom, lpLeft);
+   @value legRight  Legend at the right side of the plot area
+   @value legTop    Legend above the plot area
+   @value legBottom Legend below the plot area
+   @value legLeft   Legend at the left side of the plot area }
+  TsChartLegendPosition = (legRight, legTop, legBottom, legLeft);
 
   {@@ TsChartLegend collects all parameters needed for displaying the chart legend.
     It descends from @link(TsChartFillElement). }
@@ -574,25 +577,63 @@ type
   end;
 
   TsChartAxisLink = (calPrimary, calSecondary);
+
+  {@@ Enumeration which determines the piece of information displayed as a series label
+   @value cdlValue       displays the numerical y value
+   @value cdlPercentage  in case of a stacked series, displays the percentages of each stack y value of the sum of all stacks
+   @value cdlCategory    displays the category value of the series data point
+   @value cdlSeriesName  displays the name of the series
+   @value cdlSymbol      adds the series symbol to the series label display
+   @value cdlLeaderLines displays a line from data point to label. }
   TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol, cdlLeaderLines);
+
+  {@@ Set of TsChartDatalabel elements which defines which information is displayed in series labels next to each data point. }
   TsChartDataLabels = set of TsChartDataLabel;
-  TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter, lpAbove, lpBelow, lpNearOrigin);
+
+  {@@ Defines the position of series labels with respect to the data points. Not all items are available for all series types.
+   @value lpDefault      Default position (depends on series)
+   @value lpAbove        The labels are above the data points / filled area
+   @value lpBelow        The labels are below the data points / filled area
+   @value lpCenter       The labels are in the center of the data points / filled area
+   @value lpOutside      In case of a bar series: the labels are outside the filled area
+   @value lpInside       In case of a bar series: the labels are inside tha filled area
+   @value lpNearOrigin   In case of bar series: the labels are placed near the origin.
+   @value lpLeft         In case of point series: the labels are at the left of the data points.
+   @value lpRight        In case of point series: the labels are at the right of the data points.
+   @value lpAvoidOverlap In case of pie series: the labels are placed to avoid overlaps. }
+  TsChartLabelPosition = (lpDefault, lpAbove, lpBelow, lpCenter, lpOutside, lpInside, lpNearOrigin, lpLeft, lpRight, lpAvoidOverlap);
+
+  {@@ Defines the shape around the label text
+   @value lcsRectangle   Rectangular box
+   @value lcsRoundRect   Rectangle with round corners
+   @value lcsEllipse     Ellipse
+   @value lcsLeftArrow   Rectangle with arrow to the left
+   @value lcsUpArrow     Rectangle with arrow upward
+   @value lcsRightArrow  Rectangle with arrow to the right
+   @value lcsDownArrow   Rectangle with arrow downward
+   @value lcsRectangleWedge  Rectangle with callout arrow
+   @value lcsRoundRectWedge  Rounded rectangle with callout arrow
+   @value lcsEllipseWedge    Ellipse with callout arrow }
   TsChartLabelCalloutShape = (
     lcsRectangle, lcsRoundRect, lcsEllipse,
     lcsLeftArrow, lcsUpArrow, lcsRightArrow, lcsDownArrow,
     lcsRectangleWedge, lcsRoundRectWedge, lcsEllipseWedge
   );
 
+  {@@ The TsChartDataPointStyle class combines all formatting parameters of data point labels. }
   TsChartDataPointStyle = class(TsChartFillElement)
   private
     FDataPointIndex: Integer;
     FPieOffset: Integer;
   public
     procedure CopyFrom(ASource: TsChartElement);
+    {@@ Index of the datapoint to which the style is applied. }
     property DataPointIndex: Integer read FDataPointIndex write FDataPointIndex;
+    {@@ In case of a pie series: Represents the percentage of the radius by which the pie with the DatapointIndex is moved away from tne center }
     property PieOffset: Integer read FPieOffset write FPieOffset;  // Percentage
   end;
 
+  {@@ List containing the formatting parameters for each data point label. }
   TsChartDataPointStyleList = class(TFPObjectList)
   private
     FChart: TsChart;
@@ -603,28 +644,48 @@ type
     function AddFillAndLine(ADataPointIndex: Integer; AFill: TsChartFill; ALine: TsChartline; APieOffset: Integer = 0): Integer;
     function AddSolidFill(ADataPointIndex: Integer; AColor: TsChartColor; ALine: TsChartLine = nil; APieOffset: Integer = 0): Integer;
     function IndexOfDataPoint(ADataPointIndex: Integer): Integer;
+    {@@ List element cast to the TsChartDataPointStyle }
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
+  {@@ Enumeration to define how a trend line is fitted to the data points of a series
+    @value  tltNone     No trend line
+    @value  tltLinear   A linear function is fitted (y = a + b x)
+    @value  tltLogarithmic  A logarithmic function is fitted (y = a ln(x) )
+    @value  tltExponential  An exponential function is fitted  (y = a exp(b x)
+    @value  tltPower        A power function is fitted (y = a x^b)
+    @value  tltPolynomial   A polynomial is fitted (y = a + b x + c x^2 + ...) }
   TsTrendlineType = (tltNone, tltLinear, tltLogarithmic, tltExponential, tltPower, tltPolynomial);
 
+  {@@ Class which collects the parameters for drawing a mathemical equation in the chart.
+    The equation represents the fit of a trend line to the data values. }
   TsTrendlineEquation = class
+    {@@ Background of the equation output }
     Fill: TsChartFill;
+    {@@ Font to be used for drawing the equation string }
     Font: TsFont;
+    {@@ Border of the equation output }
     Border: TsChartLine;
+    {@@ Excel-style format string for formatting numbers in the equation string. }
     NumberFormat: String;
-    Left, Top: Double;  // mm, relative to outer chart boundaries!
+    {@@ Position of the formula's left side on the chart, in millimeters, relative to the outer chart boundary }
+    Left: Double;
+    {@@ Position of the formula's upper side on the chart, in millimeters, relative to the outer chart boundary }
+    Top: Double;
+    {@@ Name of the independent variable in the expression string, by default "x" }
     XName: String;
+    {@@ Name of the dependent variable in the expression string, by default "f(x)" }
     YName: String;
+
     constructor Create;
     destructor Destroy; override;
-    function DefaultBorder: Boolean;
-    function DefaultFill: Boolean;
-    function DefaultFont: Boolean;
-    function DefaultNumberFormat: Boolean;
-    function DefaultPosition: Boolean;
-    function DefaultXName: Boolean;
-    function DefaultYName: Boolean;
+    function IsDefaultBorder: Boolean;
+    function IsDefaultFill: Boolean;
+    function IsDefaultFont: Boolean;
+    function IsDefaultNumberFormat: Boolean;
+    function IsDefaultPosition: Boolean;
+    function IsDefaultXName: Boolean;
+    function IsDefaultYName: Boolean;
   end;
 
   TsChartTrendline = class
@@ -889,6 +950,10 @@ type
     property ShowSymbols;
   end;
 
+  {@@ Enumeration to determine whether the bubble size values are aassumed to be
+    proportional to the bubble radius or to the bubble area.
+    @value bsmRadius  The radius of each bubble is assumed to be proprotional to the bubble value.
+    @value bsmArea    The area of each bubble is assumed to be proportional to the bubble value. }
   TsBubbleSizeMode = (bsmRadius, bsmArea);
 
   TsBubbleSeries = class(TsCustomScatterSeries)
@@ -901,8 +966,11 @@ type
     destructor Destroy; override;
     procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    {@@ Range of cells containing the bubble sizes for each data point }
     property BubbleRange: TsChartRange read FBubbleRange;
+    {@@ Scaling factor for the bubble radii }
     property BubbleScale: Double read FBubbleScale write FBubbleScale;
+    {@@ Determines whether the bubble sizes in the BubbleRange are interpreted as bubble radii or bubble areas }
     property BubbleSizeMode: TsBubbleSizeMode read FBubbleSizeMode write FBubbleSizeMode;
   end;
 
@@ -949,6 +1017,7 @@ type
     function GetItem(AIndex: Integer): TsChartSeries;
     procedure SetItem(AIndex: Integer; AValue: TsChartSeries);
   public
+    {@@ List elements cast to the TsChartSeries class }
     property Items[AIndex: Integer]: TsChartSeries read GetItem write SetItem; default;
   end;
 
@@ -2555,7 +2624,7 @@ begin
   FFont.Size := 9;
   FVisible := true;
 
-  // FPosition := lpBottom;
+  // FPosition := legBottom;
   // That's the default of xlsx, but TAChart has difficulties with automatically
   // arranging several items per row. And .ods uses lpRight anyway...
 end;
@@ -2588,6 +2657,9 @@ end;
 
 { TsChartDataPointStyle }
 
+{@@ ----------------------------------------------------------------------------
+  Copies the parameters from another instance
+-------------------------------------------------------------------------------}
 procedure TsChartDataPointStyle.CopyFrom(ASource: TsChartElement);
 begin
   inherited CopyFrom(ASource);
@@ -2601,14 +2673,27 @@ end;
 
 { TsChartDataPointStyleList }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartDatapointStyleList
+
+  @param AChart  Identifies the chart in which the list is used.
+-------------------------------------------------------------------------------}
 constructor TsChartDataPointStyleList.Create(AChart: TsChart);
 begin
   inherited Create;
   FChart := AChart;
 end;
 
-{ IMPORTANT NOTE: You have the responsibility to destroy the AFill and ALine
-  instances after calling AddFillAndLine ! }
+{@@ ----------------------------------------------------------------------------
+  Adds specific fill and line instances as style for the data point having the given index
+
+  @param ADataPointIndex  Index of the data point for which the style is to be provided
+  @param AFill            TsChartFill instance determining how the background of the  data point label is filled
+  @param ALine            TsChartLine instance determineing how the border of the data point label is drawn
+  @param APieOffset       In case of a pieseries, percentage of the pie radius by which the pie is moved away from the pie center.
+  @returns  Index of the style entry created for the data point.
+  @note(You have the responsibility to destroy the AFill and ALine
+                          instances after calling AddFillAndLine !) }
 function TsChartDataPointStyleList.AddFillAndLine(ADatapointIndex: Integer;
   AFill: TsChartFill; ALine: TsChartLine; APieOffset: Integer = 0): Integer;
 var
@@ -2637,6 +2722,15 @@ begin
   Result := inherited Add(dataPointStyle);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Adds a solid fill as style for the data point having the given index
+
+  @param ADataPointIndex  Index of the data point for which the style is to be provided
+  @param AColor           Background color of the data point label
+  @param ALine            Line style for the data point label border. Must be destroyed by the caller.
+  @param APieOffset       In case of a pieseries, percentage of the pie radius by which the pie is moved away from the pie center.
+  @returns  Index of the style entry created for the data point.
+-------------------------------------------------------------------------------}
 function TsChartDataPointStyleList.AddSolidFill(ADataPointIndex: Integer;
   AColor: TsChartColor; ALine: TsChartLine = nil; APieOffset: Integer = 0): Integer;
 var
@@ -2660,6 +2754,12 @@ begin
     Result := nil;
 end;
 
+{@@-----------------------------------------------------------------------------
+  Returns the list index of the datapoint having the specified ADataPointIndex
+
+  @param    ADataPointIndex  Index of the datapoint for which the style is to be found.
+  @returns  Index of the style assigned to the datapoint at the provided ADataPointIndex
+-------------------------------------------------------------------------------}
 function TsChartDataPointStyleList.IndexOfDataPoint(ADataPointIndex: Integer): Integer;
 begin
   for Result := 0 to Count - 1 do
@@ -3076,6 +3176,11 @@ end;
 
 { TsAreaSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsAreaSeries class
+
+  @param  AChart   Chart into which the series is inserted.
+-------------------------------------------------------------------------------}
 constructor TsAreaSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3087,6 +3192,11 @@ end;
 
 { TsBarSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsBarSeries class
+
+  @param  AChart   Chart into which the series is inserted.
+-------------------------------------------------------------------------------}
 constructor TsBarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3098,6 +3208,11 @@ end;
 
 { TsBubbleSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsBubbleSeries class
+
+  @param  AChart   Chart into which the series is inserted.
+-------------------------------------------------------------------------------}
 constructor TsBubbleSeries.Create(AChart: TsChart);
 begin
   inherited;
@@ -3107,18 +3222,39 @@ begin
   FChartType := ctBubble;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsBubbleSeries class
+-------------------------------------------------------------------------------}
 destructor TsBubbleSeries.Destroy;
 begin
   FBubbleRange.Free;
   inherited;
 end;
 
-{ Empty sheet name will be replaced by the name of the sheet containing the chart. }
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the bubble sizes
+
+  @param  ARow1  Top row of the cell range
+  @param  ACol1  Left column of the cell range
+  @param  ARow2  Bottom row of the cell range
+  @param  @Col2  Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsBubbleSeries.SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
+  // Empty sheet name will be replaced by the name of the sheet containing the chart.
   SetBubbleRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a 3D cell range which contains the bubble sizes
+
+  @param  ASheet1  Name of the worksheet containing the top/left cell of the range (first cell)
+  @param  ARow1    Top row of the cell range
+  @param  ACol1    Left column of the cell range
+  @param  ASheet2  Name of the worksheet containing the bottom/right cell of the range (last cell)
+  @param  ARow2    Bottom row of the cell range
+  @param  ACol2    Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsBubbleSeries.SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3219,6 +3355,12 @@ end;
 
 
 { TsTrendlineEquation }
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsTrendLineEquation class
+
+  Initializes all parameters with reasonable values.
+-------------------------------------------------------------------------------}
 constructor TsTrendlineEquation.Create;
 begin
   inherited Create;
@@ -3232,6 +3374,9 @@ begin
   YName := 'f(x)';
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsTrendLineEquation class
+-------------------------------------------------------------------------------}
 destructor TsTrendlineEquation.Destroy;
 begin
   Fill.Free;
@@ -3240,38 +3385,64 @@ begin
   inherited;
 end;
 
-function TsTrendlineEquation.DefaultBorder: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the trendline equation is displayed without border.
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultBorder: Boolean;
 begin
   Result := (Border.Style = clsNoLine);
 end;
 
-function TsTrendlineEquation.DefaultFill: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the trendline equation is displayed without background fill.
+--------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultFill: Boolean;
 begin
   Result := (Fill.Style = cfsNoFill);
 end;
 
-function TsTrendlineEquation.DefaultFont: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the trendline equation is written with the default font
+  (size 9, black color)
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultFont: Boolean;
 begin
   Result := (Font.FontName = '') and (Font.Size = 9) and (Font.Style = []) and
             (Font.Color = scBlack);
 end;
 
-function TsTrendlineEquation.DefaultNumberFormat: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when numbers in the trendline expression are formatted with the
+  "general" number format.
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultNumberFormat: Boolean;
 begin
   Result := NumberFormat = '';
 end;
 
-function TsTrendlineEquation.DefaultPosition: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the trendline equation is painted in the top/left corner of
+  the entire chart area.
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultPosition: Boolean;
 begin
   Result := (Left = 0) and (Top = 0);
 end;
 
-function TsTrendlineEquation.DefaultXName: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the independent variable in the trendline expression is
+  named "x"
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultXName: Boolean;
 begin
   Result := XName = 'x';
 end;
 
-function TsTrendlineEquation.DefaultYName: Boolean;
+{@@ ----------------------------------------------------------------------------
+  Returns true when the dependent variable in the trendline expression is
+  names "f(x)"
+-------------------------------------------------------------------------------}
+function TsTrendlineEquation.IsDefaultYName: Boolean;
 begin
   Result := YName = 'f(x)';
 end;
@@ -3412,25 +3583,6 @@ begin
   CreateRawFillPatterns;
   CreateRawLinePatterns;
 
-  {
-  FLineStyles := TsChartLineStyleList.Create;
-  clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
-  clsDot := FLineStyles.Add('dot', 500, 1, 0, 0, 500, true);
-  clsDash := FLineStyles.Add('dash', 1200, 1, 0, 0, 800, true);
-  clsDashDot := FLineStyles.Add('dash-dot', 1000, 1, 300, 1, 2000, true);
-  clsLongDash := FLineStyles.Add('long dash', 2400, 1, 0, 0, 800, true);
-  clsLongDashDot := FLineStyles.Add('long dash-dot', 1600, 1, 800, 1, 800, true);
-  clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 1600, 1, 800, 2, 800, true);
-  }
-   {
-  clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
-  clsDot := FLineStyles.Add('dot', 150, 1, 0, 0, 150, true);
-  clsDash := FLineStyles.Add('dash', 300, 1, 0, 0, 150, true);
-  clsDashDot := FLineStyles.Add('dash-dot', 300, 1, 100, 1, 150, true);
-  clsLongDash := FLineStyles.Add('long dash', 400, 1, 0, 0, 200, true);
-  clsLongDashDot := FLineStyles.Add('long dash-dot', 500, 1, 100, 1, 200, true);
-  clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 500, 1, 100, 2, 200, true);
-  }
   FGradients := TsChartGradientList.Create;
   FFillPatterns := TsChartFillPatternList.Create;
   FImages := TsChartImageList.Create;

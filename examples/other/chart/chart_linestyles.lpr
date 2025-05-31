@@ -76,7 +76,7 @@ begin
     ch.Title.Font.Style := [fssBold];
     ch.Title.Font.Color := scBlue;
     ch.Legend.Border.Style := clsNoLine;
-    ch.Legend.Position := lpBottom;
+    ch.Legend.Position := legBottom;
     ch.XAxis.MajorGridLines.Style := clsNoLine;
     ch.XAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.MajorGridLines.Style := clsNoLine;

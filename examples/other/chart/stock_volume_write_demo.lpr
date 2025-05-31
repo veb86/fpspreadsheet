@@ -120,7 +120,7 @@ begin
     
     ch.Border.Style := clsNoLine;
     ch.Legend.Border.Style := clsNoLine;
-    ch.Legend.Position := lpBottom;
+    ch.Legend.Position := legBottom;
 
     ch.XAxis.DateTime := true;
     ch.XAxis.Title.Caption := 'Date';
