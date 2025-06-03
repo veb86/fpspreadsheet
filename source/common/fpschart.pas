@@ -688,24 +688,42 @@ type
     function IsDefaultYName: Boolean;
   end;
 
+  {@@ Class which represents a trend line fitted to a series of data points. }
   TsChartTrendline = class
+    {@@ Legend text for the trend line }
     Title: String;
+    {@@ Represents the mathematical equation fitted to the data points. }
     TrendlineType: TsTrendlineType;
+    {@@ Extends the trend line by this distance in positive x direction }
     ExtrapolateForwardBy: Double;
+    {@@ Extends the trend line by this distance in negative x direction }
     ExtrapolateBackwardBy: Double;
+    {@@ Forces the trend line to intersect the y axis at the given YInterceptValue }
     ForceYIntercept: Boolean;
+    {@@ y value at which the trend line intersects the y axis when ForceYIntercept is true }
     YInterceptValue: Double;
+    {@@ Degree of the polynomial fitted to the data points when TrendLineType is tltPolynomial }
     PolynomialDegree: Integer;
+    {@@ Displays the fitted equation in the chart }
     DisplayEquation: Boolean;
+    {@@ Displays the "goodness of fit parameter" (R-squared) in the chart. }
     DisplayRSquare: Boolean;
+    {@@ Describes the fitted equation }
     Equation: TsTrendlineEquation;
+    {@@ Drawing parameters for the trend line (pattern, color, line width, ...) }
     Line: TsChartLine;
     constructor Create;
     destructor Destroy; override;
   end;
 
+  {@@ Enumeration which determines the size of error bars
+    @value cebkNone     Do not display error bars
+    @value cebkConstant Error bars have a the same size for all data points
+    @value cebkPercentage  The size of error bars is a percentage of the data point value
+    @value cebkCellRange   The size of error bars is specified in a cell range separately for each data point. }
   TsChartErrorBarKind = (cebkNone, cebkConstant, cebkPercentage, cebkCellRange);
 
+  {@@ Class describing error bars to be drawn at each data point }
   TsChartErrorBars = class(TsChartElement)
   private
     FSeries: TsChartSeries;
@@ -737,18 +755,29 @@ type
     procedure SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangeNeg(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    {@@ Characterizes the size of the error bars /none, constant, proportional, individual) }
     property Kind: TsChartErrorBarKind read FKind write SetKind;
+    {@@ Style parameters for drawing the error bar line parts. }
     property Line: TsChartLine read FLine write SetLine;
+    {@@ Cell range with the lengths of the positive error bars, used when Kind is cebkCellRange}
     property RangePos: TsChartRange index 0 read GetRange write SetRange;
+    {@@ Cell range with the lengths of the negative error bars, used when Kind is cebkCellRange }
     property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
+    {@@ Series at which the error bars are to be displayed. }
     property Series: TsChartSeries read FSeries;
+    {@@ If true, terminating cross bar is drawn at the ends of the error bars. }
     property ShowEndCap: Boolean read FShowEndCap write FShowEndCap;
+    {@@ Allows to show/hide the positive error bars. }
     property ShowPos: Boolean index 0 read GetShow write SetShow;
+    {@@ Allows to show/hide the negative error bars. }
     property ShowNeg: Boolean index 1 read GetShow write SetShow;
+    {@@ Value of the positive error bar, used when Kind is cebkConstant or cebkPercentage }
     property ValuePos: Double index 0 read GetValue write SetValue;
+    {@@ Value of the negative error bar, used when Kind is cebkConstant or cebkPercentage }
     property ValueNeg: Double index 1 read GetValue write SetValue;
   end;
 
+  {@@ Ancestor of all spreadsheet series types }
   TsChartSeries = class(TsChartElement)
   private
     FChartType: TsChartType;
@@ -782,6 +811,7 @@ type
     FLine: TsChartLine;
     FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
+    {@@ Trendline instance, fitted to the data points. Made public when this feature is useful. }
     property Trendline: TsChartTrendline read FTrendline write FTrendline;
   public
     constructor Create(AChart: TsChart); virtual;
@@ -811,35 +841,64 @@ type
     function XValuesInCol: Boolean;
     function YValuesInCol: Boolean;
 
+    {@@ Type of the series: bar, area, line, scatter, ... }
     property ChartType: TsChartType read GetChartType;
+    {@@ Number of data points contained in the series }
     property Count: Integer read GetCount;
+    {@@ Determines which kind of data point labels are displayed. }
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
+    {@@ Determines the shapes which are drawn around data point labels. }
     property DataLabelCalloutShape: TsChartLabelCalloutShape read FDataLabelCalloutShape write FDataLabelCalloutShape;
+    {@@ Lists individual styles how individual data points are displayed. }
     property DataPointStyles: TsChartDatapointStyleList read FDataPointStyles;
+    {@@ Cell range defining individual data point fill colors. }
     property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
+    {@@ Index of the group to which this series belongs. }
     property GroupIndex: Integer read FGroupIndex write FGroupIndex;
+    {@@ Fill properties for the data point label backgrounds. }
     property LabelBackground: TsChartFill read FLabelBackground write FLabelBackground;
+    {@@ Line properties for the data point label borders. }
     property LabelBorder: TsChartLine read FLabelBorder write FLabelBorder;
+    {@@ Font used for drawing the data point labels. }
     property LabelFont: TsFont read FLabelFont write FLabelFont;
+    {@@ Number format (in Excel notation) for drawing numerical data point labels. }
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
+    {@@ Number format (in Excel notation) for drawing percentage data point labels. }
     property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
+    {@@  Position of the data point labels relative to the series. }
     property LabelPosition: TsChartLabelPosition read FLabelPosition write FLabelPosition;
+    {@@ Cell range containing data point labels. }
     property LabelRange: TsChartRange read FLabelRange write FLabelRange;
+    {@@ Separator used when several pieces of information are combined in the data point label. }
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
+    {@@ Cell range containing data-point-related line colors. }
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
+    {@@ Index of the series in the chart's series list }
     property Order: Integer read FOrder write FOrder;
-    property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
+    {@@ Address of the cell which contains the series title (legend text). Use '\n' for line-breaks. }
+    property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;
+    {@@ Information variable which is set to true when the series type supports trend lines. }
     property SupportsTrendline: Boolean read FSupportsTrendline;
+    {@@ Determines whether the chart's XAxis or X2Axis is used for the independent axis of the series }
     property XAxis: TsChartAxisLink read FXAxis write FXAxis;
+    {@@ Determines how error bars are drawn in the x direction. }
     property XErrorBars: TsChartErrorBars read FXErrorBars write SetXErrorBars;
+    {@@ Cell range containing the x values of the data points. }
     property XRange: TsChartRange read FXRange write FXRange;
+    {@@ Determines whether the chart's YAxis or Y2Axis is used for the dependent axis of the series }
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
+    {@@ Determines how error bars are drawn in the y direction. }
     property YErrorBars: TsChartErrorBars read FYErrorBars write SetYErrorBars;
+    {@@ Cell range containing the y values of the data points. }
     property YRange: TsChartRange read FYRange write FYRange;
 
+    {@@ Parameters determining how the series is filled. What actually is filled depends on the series type. }
     property Fill: TsChartFill read FFill write FFill;
+    {@@ Parameters determining how the series lines are drawn. Which lines are meant depends on the series type. }
     property Line: TsChartLine read FLine write FLine;
   end;
+
+  {@@ Class type for all TsChartSeries classes }
   TsChartSeriesClass = class of TsChartSeries;
 
   TsAreaSeries = class(TsChartSeries)
@@ -938,6 +997,8 @@ type
     property Trendline;
   end;
 
+  {@@ Class containing the parameters of a "scatter series", i.e. a series with
+    irregular distribution of the x values. }
   TsScatterSeries = class(TsCustomScatterSeries)
   public
     property Interpolation;
@@ -956,6 +1017,9 @@ type
     @value bsmArea    The area of each bubble is assumed to be proportional to the bubble value. }
   TsBubbleSizeMode = (bsmRadius, bsmArea);
 
+  {@@ Class containing the parameters of a "bubble" series, i.e. a series with
+    irregularly distributed x values and in which the data points are drawn as
+    circles with specific sizes. }
   TsBubbleSeries = class(TsCustomScatterSeries)
   private
     FBubbleRange: TsChartRange;
@@ -974,6 +1038,8 @@ type
     property BubbleSizeMode: TsBubbleSizeMode read FBubbleSizeMode write FBubbleSizeMode;
   end;
 
+  { Series type for financial data of stock prices: opening, closing, highest
+    and lowest price during a trading period. }
   TsStockSeries = class(TsChartSeries)  //CustomScatterSeries)
   private
     FCandleStick: Boolean;
@@ -998,16 +1064,27 @@ type
     procedure SetLowRange (ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetCloseRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    {@@ If true the stock data are displayed in candlestick mode, otherwise only as vertical bars. }
     property CandleStick: Boolean read FCandleStick write FCandleStick;
+    {@@ Fill properties applied to the candle box for falling stock price at this data point. }
     property CandleStickDownFill: TsChartFill read FCandleStickDownFill write FCandleStickDownFill;
+    {@@ Fill properties applied to the candle box for rising the stock price at this data point. }
     property CandleStickUpFill: TsChartFill read FCandleStickUpFill write FCandleStickUpFill;
+    {@@ Line properties applied to the border of the candle box for falling stock price at this data point. }
     property CandleStickDownBorder: TsChartLine read FCandleStickDownBorder write FCandleStickDownBorder;
+    {@@ Line properties applied to the border of the candle box for rising stock price at this data point. }
     property CandleStickUpBorder: TsChartLine read FCandleStickUpBorder write FCandleStickUpBorder;
+    {@@ Width of the Open/Close tick in non-candle-stick mode, given as percentage of the data point distance. }
     property TickWidthPercent: Integer read FTickWidthPercent write FTickWidthPercent;
+    {@@ Line properties of the range line connecting highest and lowest stock prise in non-cancdle-stick mode }
     property RangeLine: TsChartLine read FRangeLine write FRangeLine;
+    {@@ Cell range containing the "open" data values (starting stock price) }
     property OpenRange: TsChartRange read FOpenRange;
+    {@@ Cell range containing the "high" data values (highest stock price) }
     property HighRange: TsChartRange read FHighRange;
+    {@@ Cell range containing the "low" data values (lowest stock price) }
     property LowRange: TsChartRange read FLowRange;
+    {@@ Cell range containing  the "close" data values (closing stock price) }
     property CloseRange: TsChartRange read FYRange;
   end;
 
@@ -1156,6 +1233,7 @@ type
     function GetItem(AIndex: Integer): TsChart;
     procedure SetItem(AIndex: Integer; AValue: TsChart);
   public
+    {@@ List elements cast to the TsChart class }
     property Items[AIndex: Integer]: TsChart read GetItem write SetItem; default;
   end;
 
@@ -2689,11 +2767,12 @@ end;
 
   @param ADataPointIndex  Index of the data point for which the style is to be provided
   @param AFill            TsChartFill instance determining how the background of the  data point label is filled
-  @param ALine            TsChartLine instance determineing how the border of the data point label is drawn
+  @param ALine            TsChartLine instance determining how the border of the data point label is drawn
   @param APieOffset       In case of a pieseries, percentage of the pie radius by which the pie is moved away from the pie center.
   @returns  Index of the style entry created for the data point.
   @note(You have the responsibility to destroy the AFill and ALine
-                          instances after calling AddFillAndLine !) }
+                          instances after calling AddFillAndLine !)
+-------------------------------------------------------------------------------}
 function TsChartDataPointStyleList.AddFillAndLine(ADatapointIndex: Integer;
   AFill: TsChartFill; ALine: TsChartLine; APieOffset: Integer = 0): Integer;
 var
@@ -2777,6 +2856,11 @@ end;
 
 { TsChartErrorBars }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartErrorBars class
+
+  Initialized the line parameters as solid black line with end cap, but hidden by default.
+-------------------------------------------------------------------------------}
 constructor TsChartErrorBars.Create(ASeries: TsChartSeries);
 begin
   inherited Create(ASeries.Chart);
@@ -2790,6 +2874,9 @@ begin
   FShowEndCap := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartErrorBars class
+-------------------------------------------------------------------------------}
 destructor TsChartErrorBars.Destroy;
 begin
   FRange[1].Free;
@@ -2798,6 +2885,9 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Copies the error bar parameters from another instance
+-------------------------------------------------------------------------------}
 procedure TsChartErrorBars.CopyFrom(ASource: TsChartElement);
 begin
   inherited CopyFrom(ASource);
@@ -2849,22 +2939,58 @@ begin
   FRange[AIndex].Col2 := ACol2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the cell range which contains the individual sizes of the positive error bars for each data point.
+
+  @param  ARow1  Top row of the cell range
+  @param  ACol1  Left column of the cell range
+  @param  ARow2  Bottom row of the cell range
+  @param  ACol2  Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartErrorBars.SetErrorBarRangePos(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   InternalSetErrorBarRange(0, '', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the 3D cell range which contains the individual sizes of the positive error bars for each data point.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartErrorBars.SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
   InternalSetErrorBarRange(0, ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the cell range which contains the individual sizes of the negative error bars for each data point.
+
+  @param  ARow1  Top row of the cell range
+  @param  ACol1  Left column of the cell range
+  @param  ARow2  Bottom row of the cell range
+  @param  ACol2  Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartErrorBars.SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   InternalSetErrorBarRange(1, '', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the 3D cell range which contains the individual sizes of the negative error bars for each data point.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartErrorBars.SetErrorBarRangeNeg(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -2905,6 +3031,9 @@ end;
 
 { TsChartSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChartSeries class
+-------------------------------------------------------------------------------}
 constructor TsChartSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -2948,6 +3077,9 @@ begin
   FYErrorBars := TsChartErrorBars.Create(Self);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartSeries class
+-------------------------------------------------------------------------------}
 destructor TsChartSeries.Destroy;
 begin
   FYErrorBars.Free;
@@ -2973,16 +3105,31 @@ begin
   Result := FChartType;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the number of data points contained in the series.
+  This is the length of the YRange column or row
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetCount: Integer;
 begin
   Result := GetYCount;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the default color of the series.
+
+  The default colors are stored in a global array. The color is picked based on
+  the series index ("Order") wrapped around the end of the array.
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetDefaultSeriesColor: TsChartColor;
 begin
   Result := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the instance of the TsChartAxis class which represents the x axis of
+  the series. Depending of the TsChartAxisLink parameter "XAxis" this is either
+  the chart's XAxis or X2Axis.
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetXAxis: TsChartAxis;
 begin
   if FXAxis = calPrimary then
@@ -2991,6 +3138,11 @@ begin
     Result := Chart.X2Axis;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the instance of the TsChartAxis class which represents the y axis of
+  the series. Depending of the TsChartAxisLink parameter "YAxis" this is either
+  the chart's YAxis or Y2Axis.
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetYAxis: TsChartAxis;
 begin
   if FYAxis = calPrimary then
@@ -2999,6 +3151,13 @@ begin
     Result := Chart.Y2Axis;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the number of x values contained in the series, based on the assigned
+  XRange.
+
+  Depending on whether the XRange is in a row or in a column the count of
+  x values is determined from the corresponding dimension of the range.
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetXCount: Integer;
 begin
   if (FXRange.Row1 = FXRange.Row2) and (FXRange.Col1 = FXRange.Col2) then
@@ -3010,6 +3169,13 @@ begin
     Result := FXRange.Row2 - FXRange.Row1 + 1;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the number of y values contained in the series, based on the assigned
+  YRange.
+
+  Depending on whether the YRange is in a row or in a column the count of
+  y values is determined from the corresponding dimension of the range.
+-------------------------------------------------------------------------------}
 function TsChartSeries.GetYCount: Integer;
 begin
   if YValuesInCol then
@@ -3018,31 +3184,60 @@ begin
     Result := FYRange.Col2 - FYRange.Col1 + 1;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when the series has data point labels, i.e. when the LabelRange
+  is not empty.
+-------------------------------------------------------------------------------}
 function TsChartSeries.HasLabels: Boolean;
 begin
   Result := not ((FLabelRange.Row1 = FLabelRange.Row2) and (FLabelRange.Col1 = FLabelRange.Col2));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when the series has x values, i.e. when the XRange is not empty.
+-------------------------------------------------------------------------------}
 function TsChartSeries.HasXValues: Boolean;
 begin
   Result := not ((FXRange.Row1 = FXRange.Row2) and (FXRange.Col1 = FXRange.Col2));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when the series has y values, i.e. when the YRange is not empty.
+-------------------------------------------------------------------------------}
 function TsChartSeries.HasYValues: Boolean;
 begin
   Result := not ((FYRange.Row1 = FYRange.Row2) and (FYRange.Col1 = FYRange.Col2));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when the data point label cells are arranged in a column.
+-------------------------------------------------------------------------------}
 function TsChartSeries.LabelsInCol: Boolean;
 begin
   Result := (FLabelRange.Col1 = FLabelRange.Col2) and (FLabelRange.Row1 <> FLabelRange.Row2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell which contains the title of the series (the text which appears
+  in the legend.
+
+  @param  ARow  Row index of the cell
+  @param  ACol  Column index of the cell
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetTitleAddr(ARow, ACol: Cardinal);
 begin
   SetTitleAddr('', ARow, ACol);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell which contains the title of the series (the text which appears
+  in the legend. In this overload of the procedure the cell can be in a different
+  worksheet.
+
+  @param  ASheet  Name of the worksheet containing the cell
+  @param  ARow   Row index of the cell
+  @param  ACol   Column index of the cell
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetTitleAddr(ASheet: String; ARow, ACol: Cardinal);
 begin
   FTitleAddr.Sheet := ASheet;
@@ -3050,11 +3245,31 @@ begin
   FTitleAddr.Col := ACol;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the fill colors of the individual data points
+  Only a single-column or single-row range is allowed.
+
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetFillColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetFillColorRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the fill colors of the individual data points.
+  Only a single-column or single-row range is allowed.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetFillColorRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3068,11 +3283,31 @@ begin
   FFillColorRange.Col2 := ACol2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the colors of the data point labels
+  Only a single-column or single-row range is allowed.
+
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetLabelRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetLabelRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the 3D cell range which contains the colors of the data point labels.
+  Only a single-column or single-row range is allowed.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetLabelRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3086,11 +3321,31 @@ begin
   FLabelRange.Col2 := ACol2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the colors of  data-point-related lines.
+  Only a single-column or single-row range is allowed.
+
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetLineColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetLineColorRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the 3D cell range which contains the colors of the data-point-related lines.
+  Only a single-column or single-row range is allowed.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetLineColorRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3109,11 +3364,31 @@ begin
   FXErrorBars.CopyFrom(AValue);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the x values of the data points.
+  Only a single-column or single-row range is allowed.
+
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetXRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetXRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the 3D cell range which contains the x values of the data points.
+  Only a single-column or single-row range is allowed.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetXRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3132,11 +3407,31 @@ begin
   FYErrorBars.CopyFrom(AValue);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range which contains the y values of the data points.
+  Only a single-column or single-row range is allowed.
+
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetYRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetYRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the 3D cell range which contains the y values of the data points.
+  Only a single-column or single-row range is allowed.
+
+  @param  ASheet1 Name of the worksheet containing the first (top/left) cell of the range
+  @param  ARow1   Top row of the cell range
+  @param  ACol1   Left column of the cell range
+  @param  ASheet2 Name of the worksheet containing the last (bottom/right) cell of the range
+  @param  ARow2   Bottom row of the cell range
+  @param  ACol2   Right column of the cell range
+-------------------------------------------------------------------------------}
 procedure TsChartSeries.SetYRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -3150,11 +3445,17 @@ begin
   FYRange.Col2 := ACol2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when x values are arranged in a column.
+-------------------------------------------------------------------------------}
 function TsChartSeries.XValuesInCol: Boolean;
 begin
   Result := (FXRange.Col1 = FXRange.Col2) and (FXRange.Row1 <> FXRange.Row2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true when y values are arranged in a column.
+-------------------------------------------------------------------------------}
 function TsChartSeries.YValuesInCol: Boolean;
 begin
   Result := (FYRange.Col1 = FYRange.Col2) and (FYRange.Row1 <> FYRange.Row2);
@@ -3449,6 +3750,12 @@ end;
 
 
 { TsChartTrendline }
+
+{@@ ----------------------------------------------------------------------------
+  Constructor for the TsChartTrendLine class
+
+  Initializes the trend line as solid black line
+-------------------------------------------------------------------------------}
 constructor TsChartTrendline.Create;
 begin
   inherited Create;
@@ -3459,6 +3766,9 @@ begin
   Equation := TsTrendlineEquation.Create;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsChartTrendLine class
+-------------------------------------------------------------------------------}
 destructor TsChartTrendline.Destroy;
 begin
   Equation.Free;
@@ -3469,6 +3779,9 @@ end;
 
 { TsCustomScatterSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsCustomScatterSeries class
+-------------------------------------------------------------------------------}
 constructor TsCustomScatterSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3479,6 +3792,9 @@ end;
 
 { TsStockSeries }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsStockSeries class
+-------------------------------------------------------------------------------}
 constructor TsStockSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3496,6 +3812,9 @@ begin
   FTickWidthPercent := 50;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsStockSeries class
+-------------------------------------------------------------------------------}
 destructor TsStockSeries.Destroy;
 begin
   FRangeLine.Free;
@@ -3509,11 +3828,31 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range for the "open" values (starting stock prices for each
+  date unit)
+
+  @param  ARow1  Index of the top row of the range
+  @param  ACol1  Index of the left column of the range
+  @param  ARow2  Index of the bottom row of the range
+  @param  ACol2  Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetOpenRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetOpenRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a 3D cell range for the "open" values (starting stock prices for each
+  date unit)
+
+  @param  ASheet1 Name of the worksheet containing the first (= top/left) cell of the range
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ASheet2 Name of the worksheet containing the last (=bottom/right) cell of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
  begin
@@ -3527,6 +3866,31 @@ procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
    FOpenRange.Col2 := ACol2;
  end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the cell range for the "high" values (highest stock price in each
+  date unit)
+
+  @param  ARow1  Index of the top row of the range
+  @param  ACol1  Index of the left column of the range
+  @param  ARow2  Index of the bottom row of the range
+  @param  ACol2  Index of the right column of the range
+-------------------------------------------------------------------------------}
+procedure TsStockSeries.SetOpenRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetOpenRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Defines a 3D cell range for the "high" values (highest stock price in each
+  date unit)
+
+  @param  ASheet1 Name of the worksheet containing the first (= top/left) cell of the range
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ASheet2 Name of the worksheet containing the last (=bottom/right) cell of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetHighRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetHighRange('', ARow1, ACol1, '', ARow2, ACol2);
@@ -3544,11 +3908,31 @@ begin
   FHighRange.Col2 := ACol2;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a cell range for the "low" values (lowest stock price in each
+  date unit)
+
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetLowRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetLowRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a 3D cell range for the "low" values (lowest stock price in each
+  date unit)
+
+  @param  ASheet1 Name of the worksheet containing the first (= top/left) cell of the range
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ASheet2 Name of the worksheet containing the last (=bottom/right) cell of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetLowRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
  begin
@@ -3562,11 +3946,31 @@ procedure TsStockSeries.SetLowRange(ASheet1: String; ARow1, ACol1: Cardinal;
    FLowRange.Col2 := ACol2;
  end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a cell range for the "close" values (closing stock price in each
+  date unit)
+
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetCloseRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetCloseRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines a 3D cell range for the "close" values (closing stock price in each
+  date unit)
+
+  @param  ASheet1 Name of the worksheet containing the first (= top/left) cell of the range
+  @param  ARow1   Index of the top row of the range
+  @param  ACol1   Index of the left column of the range
+  @param  ASheet2 Name of the worksheet containing the last (=bottom/right) cell of the range
+  @param  ARow2   Index of the bottom row of the range
+  @param  ACol2   Index of the right column of the range
+-------------------------------------------------------------------------------}
 procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
  begin
@@ -3576,6 +3980,9 @@ procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
 
 { TsChart }
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsChart class
+-------------------------------------------------------------------------------}
 constructor TsChart.Create;
 begin
   inherited Create(nil);
@@ -3643,6 +4050,9 @@ begin
   FBarOverlapPercent := 0;
 end;
 
+{@@-----------------------------------------------------------------------------
+  Destructor of the TsChart class
+-------------------------------------------------------------------------------}
 destructor TsChart.Destroy;
 begin
   FSeriesList.Free;
@@ -3665,6 +4075,13 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Adds the specified series to the internal series list and returns the index
+  in this list which has been assigned to the series.
+
+  @param    ASeries  Series to be added.
+  @returns  Index into the chart's Series list.
+-------------------------------------------------------------------------------}
 function TsChart.AddSeries(ASeries: TsChartSeries): Integer;
 begin
   Result := FSeriesList.IndexOf(ASeries);
@@ -3672,17 +4089,30 @@ begin
     Result := FSeriesList.Add(ASeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Removes the series with the specified index from the internal series list.
+  The series itself is not destroyed.
+
+  @param  AIndex   Indes into the chart's Series list of the series to be deleted.
+-------------------------------------------------------------------------------}
 procedure TsChart.DeleteSeries(AIndex: Integer);
 begin
   if (AIndex >= 0) and (AIndex < FSeriesList.Count) then
     FSeriesList.Delete(AIndex);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the cell range containing the labels for the x axis categories.
+-------------------------------------------------------------------------------}
 function TsChart.GetCategoryLabelRange: TsChartRange;
 begin
   Result := XAxis.CategoryRange;
 end;
 
+{@ -----------------------------------------------------------------------------
+  Returns the type of the chart. It is derived from the type assigned to the
+  first series.
+-------------------------------------------------------------------------------}
 function TsChart.GetChartType: TsChartType;
 var
   i: Integer;
@@ -3699,26 +4129,15 @@ begin
   end else
     Result := ctEmpty;
 end;
-                     {
-function TsChart.GetLineStyle(AIndex: Integer): TsChartLineStyle;
-begin
-  if AIndex >= 0 then
-    Result := FLineStyles[AIndex]
-  else
-    Result := nil;
-end;                  }
 
+{@@ ----------------------------------------------------------------------------
+  Returns true if the chart is a scatter chart.
+-------------------------------------------------------------------------------}
 function TsChart.IsScatterChart: Boolean;
 begin
   Result := GetChartType = ctScatter;
 end;
 
-{
-function TsChart.NumLineStyles: Integer;
-begin
-  Result := FLineStyles.Count;
-end;
-}
 
 { TsChartList }
 
