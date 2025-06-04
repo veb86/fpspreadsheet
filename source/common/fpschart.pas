@@ -3875,9 +3875,9 @@ procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
   @param  ARow2  Index of the bottom row of the range
   @param  ACol2  Index of the right column of the range
 -------------------------------------------------------------------------------}
-procedure TsStockSeries.SetOpenRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+procedure TsStockSeries.SetHighRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
-  SetOpenRange('', ARow1, ACol1, '', ARow2, ACol2);
+  SetHighRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3891,10 +3891,6 @@ end;
   @param  ARow2   Index of the bottom row of the range
   @param  ACol2   Index of the right column of the range
 -------------------------------------------------------------------------------}
-procedure TsStockSeries.SetHighRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
-begin
-  SetHighRange('', ARow1, ACol1, '', ARow2, ACol2);
-end;
 procedure TsStockSeries.SetHighRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
