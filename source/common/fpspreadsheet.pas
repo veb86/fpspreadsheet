@@ -1536,7 +1536,7 @@ begin
   rowPos1 := y;
   rowPos2 := rowPos1 + CalcRowHeight(ARow1);
   y := y + ARowOffs1;
-  y2 := y + AWidth;
+  y2 := y + AHeight;
 
   // Find column index and offset for right edge of image
   ACol2 := ACol1 + 1;
@@ -1981,12 +1981,14 @@ procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
   srcBook, destBook: TsWorkbook;
   srcSheet, destSheet: TsWorksheet;
+  srcFormula, destFormula: PsFormula;
+  {
   referencedSheet: TsWorksheet;
   sheetName: String;
-  srcFormula, destFormula: PsFormula;
   rpn: TsRPNFormula;
   elem: TsFormulaElement;
   i: Integer;
+}
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -2003,8 +2005,13 @@ begin
 
   srcFormula := srcSheet.Formulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
   destFormula := destSheet.Formulas.AddFormula(AToCell^.Row, AToCell^.Col);
-  destFormula.Parser := TsSpreadsheetParser.Create(destSheet, destFormula^.Row, destFormula^.Col);
-
+  destFormula^.Parser := TsSpreadsheetParser.Create(destSheet, destFormula^.Row, destFormula^.Col);
+  destFormula^.Parser.CopyIdentifiersFrom(srcFormula^.Parser);
+  destFormula^.Parser.Expression[fdExcelA1] := srcFormula^.Text;   // TODO: better: CopyNodes
+  destFormula^.Parser.MoveCells(AFromCell, AToCell);               // TODO: handle 3D references!
+  destFormula^.Text := destFormula^.Parser.Expression[fdExcelA1];
+  UseFormulaInCell(AToCell, destFormula);
+  (*
   srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
   try
     rpn := srcFormula^.Parser.RPNFormula;
@@ -2032,6 +2039,7 @@ begin
   finally
     srcFormula^.Parser.PrepareCopyMode(nil, nil);
   end;
+  *)
   ChangedCell(AToCell^.Row, AToCell^.Col);
 end;
 

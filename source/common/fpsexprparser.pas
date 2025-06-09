@@ -113,7 +113,7 @@ type
   PsExpressionResult = ^TsExpressionResult;
   TsExprParameterArray = array of TsExpressionResult;
 
-  { Proceudre executed when iterating through all nodes (Parser.IterateNodes).
+  { Procedure executed when iterating through all nodes (Parser.IterateNodes).
     The procedure sets the parameter MustRebuildFormula to true if the
     text formula has to be rebuilt. }
   TsExprNodeProc = procedure(ANode: TsExprNode; AData1, AData2: Pointer;
@@ -133,6 +133,7 @@ type
     function Has3DLink: Boolean; virtual;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: Boolean); virtual;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); virtual;
     function NodeType: TsResultType; virtual; abstract;
     function NodeValue: TsExpressionResult;
     property Parser: TsExpressionParser read FParser;
@@ -153,6 +154,7 @@ type
     function Has3DLink: Boolean; override;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: boolean); override;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); override;
     property Left: TsExprNode read FLeft;
     property Right: TsExprNode read FRight;
   end;
@@ -303,6 +305,7 @@ type
     destructor Destroy; override;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: boolean); override;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); override;
     property Operand: TsExprNode read FOperand;
   end;
 
@@ -536,6 +539,7 @@ type
     function Has3DLink: Boolean; override;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: Boolean); override;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); override;
     property ArgumentNodes: TsExprArgumentArray read FArgumentNodes;
     property ArgumentParams: TsExprParameterArray read FArgumentParams;
   end;
@@ -593,6 +597,7 @@ type
     function Has3DLink: Boolean; override;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: Boolean); override;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); override;
     function NodeType: TsResultType; override;
     procedure SetSheetIndex(AIndex: Integer);
     property Col: Cardinal read FCol write FCol;  // Be careful when modifying Col and Row
@@ -631,6 +636,7 @@ type
     function Has3DLink: Boolean; override;
     procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
       var MustRebuildFormulas: Boolean); override;
+    procedure MoveCells(ASourceCell, ADestCell: PCell); override;
     function NodeType: TsResultType; override;
     procedure SetSheetIndex(AIndex: TsCellRangeIndex; AValue: Integer);
     property Error: TsErrorValue read FError write FError;
@@ -762,12 +768,14 @@ type
     destructor Destroy; override;
     function IdentifierByName(AName: ShortString): TsExprIdentifierDef; virtual;
     procedure Clear;
+    procedure CopyIdentifiersFrom(AParser: TsExpressionParser);
     function CopyMode: Boolean;
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(out AResult: TsExpressionResult);
     function Has3DLinks: Boolean;
     function IsFormulaCell(ASheetName: String; ARow, ACol: Cardinal): Boolean;
     function IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer): boolean;
+    procedure MoveCells(ASourceCell, ADestCell: PCell);
     procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
 
@@ -1587,6 +1595,18 @@ procedure TsExpressionParser.PrepareCopyMode(ASourceCell, ADestCell: PCell);
 begin
   FSourceCell := ASourceCell;
   FDestCell := ADestCell;
+end;
+
+procedure TsExpressionParser.MoveCells(ASourceCell, ADestCell: PCell);
+begin
+  PrepareCopyMode(ASourceCell, ADestCell);       // necessary?
+  FExprNode.MoveCells(ASourceCell, ADestCell);
+  PrepareCopyMode(nil, nil);
+end;
+
+procedure TsExpressionParser.CopyIdentifiersFrom(AParser: TsExpressionParser);
+begin
+  FIdentifiers.Assign(AParser.Identifiers);
 end;
 
 { Signals that the parser is in "CopyMode", i.e. there is are source and
@@ -3029,6 +3049,11 @@ begin
   // to be overridden by descendant classes
 end;
 
+procedure TsExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+begin
+  // Is overridden by TsCellExprNode and TsCellRangeExprNode;
+end;
+
 function TsExprNode.NodeValue: TsExpressionResult;
 begin
   GetNodeValue(Result);
@@ -3068,6 +3093,11 @@ procedure TsUnaryOperationExprNode.IterateNodes(AProc: TsExprNodeProc;
   AData1, AData2: Pointer; var MustRebuildFormulas: Boolean);
 begin
   FOperand.IterateNodes(AProc, AData1, AData2, MustRebuildFormulas);
+end;
+
+procedure TsUnaryOperationExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+begin
+  FOperand.Movecells(ASourceCell, ADestCell);
 end;
 
 
@@ -3121,6 +3151,12 @@ begin
   FLeft.IterateNodes(AProc, AData1, AData2, rebuildLeft);
   FRight.IterateNodes(AProc, AData1, AData2, rebuildRight);
   MustRebuildFormulas := MustRebuildFormulas or rebuildLeft or rebuildRight;
+end;
+
+procedure TsbinaryOperationExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+begin
+  FLeft.MoveCells(ASourceCell, ADestCell);
+  FRight.MoveCells(ASourceCell, ADestCell);
 end;
 
 
@@ -4244,6 +4280,15 @@ begin
       FArgumentNodes[i].IterateNodes(AProc, AData1, AData2, MustRebuildFormulas);
 end;
 
+procedure TsFunctionExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+var
+  i: Integer;
+begin
+  for i := 0 to High(FArgumentParams) do
+    if FArgumentNodes[i] <> nil then
+      FArgumentNodes[i].MoveCells(ASourceCell, ADestCell);
+end;
+
 
 { TsFunctionCallBackExprNode }
 
@@ -4524,6 +4569,26 @@ end;
 function TsCellExprNode.Has3DLink: Boolean;
 begin
   Result := FHas3dLink;
+end;
+
+{ Is called when a formula is moved from the ASrcCell to ADestCell. Must
+  adjust cell references which originally were relative to ASrcCell such that
+  they are relative to ADestCell afterwards. }
+procedure TsCellExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+var
+  delta: Int64;
+begin
+  if (rfRelRow in FFlags) then
+  begin
+    delta := Int64(ADestCell^.Row) - Int64(ASourceCell^.Row);
+    FRow := Int64(FRow) + delta;
+  end;
+
+  if (rfRelCol in FFlags) then
+  begin
+    delta := Int64(ADestCell^.Col) - Int64(ASourceCell^.Col);
+    FCol := Int64(FCol) + delta;
+  end;
 end;
 
 function TsCellExprNode.NodeType: TsResultType;
@@ -4834,6 +4899,25 @@ procedure TsCellRangeExprNode.IterateNodes(AProc: TsExprNodeProc;
   AData1, AData2: Pointer; var MustRebuildFormulas: Boolean);
 begin
   AProc(self, AData1, AData2, MustRebuildFormulas);
+end;
+
+{ Is called when a formula is moved from the ASrcCell to ADestCell. Must
+  adjust cell references which originally were relative to ASrcCell such that
+  they are relative to ADestCell afterwards. }
+procedure TsCellRangeExprNode.MoveCells(ASourceCell, ADestCell: PCell);
+var
+  deltaRow, deltaCol: Int64;
+begin
+  deltaRow := Int64(ADestCell^.Row) - Int64(ASourceCell^.Row);
+  deltaCol := Int64(ADestCell^.Col) - Int64(ASourceCell^.Col);
+  if (rfRelRow in FFlags) then
+    FRow[1] := Int64(FRow[1]) + deltaRow;
+  if (rfRelCol in FFlags) then
+    FCol[1] := Int64(FCol[1]) + deltaCol;
+  if (rfRelRow2 in FFlags) then
+    FRow[2] := Int64(FRow[2]) + deltaRow;
+  if (rfRelCol2 in FFlags) then
+    FCol[2] := Int64(FCol[2]) + deltaCol;
 end;
 
 function TsCellRangeExprNode.NodeType: TsResultType;
