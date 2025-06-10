@@ -4573,7 +4573,8 @@ end;
 
 { Is called when a formula is moved from the ASrcCell to ADestCell. Must
   adjust cell references which originally were relative to ASrcCell such that
-  they are relative to ADestCell afterwards. }
+  they are relative to ADestCell afterwards.
+  No need to move the worksheet because it is always an absolute reference. }
 procedure TsCellExprNode.MoveCells(ASourceCell, ADestCell: PCell);
 var
   delta: Int64;
@@ -4589,6 +4590,7 @@ begin
     delta := Int64(ADestCell^.Col) - Int64(ASourceCell^.Col);
     FCol := Int64(FCol) + delta;
   end;
+
 end;
 
 function TsCellExprNode.NodeType: TsResultType;

@@ -2808,6 +2808,8 @@ var
   chart: TsChart;
   indent: String;
   savedRotatedAxes: Boolean;
+  plotVisOnly: String;
+  dispBlanksAs: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
@@ -2828,8 +2830,12 @@ begin
   WriteChartPlotAreaNode(AStream, AIndent + 2, chart);
   WriteChartLegendNode(AStream, AIndent + 2, chart.Legend);
 
+  plotVisOnly  := indent + '  <c:plotVisOnly val="1" />' + LE;
+  dispBlanksAs := indent + '  <c:dispBlanksAs val="gap" />' + LE;      // empty cells are not plotted
+
   AppendToStream(AStream,
-    indent + '  <c:plotVisOnly val="1" />' + LE +
+    plotVisOnly +
+    dispBlanksAs +
     indent + '</c:chart>' + LE
   );
 
