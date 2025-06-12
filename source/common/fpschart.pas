@@ -901,30 +901,58 @@ type
   {@@ Class type for all TsChartSeries classes }
   TsChartSeriesClass = class of TsChartSeries;
 
+  {@@ Area series draws data values as a line and fills the area between the
+    data point line and the zero value. }
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
     property Trendline;
   end;
 
+  {@@ TsBarSeries displays data values as bars. }
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
     property Trendline;
   end;
 
+  {@@ Enumeration of the symbols used for data points in TsLineSeries or
+    TsScatterSeries
+    @value  ccsRect     Rectangular symbol
+    @value  ccsDiamond  Diamond-shaped rectangle (rectangle rotated by 90 deg)
+    @value  ccsTriangle Triangular symbol pointing upward
+    @value  ccsTriangleDown Triangular symbol pointing downward
+    @value  ccsTriangleLeft Triangular symbol pointing to the left
+    @value  ccsTriangleRight  Triangular shape pointing to the right
+    @value  ccsCircle  Circular symbol
+    @value  ccsStar    Star-shaped symbol
+    @value  ccsX       Diagonal cross, like character 'x'
+    @value  ccsPlut    Horizontal/vertical cross, like character '+'
+    @value  ccsAsterisk Asterisk-like character ('*'
+    @value  ccsDash    Short horizontal line ('-');
+    @value  ccsDot     Small dot }
   TsChartSeriesSymbol = (
     cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
     cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk,
     cssDash, cssDot
   );
 
+  {@@ Enumeration for the ways how data points of a line or scatter series
+    will be conntected
+    @value  ciLinear  Two data points are connected by a straight line segment
+    @value  ciCubicSpline  Data points are conencted by a cubic spline.
+    @value  ciBSpline  Data points are connected by a B-spline curve.
+    @value  ciStepStart Two data points are connected by a stepped curve: first vertically, then horizontally
+    @value  ciStepEnd   Two data points are connected by a stepped curve: first horizontally, then vertically
+    @value  ciStepCenterX Two data points are connected by a stepped curve where the step is in the middle of the x values
+    @value  ciStepCenterY Two data points are connected by a stepped curve where the step is in the middle of the y values}
   TsChartInterpolation = (
     ciLinear,
     ciCubicSpline, ciBSpline,
     ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY
   );
 
+  {@@ Ancestor class of the "line-type" series }
   TsCustomLineSeries = class(TsChartSeries)
   private
     FInterpolation: TsChartInterpolation;
@@ -952,19 +980,33 @@ type
   TsLineSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
+    {@@ Determines how data points are connected by lines }
     property Interpolation;
+    {@@ Determines the kind of data point symbols: rectangular, circular, etc. }
     property Symbol;
+    {@@ Defines the border of the data point symbols }
     property SymbolBorder;
+    {@@ Defines how data point symbols are filles. }
     property SymbolFill;
+    {@@ Defines the height of the data point symbols, in millimeters }
     property SymbolHeight;
+    {@@ Defines the width of the data point symbols, in millimeters }
     property SymbolWidth;
+    {@@ If true data points are connected by lines. }
     property ShowLines;
+    {@@ If true symbols are displayed at each data point. }
     property ShowSymbols;
+    {@@ Contains parameters determinng whether and how a trendline is displayed. }
     property Trendline;
   end;
 
+  {@@ Enumeration for the order of slices in a TsPieSeries
+   @param soCCW  Slices are arranged in counter-cclockwise order
+   @param so CW  Slices are arranged in clockwise order.
+  }
   TsSliceOrder = (soCCW, soCW);
 
+  {@@ TsPieSeries displays data as slices of a pie. }
   TsPieSeries = class(TsChartSeries)
   private
     FInnerRadiusPercent: Integer;
@@ -981,16 +1023,21 @@ type
     property SliceOrder: TsSliceOrder read FSliceOrder write FSliceOrder;
   end;
 
+  {@@ TsRadarSeries is a radial series in which x is interpreted as the angle
+   around the origin, and y as the distance from the center. }
   TsRadarSeries = class(TsLineSeries)
   public
     constructor Create(AChart: TsChart); override;
   end;
 
+  {@@ Like TsRadarSeries, but the area between series and origin is filled }
   TsFilledRadarSeries = class(TsRadarSeries)
   public
     constructor Create(AChart: TsChart); override;
   end;
 
+  {@@ Ancestor of the TsScatterSeries. The x values in this series are
+   distributed randomly. }
   TsCustomScatterSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
@@ -1001,13 +1048,21 @@ type
     irregular distribution of the x values. }
   TsScatterSeries = class(TsCustomScatterSeries)
   public
+   {@@ Determines how data points are connected by lines }
     property Interpolation;
+   {@@ Determines the kind of data point symbols: rectangular, circular, etc. }
     property Symbol;
+   {@@ Defines the border of the data point symbols }
     property SymbolBorder;
+   {@@ Defines how data point symbols are filles. }
     property SymbolFill;
+   {@@ Defines the height of the data point symbols, in millimeters }
     property SymbolHeight;
+   {@@ Defines the width of the data point symbols, in millimeters }
     property SymbolWidth;
+   {@@ If true data points are connected by lines. }
     property ShowLines;
+   {@@ If true symbols are displayed at each data point. }
     property ShowSymbols;
   end;
 
@@ -3572,6 +3627,12 @@ end;
 
 { TsCustomLineSeries }
 
+{@@-----------------------------------------------------------------------------
+  Constructor of the TsCustomLineSeries class. It is the ancestor of
+  TsLineSeries, TsScatterSeries and TsRadarSeries.
+
+  Initializes with solid black lines and symbols turned off.
+-------------------------------------------------------------------------------}
 constructor TsCustomLineSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3591,6 +3652,9 @@ begin
   FSymbolFill.SelectNoFill;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the TsCustomLineSeries
+-------------------------------------------------------------------------------}
 destructor TsCustomLineSeries.Destroy;
 begin
   FSymbolBorder.Free;
@@ -3598,7 +3662,11 @@ begin
   inherited;
 end;
 
+
 { TsLineSeries }
+{@@ ----------------------------------------------------------------------------
+  Constructor of TsLineSeries
+-------------------------------------------------------------------------------}
 constructor TsLineSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3606,6 +3674,9 @@ begin
 end;
 
 { TsPieSeries }
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsPieSeries
+-------------------------------------------------------------------------------}
 constructor TsPieSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3614,6 +3685,10 @@ begin
   FLine.Color := ChartColor(scBlack);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the chart type: ctPie, or ctRing, depending on the value of hte
+    InnerRadiusPercent property.
+-------------------------------------------------------------------------------}
 function TsPieSeries.GetChartType: TsChartType;
 begin
   if FInnerRadiusPercent > 0 then
@@ -3622,6 +3697,12 @@ begin
     Result := ctPie;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the fraction of the pie radius a slice at the given index is moved
+  outwards from the center.
+
+  @Param  ASliceIndex  Index of the data point considered here.
+-------------------------------------------------------------------------------}
 function TsPieSeries.GetSliceOffset(ASliceIndex: Integer): Integer;
 var
   i: Integer;
@@ -3638,6 +3719,10 @@ end;
 
 
 { TsRadarSeries }
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsRadarSeries
+-------------------------------------------------------------------------------}
 constructor TsRadarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3647,6 +3732,10 @@ end;
 
 
 { TsFilledRadarSeries }
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsFilledRadarSeries, a specialized, filled TsRadarSeries
+-------------------------------------------------------------------------------}
 constructor TsFilledRadarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
@@ -3754,7 +3843,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Constructor for the TsChartTrendLine class
 
-  Initializes the trend line as solid black line
+  Initializes the trend line as a solid black line
 -------------------------------------------------------------------------------}
 constructor TsChartTrendline.Create;
 begin

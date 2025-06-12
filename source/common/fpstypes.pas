@@ -727,7 +727,7 @@ type
     clsCustom
   );
 
-  {@@ The Cell border style reocrd contains the linestyle and color of a cell
+  {@@ The Cell border style record contains the line style and color of a cell
       border. There is a CellBorderStyle for each border. 
       
     @member  LineStyle   LineStyle to be used for this cell border. See @link(TsLineStyle).
