@@ -1,8 +1,8 @@
 { fpspreadsheetchart.pas }
 
 {@@ ----------------------------------------------------------------------------
-Chart data source designed to work together with TChart from Lazarus
-to display the data and with FPSpreadsheet to load data.
+  Unit to interface the TAChart package from Lazarus to display the data
+  with FPSpreadsheet to load data.
 
 AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 
@@ -38,16 +38,19 @@ uses
 
 type
 
-  {@@ Chart data source designed to work together with TChart from Lazarus
-    to display the data.
-
-    The data can be loaded from a TsWorksheetGrid Grid component or
-    directly from a TsWorksheet FPSpreadsheet Worksheet }
-
-  { TsWorkbookChartSource }
-
+  {@@ Enumeration to classify the cell ranges needed for various purposes
+   @value rngX        Cell range contains the x values
+   @value rngY        Cell range contains the y values
+   @value rngLabel    Cell range contains axis or data point labels
+   @value rngColor    Cell range contains individual data point colors
+   @value rngXErrors  Cell range contains the errors of the x values
+   @value rngYErrors  cell range contains the errors of the y values }
   TsXYLRange = (rngX, rngY, rngLabel, rngColor, rngXErrors, rngYErrors);
 
+  {@@ Chart data source designed to pass the data values from the worksheet
+    to the TAChart series for plotting.
+
+    The data are loaded via a TsWorkbookSource directly from a TsWorksheet. }
   TsWorkbookChartSource = class(TCustomChartSource, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -97,7 +100,9 @@ type
     procedure SetTitleAddr(Addr: TsChartCellAddr);
     procedure SetXErrorBarRange(APosRange, ANegRange: TsChartRange);
     procedure SetYErrorBarRange(APosRange, ANegRange: TsChartRange);
+    {@@ The read-only property PointsNumber returns the count of data points provided by the chart source. }
     property PointsNumber: Cardinal read FPointsNumber;
+    {@@ Identifies the workbook represented by the assigned WorkbookSource (read-only) }
     property Workbook: TsWorkbook read GetWorkbook;
   public
     // Interface to TsWorkbookSource
@@ -109,25 +114,37 @@ type
     procedure UseDatapointColors(ASeries: TsChartSeries);
     property Styles: TChartStyles read FStyles;
   published
+    {@@ Identifies the workbook source from which the chart source gets the data to plot. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    {@@ Cell range defining individual data point colors }
     property ColorRange: String index rngColor read GetRange write SetRange;
+    {@@ Set to true by the polar series to rescale the x values to a full circle. }
     property CyclicX: Boolean read FCyclicX write FCyclicX default false;
+    {@@ When true, only integers are allowed for x labels. }
     property IntegerX: Boolean read FIntegerX write FIntegerX default false;
+    {@@ Cell range defining individual data point labels. }
     property LabelRange: String index rngLabel read GetRange write SetRange;
+    {@@ Cell range defining the lenghts of the x error bars. }
     property XErrorBarRange: String index rngXErrors read GetRange write SetRange;
+    {@@ Cell range defining the lengths of the y error bars. }
     property YErrorBarRange: String index rngYErrors read GetRange write SetRange;
+    {@@ Cell range, given in Excel notation, for the x values of the data points }
     property XRange: String index rngX read GetRange write SetRange;
+    {@@ Cell range, given in Excel notation, for the y values of the data points }
     property YRange: String index rngY read GetRange write SetRange;
+    {@@ Returns the title of the series assigned to the data source (read-only). Uses the parameters given in SetTitleAddr(). }
     property Title: String read GetTitle;
 
+    {@@ Defines parameters for the x error bars. }
     property XErrorBarData;
+    {@@ Defines parameters for the y error bars. }
     property YErrorBarData;
   end;
 
-  {@@ Link between TAChart and the fpspreadsheet chart class }
 
   { TsWorkbookChartLink }
 
+  {@@ Link between TAChart and the fpspreadsheet chart class }
   TsWorkbookChartLink = class(TComponent, IsSpreadsheetControl)
   private
     FChart: TChart;
@@ -149,8 +166,8 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
-    function ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
     procedure AddSeries(ASeries: TsChartSeries);
+    function CreateChartSeries(ASeries: TsChartSeries): TChartSeries;
     procedure FixAreaSeries({%H-}AWorkbookChart: TsChart);
     procedure FixSource(AChartSeries: TBasicPointSeries);
     procedure ClearChart;
@@ -198,11 +215,16 @@ type
     { Interfacing with WorkbookSource}
     procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
     procedure RemoveWorkbookSource;
+
+    {@@ Identifies the workbook represented by the assigned WorkbookSource (read-only) }
     property Workbook: TsWorkbook read GetWorkbook;
 
   published
+    {@@ Identifies the chart instance which is linked by the WorkbookChartlink to the workbook. }
     property Chart: TChart read FChart write SetChart;
+    {@@ Determines the index of the workbook chart to be handled. }
     property WorkbookChartIndex: Integer read FWorkbookChartIndex write SetWorkbookChartIndex;
+    {@@ Determines the workbook source which provides the workbook data. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
 
@@ -256,8 +278,15 @@ begin
   Result := round(mmToIn(mm * ppi));
 end;
 
-{ Constructs a PenStyle from the TsRawLinePattern data.
-  Note: the conversion is only very rough... }
+{@@ ----------------------------------------------------------------------------
+  Constructs a GUI PenStyle from the TsRawLinePattern data.
+
+  @param AChart  Chart in which this pen is used
+  @param ALine   TsChartLine instance providing the parameters used in the workbook
+  @param APen    GUI pen to which the ALine parameters are converted.
+
+  @Note          The conversion is only very rough...
+-------------------------------------------------------------------------------}
 procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
 var
   pattern: TsRawLinePattern;
@@ -382,6 +411,9 @@ end;
 {                             TsWorkbookChartSource                            }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsWorkbookChartSource class
+-------------------------------------------------------------------------------}
 constructor TsWorkbookChartSource.Create(AOwner: TComponent);
 begin
   inherited;
@@ -406,7 +438,7 @@ end;
   string unique. In case of x and y which can contain several range groups for
   XIndex/YIndex, all parts for the same XIndex/YIndex are enclosed in parenthesis.
 
-  @@Example
+  Example:
   If there are two y value ranges in sheet1 A1:A10 and B1:B5;B7:B12 then the
   result will be '(Sheet1!A1:A10) (Sheet1!B1:B5;Sheet1!B7:B12)'
 -------------------------------------------------------------------------------}
@@ -455,6 +487,9 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Empties all cell ranges used by the chart source.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.ClearRanges;
 begin
   SetLength(FRanges[rngX], 1);            FRanges[rngX, 0 ] := nil;
@@ -476,7 +511,6 @@ begin
   SetLength(FDatapointColors, 0);
   SetLength(FPieOffsets, 0);
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Counts the number of x or y values contained in the x/y ranges
@@ -519,9 +553,9 @@ end;
   Main ChartSource method called from the series requiring data for plotting.
   Retrieves the data from the workbook.
 
-  @param   AIndex   Index of the data point in the series.
-  @return  Pointer to a TChartDataItem record containing the x and y coordinates,
-           the data point mark text, and the individual data point color.
+  @param  AIndex   Index of the data point in the series.
+  @return(Pointer to a TChartDataItem record containing the x and y coordinates,
+           the data point mark text, and the individual data point color.)
 -------------------------------------------------------------------------------}
 function TsWorkbookChartSource.GetItem(AIndex: Integer): PChartDataItem;
 const
@@ -595,17 +629,21 @@ end;
 {@@ ----------------------------------------------------------------------------
   Getter method for the cell range used for x or y coordinates or x labels
 
-  @param   AIndex   Determines whether the methods deals with x, y values or
-                    vakze labels.
-  @return  An Excel string containing workbookname and cell block(s) in A1
+  @param   AIndex   Determines whether the methods deals with x, y values or value labels.
+  @return(An Excel string containing workbookname and cell block(s) in A1
            notation. Multiple blocks are separated by the ListSeparator defined
-           by the workbook's FormatSettings.
+           by the workbook's FormatSettings.)
 -------------------------------------------------------------------------------}
-function TsWorkbookChartsource.GetRange(AIndex: TsXYLRange): String;
+function TsWorkbookChartSource.GetRange(AIndex: TsXYLRange): String;
 begin
   Result := FRangeStr[AIndex];
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Getter method returning the string to be used as title of the associated series.
+  The string is read from the cell identified by parameters of the SetTitleAddr
+  method.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartSource.GetTitle: String;
 var
   sheet: TsWorksheet;
@@ -632,8 +670,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Helper method to prepare the information required for the series data point.
 
-  @param  ARangeIndex  Identifies whether the method retrieves the x or y
-                       coordinate, or the label text
+  @param  ARangeIndex  Identifies whether the method retrieves the x or y coordinate, or the label text
   @param  AListIndex   Index of the x or y range group when XCount or YCount is > 1
   @param  APointIndex  Index of the data point for which the data are required
   @param  ANumber      (output) x or y coordinate of the data point
@@ -716,15 +753,18 @@ end;
 {@@ ----------------------------------------------------------------------------
   Notification message received from the WorkbookSource telling which
   spreadsheet item has changed.
-  Responds to workbook changes by reading the worksheet names into the tabs,
-  and to worksheet changes by selecting the tab corresponding to the selected
-  worksheet.
 
- (@param  AChangedItems  Set of elements identifying whether workbook,
-                         worksheet, cell content or cell formatting has changed)
- (@param  AData          Additional data, contains the worksheet for worksheet-related items)
+  @unorderedlist(
+   @item(Prepares the chart when all sheets are completely loaded.)
+   @item(Fixes cell ranges when a worksheet has been renamed or deleted.)
+   @item(Enforces axis scale recalculation when a cell value has been changed.)
+  )
 
-  @see    TsNotificationItem
+ @param(AChangedItems  Set of elements identifying whether workbook,
+                       worksheet, cell content or cell formatting has changed)
+ @param AData          Additional data, contains the worksheet for worksheet-related items
+
+ @seeAlso    TsNotificationItem
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -799,7 +839,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Standard component notification: The ChartSource is notified that the
-  WorkbookSource is being removed.
+  WorkbookSource is being removed and sets the internal WorkbookSource variable
+  to nil.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.Notification(AComponent: TComponent;
   Operation: TOperation);
@@ -908,6 +949,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns true when the specified cell range is empty
+
+  @param  ARange  Cell range to be checked.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartSource.RangeIsEmpty(ARange: TsCellRange): Boolean;
 begin
@@ -987,15 +1030,14 @@ end;
   If it does not contain the worksheet name the currently active worksheet of
   the WorkbookSource is assumed.
 
-  @param   AIndex     Distinguishes whether the method deals with x, y or
-                      label ranges.
-  @param   AValue     String in Excel syntax containing the cell range to be
-                      used for x or y (depending on AIndex). Can contain multiple
-                      cell blocks which must be separator by the ListSeparator
-                      character defined in the Workbook's FormatSettings.
-                      If, in case of the x or y range, cell range strings are
-                      put in parenthesis it is assumed that this indicates a
-                      source with multiple x or y values.
+  @param(AIndex Distinguishes whether the method deals with x, y or label ranges.
+  @param(AValue String in Excel syntax containing the cell range to be
+                used for x or y, depending on AIndex. Can contain multiple
+                cell blocks which must be separator by the ListSeparator
+                character defined in the Workbook's FormatSettings.
+                If, in case of the x or y range, cell range strings are
+                put in parenthesis it is assumed that this indicates a
+                source with multiple x or y values.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetRange(AIndex: TsXYLRange;
   const AValue: String);
@@ -1004,6 +1046,13 @@ begin
   Prepare;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Setter method for the address of the cell providing the string to be used for
+  the series title.
+
+  @param  Addr  A TsChartCellAddr record containing row and column index as well as sheet name of the cell
+  @seeAlso Title
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetTitleAddr(Addr: TsChartCellAddr);
 begin
   FTitleRow := Addr.Row;
@@ -1150,6 +1199,10 @@ begin
   Prepare;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Inherited ChartSource method telling the series how many x values are used
+  per data point.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetXCount(AValue: Cardinal);
 begin
   FXCount := AValue;
@@ -1157,7 +1210,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Inherited ChartSource method telling the series how many y values are used.
+  Inherited ChartSource method telling the series how many y values are used
+  per data point.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetYCount(AValue: Cardinal);
 begin
@@ -1174,6 +1228,9 @@ end;
 {                             TsWorkbookChartLink                              }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsWorkbookChartLink class
+-------------------------------------------------------------------------------}
 constructor TsWorkbookChartLink.Create(AOwner: TComponent);
 begin
   inherited;
@@ -1201,7 +1258,394 @@ begin
   inherited;
 end;
 
-function TsWorkbookChartLink.ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
+{@@ ----------------------------------------------------------------------------
+  Creates a GUI chart series of the type which corresponds to the given
+  workbook series, translates all the workbook series properties to it,
+  and adds it to the GUI chart.
+
+  @param   ASeries  Workbook series which is processed.
+  @seeAlso CreateChartSeries
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
+var
+  ser: TChartSeries;
+  axis: TsChartAxis;
+begin
+  ser := CreateChartSeries(ASeries);
+  if (ser = nil) or (Workbook = nil) then
+  begin
+    Workbook.AddErrorMsg('Series could not be loaded.');
+    exit;
+  end;
+
+  ser.Transparency := round(ASeries.Fill.Color.Transparency);
+  axis := ASeries.Chart.YAxis;
+  UpdateChartSeriesMarks(ASeries, ser);
+  if IsStackable(ASeries) then
+  begin
+    UpdateChartStyle(ASeries, FChartStyles.Styles.Count-1);
+    if ASeries.Chart.StackMode = csmStackedPercentage then
+      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormatPercent)
+    else
+      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormat);
+    FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmDefault;
+  end;
+
+  FChart.AddSeries(ser);
+
+  case ASeries.ChartType of
+    ctArea:
+      UpdateAreaSeries(TsAreaSeries(ASeries), TAreaSeries(ser));
+    ctBar:
+      UpdateBarSeries(TsBarSeries(ASeries), TBarSeries(ser));
+    ctBubble:
+      UpdateBubbleSeries(TsBubbleSeries(ASeries), TBubbleSeries(ser));
+    ctLine:
+      UpdateCustomLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
+    ctScatter:
+      UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
+    ctStock:
+      UpdateStockSeries(TsStockSeries(ASeries), TStockSeries(ser));
+    ctPie, ctRing:
+      UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
+    ctRadar, ctFilledRadar:
+      UpdatePolarSeries(TsRadarSeries(ASeries), TPolarSeries(ser));
+  end;
+
+  //ser.Index := ASeries.Order;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Handler for the GUI chart's OnAfterDraw event to reset the drawer's brush
+  parameters.
+
+  Explanation: TCanvasDrawer.SetBrushParams does not remove the Brush.Bitmap
+    when the Brush.Style does not change. Since Brush.Style will be reset to
+    bsSolid in the last statement of TChart.Draw this will be enforced
+    here by setting Brush.Style to bsClear.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.AfterDrawChartHandler(ASender: TChart;
+  ADrawer: IChartDrawer);
+begin
+  if FSavedAfterDraw <> nil then
+    FSavedAfterDraw(ASender, ADrawer);
+  ADrawer.SetBrushParams(bsClear, clTAColor);
+end;
+
+procedure TsWorkbookChartLink.ClearChart;
+var
+  i, j: Integer;
+  ser: TChartSeries;
+  src, src1: TCustomChartSource;
+begin
+  // Clear the styles
+  FChartStyles.Styles.Clear;
+
+  if FChart = nil then
+    exit;
+
+  // Clear chart sources
+  for i := 0 to FChart.SeriesCount-1 do
+  begin
+    if (FChart.Series[i] is TChartSeries) then
+    begin
+      ser :=  TChartSeries(FChart.Series[i]);
+      src := ser.Source;
+      if src is TCalculatedChartSource then
+      begin
+        src1 := TCalculatedChartSource(src).Origin;
+        if src1 is TsWorkbookChartSource then
+          src1.Free;
+        src.Free;
+      end else
+      if src is TsWorkbookChartSource then
+        src.Free;
+    end;
+  end;
+
+  // Clear the series
+  FChart.ClearSeries;
+
+  // Clear the axes
+  for i := FChart.AxisList.Count-1 downto 0 do
+  begin
+    if FChart.AxisList[i].Transformations <> nil then
+      FChart.AxisList[i].Transformations.Free;
+
+    if FChart.AxisList[i].Minors <> nil then
+      for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
+        FChart.AxisList[i].Minors.Delete(j);
+
+    if (FChart.AxisList[i].Marks.Source is TDateTimeIntervalChartSource) then
+      FChart.AxisList[i].Marks.Source.Free;
+    FChart.AxisList[i].Marks.Style := smsValue;
+
+    case FChart.AxisList[i].Alignment of
+      calLeft, calBottom:
+        FChart.AxisList[i].Title.Caption := '';
+      calTop, calRight:
+        FChart.AxisList.Delete(i);
+    end;
+  end;
+
+  // Clear the title
+  FChart.Title.Text.Clear;
+
+  // Clear the footer
+  FChart.Foot.Text.Clear;
+
+  // Restore default background
+  FChart.BackColor := clWindow;
+  FChart.Frame.Color := clDefault;
+  FChart.Frame.Width := 1;
+  FChart.Frame.Style := psSolid;
+  FChart.Frame.Visible := true;
+
+//  FChart.OnAfterDraw := FSavedAfterDraw;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Approximates the empty hatch patterns by the built-in TBrush styles which are
+  rendered without background by TAChart.
+
+  @param  AWorkbookChart   Chart in the workbook which is processed here.
+  @param  AFill            Fill parameters provided by the workbook chart.
+  @param  ABrush           Graphics brush to be used by the user-interface chart.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  book: TsWorkbook;
+  coloredPattern: TsChartFillPattern;
+  rawPattern: TsRawFillPattern;
+begin
+  ABrush.Style := bsSolid;   // Fall-back style
+  if AFill.Pattern = -1 then
+    exit;
+
+  book := TsWorkbook(AWorkbookChart.Workbook);
+  coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
+  rawPattern := GetRawFillPattern(coloredPattern.Index);
+  ABrush.Color := Convert_sColor_to_Color(coloredpattern.FgColor.Color);
+  if (rawPattern.LinePattern <> nil) and coloredPattern.IsClearPattern then
+    case rawPattern.LinePattern.Multiplier of
+      lfpmSingle:
+        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
+          ABrush.Style := bsHorizontal
+        else
+        if InRange(FMod(rawPattern.LinePattern.Angle - 90, 180.0), -22.5, 22.5) then  // vertical
+          ABrush.Style := bsVertical
+        else
+        if Inrange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then  // diagonal up
+          ABrush.Style := bsBDiagonal
+        else
+        if InRange(FMod(rawPattern.linePattern.Angle + 45, 180.0), -22.5, 22.5) then  // diagonal down
+          ABrush.Style := bsFDiagonal;
+      lfpmDouble,
+      lfpmTriple:   // no triple hatches in LCL - fall-back to double hatch
+        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then   // +++
+          ABrush.Style := bsCross
+        else
+        if InRange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
+          ABrush.Style := bsDiagCross;
+    end
+  else
+    ConstructFillPattern(AWorkbookChart, AFill, ABrush);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
+  a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
+  FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
+  style.
+
+  @param  AWorkbookChart   Chart in the workbook which is processed here.
+  @param  AFill            Fill parameters provided by the workbook chart.
+  @param  ABrush           Graphics brush to be used by the user-interface chart.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.ConstructFillPattern(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  rawPattern: TsRawFillPattern;
+  coloredPattern: TsChartFillPattern;
+  png: TPortableNetworkGraphic;
+  img: TLazIntfImage;
+//  chBkCol: TsChartColor;
+  bkCol, fgCol: TFPColor;
+  x, y: Integer;
+  b: byte;
+begin
+  ABrush.Style := bsSolid;   // Solid fill as fall-back "pattern"
+
+  coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
+  rawPattern := GetRawFillPattern(coloredPattern.Index);
+
+  // Pattern color
+  fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.FgColor.Color));
+
+  // Background color
+  bkCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.BgColor.Color));
+
+  png := TPortableNetworkGraphic.Create;
+  png.SetSize(8, 8);
+  img := png.CreateIntfImage;
+  for y := 0 to img.Height-1 do
+    for x := 0 to img.Width-1 do
+    begin
+      b := 1 shl x;
+      if rawPattern.DotPattern[y] and b <> 0 then
+        img.Colors[x, y] := fgCol
+      else
+        img.Colors[x, y] := bkCol;
+    end;
+  png.LoadFromIntfImage(img);
+  img.Free;
+  FBrushBitmaps.Add(png);
+
+  // ... and assign the pattern to the brush
+  ABrush.Style := bsImage;
+  ABrush.Bitmap := png;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructs a bitmap fill pattern for the GUI brush from the image fill pattern
+  defined in the workbook chart.
+
+  @param  AWorkbookChart  Workbook chart to which the pattern belongs
+  @param  AFill           Fill parameters in the workbook chart from which the image pattern is to be converted
+  @param  ABrush          Brush to which the bitmap will be assigned.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.ConstructImagePattern(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  wBook: TsWorkbook;
+  img: TsChartImage;
+  obj: TsEmbeddedObj;
+  pic: TPicture;
+  png: TPortableNetworkGraphic;
+  w, h, ppi: Integer;
+begin
+  wBook := TsWorkbook(AWorkbookChart.Workbook);
+
+  if AFill.Image = -1 then
+    exit;
+  img := AWorkbookChart.Images[AFill.Image];
+  if img.EmbeddedObjIndex = -1 then
+    exit;
+
+  obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
+  pic := TPicture.Create;
+  try
+    obj.Stream.Position := 0;
+    pic.LoadFromStream(obj.Stream);
+    png := TPortableNetworkGraphic.Create;
+    if (img.Width > 0) and (img.Height > 0) then
+    begin
+      png.PixelFormat := pf32Bit;
+      ppi := GetParentForm(FChart).PixelsPerInch;
+      png.SetSize(mmToPx(img.Width, ppi), mmToPx(img.Height, ppi));
+      png.Canvas.StretchDraw(Rect(0, 0, png.Width, png.Height), pic.PNG);
+    end else
+      png.Assign(pic.PNG);
+    FBrushBitmaps.Add(png);
+    ABrush.Bitmap := png;
+  finally
+    pic.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructs the format strings for the series marks allowing: multiple items
+  separated by the WorkbookSeries.LabelSeparator, formatting of numbers as
+  specified by aWorkbookSeries.LabelFormat and AWorkbookseries.LabelFormatPercent.
+
+  @note(There are some issues with TAChart:
+
+  A 100%-stacked series gets its values from a CalculatedChartSource which
+  already delivers the percentages, but does not give access to the original
+  values. As a consequence the original y values cannot be displayed when
+  cdlValue is in the series' DataLabels. We display the percentage as a
+  fall-back solution when needed.
+
+  Another issue is that TAChart has only a single format for multiple stack
+  layers. We use the one defined by the last series of the stack.
+
+  And: TAChart calculates percentages in non-100% series as percentage of the
+  all-series-max rather than percentage of the individual stack.)
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.ConstructSeriesMarks(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries);
+var
+  sep: String;
+  percentMode: Boolean;
+  valueFmt: String = '%.9g';
+  percentFmt: String = '%.0f%%';
+  textFmt: String = '%2:s';
+  totalFmt: String = '';
+begin
+  percentMode := AWorkbookSeries.Chart.StackMode = csmStackedPercentage;
+
+  // Number format
+  if AWorkbookSeries.LabelFormat <> '' then
+    valueFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormat);
+  System.Delete(valueFmt, 1, 1);  // Delete the '%'; will be re-added later with  value selector.
+
+  // Percent format
+  if AWorkbookSeries.LabelFormatPercent <> '' then
+    percentFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormatPercent);
+  System.Delete(percentFmt, 1, 1);
+
+  // Working around some restrictions of TAChart...
+  if percentMode then
+  begin
+    if cdlValue in AWorkbookSeries.DataLabels then
+      valueFmt := '%0:' + percentFmt
+    else
+      valueFmt := '%0:' + valueFmt;
+    if cdlPercentage in AWorkbookSeries.DataLabels then
+      percentFmt := '%0:' + percentFmt;
+  end else
+  begin
+    valueFmt := '%0:' + valueFmt;
+    percentFmt := '%1:' + percentFmt;
+  end;
+
+  if AWorkbookSeries.DataLabels = [cdlCategory] then
+    AChartSeries.Marks.Style := smsLabel
+  else
+  begin
+    sep := AWorkbookSeries.LabelSeparator;
+    if cdlCategory in AWorkbookSeries.DataLabels then
+      totalFmt := textFmt;
+    if cdlValue in AWorkbookSeries.DataLabels then
+    begin
+      if totalFmt <> '' then
+        totalFmt := totalFmt + sep + valuefmt
+      else
+        totalFmt := valueFmt;
+    end;
+    if cdlPercentage in AWorkbookSeries.DataLabels then
+    begin
+      if totalFmt <> '' then
+        totalFmt := totalFmt + sep + percentFmt
+      else
+        totalFmt := percentFmt;
+    end;
+    AChartSeries.Marks.Format := totalFmt;
+  end;
+  AChartSeries.Marks.Alignment := taCenter;
+  AChartSeries.Marks.LinkPen.Visible := cdlLeaderLines in AWorkbookSeries.DataLabels;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Creates a GUI chart series from the provided workbook chart series.
+
+  Stackable series are created only once, subsequent calls for the stack levels
+  just provide data in the multi-y values chart source. Moreover, the
+  necessary calculated chart sources for percent presentation are created, and
+  the chart styles for individual data point styles are added.
+-------------------------------------------------------------------------------}
+function TsWorkbookChartLink.CreateChartSeries(ASeries: TsChartSeries): TChartSeries;
 type
   TAxisType = (xAx, yAx);
 const
@@ -1397,544 +1841,11 @@ begin
   //ax := Chart.AxisList.GetAxisByAlign(calRight);
 end;
 
-procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
-var
-  ser: TChartSeries;
-  axis: TsChartAxis;
-begin
-  ser := ActiveChartSeries(ASeries);
-  if (ser = nil) or (Workbook = nil) then
-  begin
-    Workbook.AddErrorMsg('Series could not be loaded.');
-    exit;
-  end;
-
-  ser.Transparency := round(ASeries.Fill.Color.Transparency);
-  axis := ASeries.Chart.YAxis;
-  UpdateChartSeriesMarks(ASeries, ser);
-  if IsStackable(ASeries) then
-  begin
-    UpdateChartStyle(ASeries, FChartStyles.Styles.Count-1);
-    if ASeries.Chart.StackMode = csmStackedPercentage then
-      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormatPercent)
-    else
-      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormat);
-    FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmDefault;
-  end;
-
-  FChart.AddSeries(ser);
-
-  case ASeries.ChartType of
-    ctArea:
-      UpdateAreaSeries(TsAreaSeries(ASeries), TAreaSeries(ser));
-    ctBar:
-      UpdateBarSeries(TsBarSeries(ASeries), TBarSeries(ser));
-    ctBubble:
-      UpdateBubbleSeries(TsBubbleSeries(ASeries), TBubbleSeries(ser));
-    ctLine:
-      UpdateCustomLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
-    ctScatter:
-      UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
-    ctStock:
-      UpdateStockSeries(TsStockSeries(ASeries), TStockSeries(ser));
-    ctPie, ctRing:
-      UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
-    ctRadar, ctFilledRadar:
-      UpdatePolarSeries(TsRadarSeries(ASeries), TPolarSeries(ser));
-  end;
-
-  //ser.Index := ASeries.Order;
-end;
-
-procedure TsWorkbookChartLink.AfterDrawChartHandler(ASender: TChart;
-  ADrawer: IChartDrawer);
-begin
-  if FSavedAfterDraw <> nil then
-    FSavedAfterDraw(ASender, ADrawer);
-
-  { TCanvasDrawer.SetBrushParams does not remove the Brush.Bitmap when the
-    Brush.Style does not change. Since Brush.Style will be reset to bsSolid
-    in the last statement of TChart.Draw this will be enforced here by setting
-    Brush.Style to bsClear. }
-  ADrawer.SetBrushParams(bsClear, clTAColor);
-end;
-
-procedure TsWorkbookChartLink.ClearChart;
-var
-  i, j: Integer;
-  ser: TChartSeries;
-  src, src1: TCustomChartSource;
-begin
-  // Clear the styles
-  FChartStyles.Styles.Clear;
-
-  if FChart = nil then
-    exit;
-
-  // Clear chart sources
-  for i := 0 to FChart.SeriesCount-1 do
-  begin
-    if (FChart.Series[i] is TChartSeries) then
-    begin
-      ser :=  TChartSeries(FChart.Series[i]);
-      src := ser.Source;
-      if src is TCalculatedChartSource then
-      begin
-        src1 := TCalculatedChartSource(src).Origin;
-        if src1 is TsWorkbookChartSource then
-          src1.Free;
-        src.Free;
-      end else
-      if src is TsWorkbookChartSource then
-        src.Free;
-    end;
-  end;
-
-  // Clear the series
-  FChart.ClearSeries;
-
-  // Clear the axes
-  for i := FChart.AxisList.Count-1 downto 0 do
-  begin
-    if FChart.AxisList[i].Transformations <> nil then
-      FChart.AxisList[i].Transformations.Free;
-
-    if FChart.AxisList[i].Minors <> nil then
-      for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
-        FChart.AxisList[i].Minors.Delete(j);
-
-    if (FChart.AxisList[i].Marks.Source is TDateTimeIntervalChartSource) then
-      FChart.AxisList[i].Marks.Source.Free;
-    FChart.AxisList[i].Marks.Style := smsValue;
-
-    case FChart.AxisList[i].Alignment of
-      calLeft, calBottom:
-        FChart.AxisList[i].Title.Caption := '';
-      calTop, calRight:
-        FChart.AxisList.Delete(i);
-    end;
-  end;
-
-  // Clear the title
-  FChart.Title.Text.Clear;
-
-  // Clear the footer
-  FChart.Foot.Text.Clear;
-
-  // Restore default background
-  FChart.BackColor := clWindow;
-  FChart.Frame.Color := clDefault;
-  FChart.Frame.Width := 1;
-  FChart.Frame.Style := psSolid;
-  FChart.Frame.Visible := true;
-
-//  FChart.OnAfterDraw := FSavedAfterDraw;
-end;
-
-{ Approximates the empty hatch patterns by the built-in TBrush styles which are
-  rendered without background by TAChart. }
-procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
-  AFill: TsChartFill; ABrush: TBrush);
-var
-  book: TsWorkbook;
-  coloredPattern: TsChartFillPattern;
-  rawPattern: TsRawFillPattern;
-begin
-  ABrush.Style := bsSolid;   // Fall-back style
-  if AFill.Pattern = -1 then
-    exit;
-
-  book := TsWorkbook(AWorkbookChart.Workbook);
-  coloredPattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := GetRawFillPattern(coloredPattern.Index);
-  ABrush.Color := Convert_sColor_to_Color(coloredpattern.FgColor.Color);
-  if (rawPattern.LinePattern <> nil) and coloredPattern.IsClearPattern then
-    case rawPattern.LinePattern.Multiplier of
-      lfpmSingle:
-        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
-          ABrush.Style := bsHorizontal
-        else
-        if InRange(FMod(rawPattern.LinePattern.Angle - 90, 180.0), -22.5, 22.5) then  // vertical
-          ABrush.Style := bsVertical
-        else
-        if Inrange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then  // diagonal up
-          ABrush.Style := bsBDiagonal
-        else
-        if InRange(FMod(rawPattern.linePattern.Angle + 45, 180.0), -22.5, 22.5) then  // diagonal down
-          ABrush.Style := bsFDiagonal;
-      lfpmDouble,
-      lfpmTriple:   // no triple hatches in LCL - fall-back to double hatch
-        if InRange(FMod(rawPattern.LinePattern.Angle, 180.0), -22.5, 22.5) then   // +++
-          ABrush.Style := bsCross
-        else
-        if InRange(FMod(rawPattern.LinePattern.Angle - 45, 180.0), -22.5, 22.5) then // xxx
-          ABrush.Style := bsDiagCross;
-    end
-  else
-    ConstructFillPattern(AWorkbookChart, AFill, ABrush);
-end;
-               (*
-{ Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
-  a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
-  FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
-  style. }
-procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
-  AFill: TsChartFill; ABrush: TBrush);
-var
-  book: TsWorkbook;
-  rawPattern: TsRawFillPattern;
-  coloredPattern: TsChartFillPattern;
-  png: TPortableNetworkGraphic;
-  bkCol, fgCol: TColor;
-  x, y: Integer;
-  b: byte;
-begin
-  ABrush.Style := bsSolid;   // Fall-back pattern
-
-  book := TsWorkbook(AWorkbookChart.Workbook);
-  coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := book.RawFillPatterns[coloredPattern.Index];
-
-  // Pattern color
-  fgCol := Convert_sColor_to_Color(coloredPattern.Color.Color);
-  // Background color
-  if rawPattern.LinePattern <> nil then
-    bkCol := Convert_sColor_to_Color(AFill.Color.Color)
-  else
-    bkCol := Convert_sColor_to_Color(coloredPattern.BgColor.Color);
-
-  png := TPortableNetworkGraphic.Create;
-  png.SetSize(8, 8);
-  png.Canvas.Brush.Color := bkCol;
-  png.Canvas.FillRect(0, 0, 8, 8);
-  for y := 0 to png.Height-1 do
-    for x := 0 to png.Width-1 do
-    begin
-      b := 1 shl x;
-      if rawPattern.DotPattern[y] and b <> 0 then
-        png.Canvas.Pixels[x, y] := fgCol;
-    end;
-  FBrushBitmaps.Add(png);
-
-  // ... and assign the pattern to the brush
-  ABrush.Style := bsImage;
-  ABrush.Bitmap := png;
-end;
-          *)
-
-{ Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
-  a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
-  FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
-  style. }
-procedure TsWorkbookChartLink.ConstructFillPattern(AWorkbookChart: TsChart;
-  AFill: TsChartFill; ABrush: TBrush);
-var
-  book: TsWorkbook;
-  rawPattern: TsRawFillPattern;
-  coloredPattern: TsChartFillPattern;
-  png: TPortableNetworkGraphic;
-  img: TLazIntfImage;
-//  chBkCol: TsChartColor;
-  bkCol, fgCol: TFPColor;
-  x, y: Integer;
-  b: byte;
-begin
-  ABrush.Style := bsSolid;   // Solid fill as fall-back "pattern"
-
-  book := TsWorkbook(AWorkbookChart.Workbook);
-  coloredpattern := AWorkbookChart.FillPatterns[AFill.Pattern];
-  rawPattern := GetRawFillPattern(coloredPattern.Index);
-
-  // Pattern color
-  fgCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.FgColor.Color));
-
-  // Background color
-  bkCol := TColorToFPColor(Convert_sColor_to_Color(coloredPattern.BgColor.Color));
-
-  png := TPortableNetworkGraphic.Create;
-  png.SetSize(8, 8);
-  img := png.CreateIntfImage;
-  for y := 0 to img.Height-1 do
-    for x := 0 to img.Width-1 do
-    begin
-      b := 1 shl x;
-      if rawPattern.DotPattern[y] and b <> 0 then
-        img.Colors[x, y] := fgCol
-      else
-        img.Colors[x, y] := bkCol;
-    end;
-  png.LoadFromIntfImage(img);
-  img.Free;
-  FBrushBitmaps.Add(png);
-
-  // ... and assign the pattern to the brush
-  ABrush.Style := bsImage;
-  ABrush.Bitmap := png;
-end;
-
-
-(*
-procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
-  AFill: TsChartFill; ABrush: TBrush);
-var
-  hatch: TsChartHatch;
-  w, h, lw, ppi, i, x, y: Integer;
-  png: TPortableNetworkGraphic;
-  sa, ca: Double;
-  bkCol: TColor;
-  fgCol: TColor;
-  R: TRect;
-
-  procedure PrepareCanvas(AWidth, AHeight, ALineWidth: Integer);
-  begin
-    png.SetSize(AWidth, AHeight);
-    png.Canvas.Brush.Color := bkCol;
-    png.Canvas.FillRect(0, 0, AWidth, AHeight);
-    png.Canvas.Pen.Color := fgCol;
-    png.Canvas.Pen.Width := ALineWidth;
-  end;
-
-begin
-  ABrush.Style := bsSolid;   // Fall-back style
-
-  hatch := AWorkbookChart.Hatches[AFill.Hatch];
-  ppi := GetParentForm(FChart).PixelsPerInch;
-  if hatch.PatternWidth > 0 then
-    w := mmToPx(hatch.PatternWidth, ppi)                      // pattern width in px
-  else
-    w := round(-hatch.PatternWidth);
-  if hatch.PatternHeight > 0 then
-    h := mmToPx(hatch.PatternHeight, ppi)                     // pattern height in px
-  else
-    h := round(-hatch.PatternHeight);
-  lw := Max(mmToPx(hatch.LineWidth, ppi), 1);                 // line width of pen in px
-  bkCol := Convert_sColor_to_Color(AFill.Color.Color);        // background color
-  fgCol := Convert_sColor_to_Color(hatch.PatternColor.Color); // foreground color  (pattern)
-
-  png := TPortableNetworkGraphic.Create;
-
-  case hatch.Style of
-    chsDot:
-      begin
-        PrepareCanvas(w, h, lw);
-        for i := 0 to hatch.NumDots-1 do
-        begin
-          // DotPos are interpreted as fractions of the cell size if positive,
-          // or as pixels if negative.
-          if hatch.DotPos[i].X > 0 then
-            x := round(hatch.DotPos[i].X * w)
-          else
-            x := round(-hatch.Dotpos[i].X);
-          if hatch.DotPos[i].Y > 0 then
-            y := round(hatch.DotPos[i].Y * h)
-          else
-            y := round(-hatch.DotPos[i].Y);
-          if (x < w) and (y < h) then
-            png.Canvas.Pixels[x, y] := fgCol;
-        end;
-      end;
-    chsSingle:
-      begin
-        // horizontal ---
-        if hatch.PatternAngle = 0 then
-        begin
-          PrepareCanvas(8, w, lw);
-          png.Canvas.Line(0, 0, png.Width, 0);
-        end else
-        // vertical  |||
-        if hatch.PatternAngle = 90 then
-        begin
-          PrepareCanvas(w, 8, lw);
-          png.Canvas.Line(0, 0, 0, png.Height);
-        end else
-        // any angle
-        begin
-          SinCos(DegToRad(hatch.PatternAngle), sa, ca);
-          PrepareCanvas(round(abs(w / sa)), round(abs(w / ca)), lw);
-          R := Rect(0, 0, png.Width, png.Height);
-          if lw = 1 then
-          begin
-            if sa / ca > 0 then   // sa/ca = tangens
-              png.Canvas.Line(R.Left, R.Bottom-1, R.Right, R.Top-1)
-            else
-              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
-          end else
-          begin
-            if sa / ca > 0 then
-            begin
-              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
-              OffsetRect(R, R.Width, 0);
-              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
-              OffsetRect(R, -2*R.Width, 0);
-              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
-            end else
-            begin
-              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
-              OffsetRect(R, R.Width, 0);
-              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
-              OffsetRect(R, -2*R.Width, 0);
-              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
-            end;
-          end;
-        end;
-      end;
-    chsDouble, chsTriple:
-      begin  // +++
-        if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then
-        begin
-          PrepareCanvas(w, w, lw);
-          png.Canvas.Line(0, w div 2, w, w div 2);
-          png.Canvas.Line(w div 2, 0, w div 2, w);
-          if hatch.Style = chsTriple then
-            png.Canvas.Line(0, 0, w, w);
-        end else
-        // xxx
-        if InRange(FMod(hatch.PatternAngle-45, 180.0), -22.5, 22.5) then
-        begin
-          w := round(w * sqrt(2));
-          PrepareCanvas(w, w, lw);
-          png.Canvas.Line(0, 0, w, w);
-          png.Canvas.Line(0, w, w, 0);
-          if hatch.Style = chsTriple then
-            png.Canvas.Line(0, w div 2, w, w div 2);
-        end;
-      end;
-  end;
-
-  // Store the pattern image in the list...
-  FBrushBitmaps.Add(png);
-  // ... and assign the pattern to the brush
-  ABrush.Style := bsImage;
-  ABrush.Bitmap := png;
-end;
-     *)
-
-procedure TsWorkbookChartLink.ConstructImagePattern(AWorkbookChart: TsChart;
-  AFill: TsChartFill; ABrush: TBrush);
-var
-  wBook: TsWorkbook;
-  img: TsChartImage;
-  obj: TsEmbeddedObj;
-  pic: TPicture;
-  png: TPortableNetworkGraphic;
-  w, h, ppi: Integer;
-begin
-  wBook := TsWorkbook(AWorkbookChart.Workbook);
-
-  if AFill.Image = -1 then
-    exit;
-  img := AWorkbookChart.Images[AFill.Image];
-  if img.EmbeddedObjIndex = -1 then
-    exit;
-
-  obj := wBook.GetEmbeddedObj(img.EmbeddedObjIndex);
-  pic := TPicture.Create;
-  try
-    obj.Stream.Position := 0;
-    pic.LoadFromStream(obj.Stream);
-    png := TPortableNetworkGraphic.Create;
-    if (img.Width > 0) and (img.Height > 0) then
-    begin
-      png.PixelFormat := pf32Bit;
-      ppi := GetParentForm(FChart).PixelsPerInch;
-      png.SetSize(mmToPx(img.Width, ppi), mmToPx(img.Height, ppi));
-      png.Canvas.StretchDraw(Rect(0, 0, png.Width, png.Height), pic.PNG);
-    end else
-      png.Assign(pic.PNG);
-    FBrushBitmaps.Add(png);
-    ABrush.Bitmap := png;
-  finally
-    pic.Free;
-  end;
-end;
-
 {@@ ----------------------------------------------------------------------------
-  Constructs the format strings for the series marks allowing: multiple items
-  separated by the WorkbookSeries.LabelSeparator, formatting of numbers as
-  specified by aWorkbookSeries.LabelFormat and AWorkbookseries.LabelFormatPercent.
-
-  NOTE:
-  There are some issues with TAChart:
-
-  A 100%-stacked series gets its values from a CalculatedChartSource which
-  already delivers the percentages, but does not give access to the original
-  values. As a consequence the original y values cannot be displayed when
-  cdlValue is in the series' DataLabels. We display the percentage as a
-  fall-back solution when needed.
-
-  Another issue is that TAChart has only a single format for multiple stack
-  layers. We use the one defined by the last series of the stack.
-
-  And: TAChart calculates percentages in non-100% series as percentage of the
-  all-series-max rather than percentage of the individual stack.
--------------------------------------------------------------------------------}
-procedure TsWorkbookChartLink.ConstructSeriesMarks(AWorkbookSeries: TsChartSeries;
-  AChartSeries: TChartSeries);
-var
-  sep: String;
-  percentMode: Boolean;
-  valueFmt: String = '%.9g';
-  percentFmt: String = '%.0f%%';
-  textFmt: String = '%2:s';
-  totalFmt: String = '';
-begin
-  percentMode := AWorkbookSeries.Chart.StackMode = csmStackedPercentage;
-
-  // Number format
-  if AWorkbookSeries.LabelFormat <> '' then
-    valueFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormat);
-  System.Delete(valueFmt, 1, 1);  // Delete the '%'; will be re-added later with  value selector.
-
-  // Percent format
-  if AWorkbookSeries.LabelFormatPercent <> '' then
-    percentFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormatPercent);
-  System.Delete(percentFmt, 1, 1);
-
-  // Working around some restrictions of TAChart...
-  if percentMode then
-  begin
-    if cdlValue in AWorkbookSeries.DataLabels then
-      valueFmt := '%0:' + percentFmt
-    else
-      valueFmt := '%0:' + valueFmt;
-    if cdlPercentage in AWorkbookSeries.DataLabels then
-      percentFmt := '%0:' + percentFmt;
-  end else
-  begin
-    valueFmt := '%0:' + valueFmt;
-    percentFmt := '%1:' + percentFmt;
-  end;
-
-  if AWorkbookSeries.DataLabels = [cdlCategory] then
-    AChartSeries.Marks.Style := smsLabel
-  else
-  begin
-    sep := AWorkbookSeries.LabelSeparator;
-    if cdlCategory in AWorkbookSeries.DataLabels then
-      totalFmt := textFmt;
-    if cdlValue in AWorkbookSeries.DataLabels then
-    begin
-      if totalFmt <> '' then
-        totalFmt := totalFmt + sep + valuefmt
-      else
-        totalFmt := valueFmt;
-    end;
-    if cdlPercentage in AWorkbookSeries.DataLabels then
-    begin
-      if totalFmt <> '' then
-        totalFmt := totalFmt + sep + percentFmt
-      else
-        totalFmt := percentFmt;
-    end;
-    AChartSeries.Marks.Format := totalFmt;
-  end;
-  AChartSeries.Marks.Alignment := taCenter;
-  AChartSeries.Marks.LinkPen.Visible := cdlLeaderLines in AWorkbookSeries.DataLabels;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adjusts the area series zero level which, otherwise, is not clipped at the
+  Adjusts the area series zero level which otherwise is not clipped at the
   chart's plotrect (in TAChart before v3.99)
+
+  @param  AWorkbookChart  Chart in the workbook which is handled here.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.FixAreaSeries(AWorkbookChart: TsChart);
 {$IF LCL_FullVersion < 3990000}
@@ -1964,6 +1875,15 @@ begin
 end;
 {$ENDIF}
 
+{@@ ----------------------------------------------------------------------------
+  Fixes the chart source for error bars.
+
+  TAChart does supports error bars only for single-values chart sources. Only
+  when FixSource is called it is known how many values are used by the source.
+  If ranges have been added as rngXErrors or rgnYErrors display of error bars
+  must be turned off in this case. Otherwise the main series would not be
+  shown correctly.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.FixSource(AChartSeries: TBasicPointSeries);
 var
   i, j, nx, ny: Integer;
@@ -1983,11 +1903,6 @@ begin
   else
     exit;
 
-  { TAChart does supports error bars only for single-values chart sources. Only
-    when FixSource is called it is known how many values are used by the source.
-    If ranges have been added as rngXErrors or rgnYErrors display of error bars
-    must be turned off in this case. Otherwise the main series would not be
-    shown correctly. }
   if (src.XCount > 0) and (Length(src.FRanges[rngXErrors]) > 0) then
     src.XErrorBarData.Kind := ebkNone;
 
@@ -2032,11 +1947,23 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the GUI chart auto-scale axis transform assigned to the specified
+  chart axis, or nil if this axis transform type is not available here.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetAutoScaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
 begin
   Result := TAutoScaleAxisTransform(GetAxisTransform(AChartAxis, TAutoScaleAxisTransform));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the TAChart axis transform when an axis transform of the specified
+  class has been assigned to the specified axis, or nil when no such axis
+  transform is assigned to the axis.
+
+  @param  AChartAxis  GUI chart axis in which the axis transform is searched.
+  @param  AClass      Class of the axis transform searched.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetAxisTransform(AChartAxis: TChartAxis;
   AClass: TAxisTransformClass): TAxisTransform;
 var
@@ -2052,11 +1979,18 @@ begin
   Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the GUI chart logarithmic axis transform assigned to the specified
+  chart axis, or nil if this axis transform type is not used here.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetLogAxisTransform(AChartAxis: TChartAxis): TLogarithmAxisTransform;
 begin
   Result := TLogarithmAxisTransform(GetAxisTransform(AChartAxis, TLogarithmAxisTransform))
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the workbook chart which is handled by the chart link
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
 begin
   if (Workbook <> nil) and (FWorkbookChartIndex > -1) then
@@ -2065,6 +1999,9 @@ begin
     Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the workbook to which the chart belongs.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartlink.GetWorkbook: TsWorkbook;
 begin
   if FWorkbookSource <> nil then
@@ -2073,6 +2010,9 @@ begin
     Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true if the specified GUI chart axis has logarithmic divisions.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsLogarithmic(Axis: TChartAxis): Boolean;
 var
   T: TLogarithmAxisTransform;
@@ -2081,13 +2021,19 @@ begin
   Result := (T <> nil) and T.Enabled;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns true if the specified axis is a secondary axis, i.e. a right or top
+  axis.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsSecondaryAxis(Axis: TsChartAxis): Boolean;
 begin
   Result := (Axis = Axis.Chart.Y2Axis) or (Axis = Axis.Chart.X2Axis);
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Bar, line and area series can be stacked if they are assigned to the same axis.
+  Returns true if the specified workbook series can be stacked.
+  This is possible bar, line and area series if they are assigned to the same
+  axis.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
 var
@@ -2127,6 +2073,23 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+   Notification message received from the WorkbookSource telling which
+  spreadsheet item has changed.
+
+  @unorderedlist(
+   @item(Updates the chart when the message is received that all work sheets are loaded.)
+   @item(When another worksheet has been selected the first chart of this worksheet is
+         picked for the TAChart.)
+  )
+
+ @param(AChangedItems  Set of elements identifying whether workbook,
+                       worksheet, cell content or cell formatting has changed)
+ @param AData          Additional data, contains the worksheet for worksheet-related items
+
+ @seeAlso    TsNotificationItem
+
+}
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 var
@@ -2151,6 +2114,11 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Standard component notification: The ChartLink is notified that the
+  WorkbookSource or chart is being removed and sets the internal
+  WorkbookSource or Chart variables to nil, respectively.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited Notification(AComponent, Operation);

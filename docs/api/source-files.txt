@@ -10,4 +10,4 @@
 ../../source/common/fpschart.pas
 ../../source/visual/fpspreadsheetctrls.pas
 ../../source/visual/fpspreadsheetgrid.pas
-../../source/visual/fpsspreadsheetchart.pas
+../../source/visual/fpspreadsheetchart.pas
