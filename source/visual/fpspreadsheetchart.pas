@@ -158,9 +158,6 @@ type
     procedure SetChart(AValue: TChart);
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
-
-    //procedure FitSeriesFitEquationText(ASeries: TFitSeries; AEquationText: IFitEquationText);
-
     procedure AfterDrawChartHandler(ASender: TChart; ADrawer: IChartDrawer);
 
   protected
@@ -220,7 +217,7 @@ type
     property Workbook: TsWorkbook read GetWorkbook;
 
   published
-    {@@ Identifies the chart instance which is linked by the WorkbookChartlink to the workbook. }
+    {@@ Identifies the TAChart instance which is linked by the WorkbookChartlink to the workbook. }
     property Chart: TChart read FChart write SetChart;
     {@@ Determines the index of the workbook chart to be handled. }
     property WorkbookChartIndex: Integer read FWorkbookChartIndex write SetWorkbookChartIndex;
@@ -407,9 +404,9 @@ begin
 end;
 
 
-{------------------------------------------------------------------------------}
-{                             TsWorkbookChartSource                            }
-{------------------------------------------------------------------------------}
+{===============================================================================
+                              TsWorkbookChartSource
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsWorkbookChartSource class
@@ -1224,9 +1221,9 @@ begin
 end;
 
 
-{------------------------------------------------------------------------------}
-{                             TsWorkbookChartLink                              }
-{------------------------------------------------------------------------------}
+{===============================================================================
+                            TsWorkbookChartLink
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsWorkbookChartLink class
@@ -1259,7 +1256,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a GUI chart series of the type which corresponds to the given
+  Creates a TAChart series of the type which corresponds to the given
   workbook series, translates all the workbook series properties to it,
   and adds it to the GUI chart.
 
@@ -1332,6 +1329,10 @@ begin
   ADrawer.SetBrushParams(bsClear, clTAColor);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Removes and destroys all series (and attached chart sources) from the linked
+  TAChart instance.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.ClearChart;
 var
   i, j: Integer;
@@ -1638,7 +1639,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a GUI chart series from the provided workbook chart series.
+  Creates a TAChart series from the provided workbook chart series.
 
   Stackable series are created only once, subsequent calls for the stack levels
   just provide data in the multi-y values chart source. Moreover, the
@@ -1948,8 +1949,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the GUI chart auto-scale axis transform assigned to the specified
+  Returns the TAChart auto-scale axis transform assigned to the specified
   chart axis, or nil if this axis transform type is not available here.
+
+  @param     AChartAxis   TAChart axis which is investigated
+  @returns   TAutoScaleAxisTransform instance if attached to the axis, or nil otherwise
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetAutoScaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
 begin
@@ -1961,8 +1965,9 @@ end;
   class has been assigned to the specified axis, or nil when no such axis
   transform is assigned to the axis.
 
-  @param  AChartAxis  GUI chart axis in which the axis transform is searched.
-  @param  AClass      Class of the axis transform searched.
+  @param  AChartAxis       TAChart axis for which the axis transform is searched.
+  @param  AClass           Class of the axis transform searched.
+  @returns  TAxisTransform instance of the requested class if found, or nil otherwise
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetAxisTransform(AChartAxis: TChartAxis;
   AClass: TAxisTransformClass): TAxisTransform;
@@ -1980,8 +1985,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the GUI chart logarithmic axis transform assigned to the specified
+  Returns the TAChart logarithmic axis transform assigned to the specified
   chart axis, or nil if this axis transform type is not used here.
+
+  @param    AChartAxis  TAChart axis for which the axis transform is searched
+  @returns  TLogarithmAxisTransform instance if found, or nil otherwise
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetLogAxisTransform(AChartAxis: TChartAxis): TLogarithmAxisTransform;
 begin
@@ -1990,6 +1998,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the workbook chart which is handled by the chart link
+
+  @returns  Workbook chart handled by the Chartlink
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
 begin
@@ -2011,7 +2021,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns true if the specified GUI chart axis has logarithmic divisions.
+  Returns @true if the specified TAChart axis has logarithmic divisions.
+
+  @param    Axis  TChart axis which is queried
+  @returns  @True if the axis has logarithmic divisions.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsLogarithmic(Axis: TChartAxis): Boolean;
 var
@@ -2024,6 +2037,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns true if the specified axis is a secondary axis, i.e. a right or top
   axis.
+
+  @param    Axis   Workbook chart axis which is queried
+  @returns  @true if the axis is at the right or top of the chart.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsSecondaryAxis(Axis: TsChartAxis): Boolean;
 begin
@@ -2031,9 +2047,12 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns true if the specified workbook series can be stacked.
+  Returns true if the specified workbook chart series can be stacked.
   This is possible bar, line and area series if they are assigned to the same
   axis.
+
+  @param    ASeries    Workbook chart series which is queried
+  @returns  @true if the series type principally can contain stacked levels.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
 var
@@ -2088,8 +2107,7 @@ end;
  @param AData          Additional data, contains the worksheet for worksheet-related items
 
  @seeAlso    TsNotificationItem
-
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 var
@@ -2132,11 +2150,19 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Removes the chartbook source from the chart link
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.RemoveWorkbookSource;
 begin
   SetWorkbookSource(nil);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Connects the specified TAChart to the chart link
+
+  @param AValue   TAChart to be linked
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.SetChart(AValue: TChart);
 begin
   if FChart = AValue then
@@ -2172,6 +2198,13 @@ begin
   UpdateChart;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the TAChart area series by those provided by the
+  workbook area series.
+
+  @param  AWorkbookSeries  Series in the workbook chart which provides the series parameters.
+  @param  AChartseries     TAChart series which is updated by these parameters.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateAreaSeries(AWorkbookSeries: TsAreaSeries;
   AChartSeries: TAreaSeries);
 begin
@@ -2191,6 +2224,13 @@ begin
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the TAChart bar series by those provided by the
+  workbook bar series.
+
+  @param  AWorkbookSeries  Series in the workbook chart which provides the series parameters.
+  @param  AChartseries     TAChart series which is updated by these parameters.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
   AChartSeries: TBarSeries);
 
@@ -2227,6 +2267,13 @@ begin
   UpdateChartSeriesTrendLine(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the LCL bubble series by those provided by the
+  workbook bubble series.
+
+  @param  AWorkbookSeries  Series in the workbook's chart which provides the series parameters.
+  @param  AChartseries     TAChart series which is updated by these parameters.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
   AChartSeries: TBubbleSeries);
 begin
@@ -2247,6 +2294,10 @@ begin
   UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates all chart properties with thoser provided by the linked workbook chart
+  and its elements.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChart;
 var
   ch: TsChart;
@@ -2285,6 +2336,12 @@ begin
   FixAreaSeries(ch);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the TAChart axis parameters with those provided by the specified
+  workbook chart axis.
+
+  @param AWorkbookAxis   Axis in the workbook chart which provides the parameters for the associated TAChart axis.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartAxis(AWorkbookAxis: TsChartAxis);
 const
   ROTATED_ALIGNMENT: array[TChartAxisAlignment] of TChartAxisAlignment = (
@@ -2441,6 +2498,12 @@ begin
   end;
 end;
 
+{@@-----------------------------------------------------------------------------
+  Updates the TAChart axis label parameters with those provided by the linked
+  workbook chart.
+
+  @param  AWorkbookChart   Chart in the workbook from which the properties are taken
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
 
   procedure MayBeLogAxis(Axis: TChartAxis);
@@ -2552,6 +2615,12 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the TAChart background according to the
+  background of the workbook chart.
+
+  @param  AWorkbookChart   Workbook chart which provides the background parameters.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);
 begin
   FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color.Color);
@@ -2560,6 +2629,14 @@ begin
   FChart.Frame.Visible := not AWorkbookChart.PlotArea.Border.IsHidden;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of an LCL brush by those provided by the
+  AWorkbookFill instance inside the workbook chart.
+
+  @param  AWorkbookChart Workbook chart which contains the workbook fill instance.
+  @param  AWorkbookFill  A TsChartFill instance providing the properties for the TAChart
+  @param  ABrush         LCL brush used by the TAChart which is updated by the AWorkbookFill properties
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
   AWorkbookFill: TsChartFill; ABrush: TBrush);
 begin
@@ -2580,6 +2657,14 @@ begin
     end;
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the error bars of a TAChart series by those provided by
+  a workbook's chart series.
+
+  @param  AWorkbookSeries  Series in the workbook's chart which provides the error bar parameters.
+  @param  ASeries          TAChart series in which the error bars are updated by these parameters.
+-------------------------------------------------------------------------------}
 
 procedure TsWorkbookChartLink.UpdateChartErrorBars(AWorkbookSeries: TsChartSeries;
   ASeries: TBasicPointSeries);
@@ -2643,6 +2728,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the TAChart chart legend with those provided by the
+  workbook chart legend.
+
+  @param  AWorkbookLegend  Legend in the workbook chart which provides the parameters of the TAChart legend.
+  @param  ALegend          TAChart legend which is updated by these parameters.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartLegend(AWorkbookLegend: TsChartLegend;
   ALegend: TChartLegend);
 const
@@ -2669,6 +2761,14 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of an LCL pen by those provided by the
+  AWorkbookLine instance inside the workbook chart.
+
+  @param  AWorkbookChart Workbook chart which contains the line instance.
+  @param  AWorkbookLine  A TsChartLine instance providing the properties for the TAChart
+  @param  APen           LCL pen used by the TAhart which is updated by the AWorkbookLine properties
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartPen(AWorkbookChart: TsChart;
   AWorkbookLine: TsChartLine; APen: TPen);
 begin
@@ -2700,6 +2800,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of the marks of an LCL brush series by those provided
+  by the given workbook chart series.
+
+  @param  AWorkbookSeries Workbook series which contains the data point marks to be used.
+  @param  AChartseries    TAChart series to which the marks of the workbook chart series will be applied.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 begin
@@ -2789,6 +2896,12 @@ begin
     AChartSeries.Marks.Distance := 5;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates a TAChart trend line with the parameters of a workbook chart trendline.
+
+  @param  AWorkbookSeries  Series in the workbook chart which provides the trendline parameters
+  @param  AChartSeries     TAChart series to which a trendline is created as a TFitSeries
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartSeriesTrendline(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 var
@@ -2866,6 +2979,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the TAChart chartstyle having the specified index with parameters
+  defined for a workbook chart series.
+
+  @param  AWorkbookSeries  Workbook chart series from which the properties are applied to the ChartStyle
+  @param  AStyleIndex      Index of the TChartStyle to which the properties are copied
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
   AStyleIndex: Integer);
 var
@@ -2895,8 +3015,13 @@ begin
     UpdateChartBrush(ch, AWorkbookSeries.Fill, style.Brush);
 end;
 
-{@@ Updates title and footer of the linked TAChart.
-  NOTE: the workbook chart's subtitle is converted to TAChart's footer! }
+{@@ ----------------------------------------------------------------------------
+  Updates title and footer of the linked TAChart.
+
+  @param  AWorkbookTitle  Title of the workbook chart which provides the parameters
+  @param  AChartTitle     TAChart title to which these parameters are applied
+  @note   The workbook chart's subtitle is converted to TAChart's footer!
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateChartTitle(AWorkbookTitle: TsChartText;
   AChartTitle: TChartTitle);
 begin
@@ -2915,6 +3040,14 @@ begin
     AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Updates a TAChart TBasicPointSeries with the parameters of a workbook TsCustomLineSeries.
+  Both series types are ancestors of more complex types.
+
+  @param  AWorkbookSeries  Workbook TsCustomLineSeries instance providing the parameters for the TAChart series.
+  @param  AChartSeries     Basic TAChart point series to which these parameters are applied
+-------------------------------------------------------------------------------}
 
 procedure TsWorkbookChartLink.UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries;
   AChartSeries: TBasicPointSeries);
@@ -2966,6 +3099,12 @@ begin
   UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates a TAChart TPieSeries with the parameters of a workbook TsPieSeries
+
+  @param  AWorkbookSeries  Workbook TsPieSeries instance providing the parameters for the TAChart series.
+  @param  AChartSeries     TAChart series (type TPieSeries) to which these parameters are applied
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
   AChartSeries: TPieSeries);
 begin
@@ -2985,6 +3124,12 @@ begin
   FChart.Frame.Visible := false;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates a TAChart PolarSeries with the parameters of a workbook TsRadarSeries.
+
+  @param  AWorkbookSeries  Workbook TsRadarSeries instance providing the parameters for the TAChart series.
+  @param  AChartSeries     TAChart series (type TPolarSeries) to which these parameters are applied
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdatePolarSeries(AWorkbookSeries: TsRadarSeries;
   AChartSeries: TPolarSeries);
 var
@@ -3017,12 +3162,25 @@ begin
   FChart.Proportional := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Applies the properties of workbook scatter series to a TAChart TLineSeries.
+
+  @param  AWorkbookSeries  The scatter series in the workbook chart providing the formatting parameters
+  @param  AChartSeries     The TAChart line series to which these parameters are applied.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateScatterSeries(AWorkbookSeries: TsScatterSeries;
   AChartSeries: TLineSeries);
 begin
   UpdateCustomLineSeries(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Updates the properties of a TAChart StockSeries/HighLowCloseSeries by those
+  of a workbook TsStockSeries
+
+  @param  AWorkbookSeries  The stock series in the workbook chart providing the formatting parameters
+  @param  AChartSeries     The TAChart series to which these parameters are applied.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.UpdateStockSeries(AWorkbookSeries: TsStockSeries;
   AChartSeries: TStockSeries);
 begin
@@ -3047,6 +3205,14 @@ begin
   UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates the chart styles for a workbook series containing several y values.
+  Chart styles are used in TAChart to format the subseries resulting from a
+  multi-y valued chart source.
+
+  @param  AWorkbookSeries  Workbook chart series providing the formatting parameters in its DataPointStyles property
+  @param  AChartStyles     TAChart ChartStyles instance which gets populated according to the DataPointStyles of the workbook series.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.CreateChartStylesFromDatapoints(AWorkbookSeries: TsChartSeries;
   AChartStyles: TChartStyles);
 

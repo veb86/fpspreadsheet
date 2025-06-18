@@ -298,6 +298,7 @@ type
     procedure CopyFrom(ASource: TsChartCellAddr);
     function GetSheetName: String;
     function IsUsed: Boolean;
+    {@@ Chart in which this cell address is used. }
     property Chart: TsChart read FChart;
   end;
 
@@ -906,6 +907,7 @@ type
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    {@@ Contains parameters determining whether and how a trendline is displayed. }
     property Trendline;
   end;
 
@@ -913,24 +915,25 @@ type
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    {@@ Contains parameters determining whether and how a trendline is displayed. }
     property Trendline;
   end;
 
   {@@ Enumeration of the symbols used for data points in TsLineSeries or
     TsScatterSeries
-    @value  ccsRect     Rectangular symbol
-    @value  ccsDiamond  Diamond-shaped rectangle (rectangle rotated by 90 deg)
-    @value  ccsTriangle Triangular symbol pointing upward
-    @value  ccsTriangleDown Triangular symbol pointing downward
-    @value  ccsTriangleLeft Triangular symbol pointing to the left
-    @value  ccsTriangleRight  Triangular shape pointing to the right
-    @value  ccsCircle  Circular symbol
-    @value  ccsStar    Star-shaped symbol
-    @value  ccsX       Diagonal cross, like character 'x'
-    @value  ccsPlut    Horizontal/vertical cross, like character '+'
-    @value  ccsAsterisk Asterisk-like character ('*'
-    @value  ccsDash    Short horizontal line ('-');
-    @value  ccsDot     Small dot }
+    @value  cssRect      Rectangular symbol
+    @value  cssDiamond   Diamond-shaped rectangle (rectangle rotated by 90 deg)
+    @value  cssTriangle  Triangular symbol pointing upward
+    @value  cssTriangleDown   Triangular symbol pointing downward
+    @value  cssTriangleLeft   Triangular symbol pointing to the left
+    @value  cssTriangleRight  Triangular shape pointing to the right
+    @value  cssCircle   Circular symbol
+    @value  cssStar     Star-shaped symbol
+    @value  cssX        Diagonal cross, like character 'x'
+    @value  cssPlus     Horizontal/vertical cross, like character '+'
+    @value  cssAsterisk Asterisk-like character ('*'
+    @value  cssDash     Short horizontal line ('-');
+    @value  cssDot      Small dot }
   TsChartSeriesSymbol = (
     cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
     cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk,
@@ -964,13 +967,21 @@ type
     FSymbolBorder: TsChartLine;
     FSymbolFill: TsChartFill;
   protected
+    {@@ Deterimenes the way how data points are connected by lines. }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
+    {@@ Type of the symbol displayed at each data point. }
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
+    {@@ Border parameters used by the data point symbols. }
     property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
+    {@@ Fill parameters used by the data point symbols. }
     property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
+    {@@ Height of the data point symbols, in millimeters. }
     property SymbolHeight: double read FSymbolHeight write FSymbolHeight;
+    {@@ Width of the data point symbols, in millimeters. }
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
+    {@@ If @(true) data points are connected by lines. }
     property ShowLines: Boolean read FShowLines write FShowLines;
+    {@@ If @(true) data points are marked by symbols. }
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
   public
     constructor Create(AChart: TsChart); override;
@@ -996,7 +1007,7 @@ type
     property ShowLines;
     {@@ If true symbols are displayed at each data point. }
     property ShowSymbols;
-    {@@ Contains parameters determinng whether and how a trendline is displayed. }
+    {@@ Contains parameters determining whether and how a trendline is displayed. }
     property Trendline;
   end;
 
@@ -1017,9 +1028,13 @@ type
     function GetChartType: TsChartType; override;
   public
     constructor Create(AChart: TsChart); override;
+    {@@ Size of the inner hole of the pie series, given as percentage of the pie radius }
     property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
+    {@@ Angle (in degress) at which the first pie starts. }
     property StartAngle: Integer read FStartAngle write FStartAngle;
-    property SliceOffset[ASliceIndex: Integer]: Integer read GetSliceOffset;  // Percentage
+    {@@ Percentage of the pie radius by which the pie with index ASliceIndex is moved away from the pie center }
+    property SliceOffset[ASliceIndex: Integer]: Integer read GetSliceOffset;
+    {@@ Defined whether the pies are arragned arranged in counter-clickwise or clockwise order. }
     property SliceOrder: TsSliceOrder read FSliceOrder write FSliceOrder;
   end;
 
@@ -1041,6 +1056,7 @@ type
   TsCustomScatterSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
+    {@@ Contains parameters determining whether and how a trendline is displayed. }
     property Trendline;
   end;
 
@@ -1325,7 +1341,9 @@ begin
 end;
 
 
-{ TsChartLine }
+{===============================================================================
+                              TsChartLine
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartLine class.
@@ -1441,7 +1459,9 @@ begin
 end;
 
 
-{ TsChartGradient }
+{===============================================================================
+                             TsChartGradient
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the gradient. Adds a begin and an end step of the gradient.
@@ -1567,7 +1587,9 @@ begin
 end;
 
 
-{ TsChartGradientList }
+{===============================================================================
+                             TsChartGradientList
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Creates an axial gradient and adds it to the gradient list.
@@ -1797,7 +1819,9 @@ begin
 end;
 
 
-{ TsChartFillPattern}
+{===============================================================================
+                          TsChartFillPattern
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Destructor of the TsChartFillPattern class.
@@ -1835,7 +1859,9 @@ begin
 end;
 
 
-{ TsChartFillPatternList }
+{===============================================================================
+                         TsChartFillPatternList
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Adds a non-filled pre-defined pattern to the chart's FillPattern list.
@@ -2016,7 +2042,9 @@ begin
 end;
 
 
-{ TsChartImage }
+{===============================================================================
+                               TsChartImage
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Destructor of the @link(TsChartImage) class
@@ -2043,7 +2071,9 @@ begin
 end;
 
 
-{ TsChartImageList }
+{===============================================================================
+                              TsChartImageList
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Creates a @link(TsChartImage) instance and adds it to the chart's Images list.
@@ -2118,7 +2148,9 @@ begin
 end;
 
 
-{ TsChartFill }
+{===============================================================================
+                              TsChartFill
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the @link(TsChartFill) class
@@ -2227,7 +2259,9 @@ begin
 end;
 
 
-{ TsChartCellAddr }
+{===============================================================================
+                              TsChartCellAddr
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartCellAddr class.
@@ -2276,7 +2310,9 @@ begin
 end;
 
 
-{ TsChartRange }
+{===============================================================================
+                               TsChartRange
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartRange class
@@ -2358,7 +2394,9 @@ begin
 end;
 
 
-{ TsChartElement }
+{===============================================================================
+                                TsChartElement
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartElement
@@ -2392,7 +2430,9 @@ begin
 end;
 
 
-{ TsChartFillElement }
+{===============================================================================
+                            TsChartFillElement
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartFillElement class
@@ -2450,7 +2490,9 @@ begin
 end;
 
 
-{ TsChartText }
+{===============================================================================
+                                TsChartText
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartText class
@@ -2497,7 +2539,9 @@ begin
 end;
 
 
-{ TsChartAxis }
+{===============================================================================
+                               TsChartAxis
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartAxis class
@@ -2745,7 +2789,9 @@ begin
 end;
 
 
-{ TsChartLegend }
+{===============================================================================
+                                TsChartLegend
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the chart legend.
@@ -2788,7 +2834,9 @@ begin
 end;
 
 
-{ TsChartDataPointStyle }
+{===============================================================================
+                             TsChartDataPointStyle
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Copies the parameters from another instance
@@ -2804,7 +2852,9 @@ begin
 end;
 
 
-{ TsChartDataPointStyleList }
+{===============================================================================
+                         TsChartDataPointStyleList
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartDatapointStyleList
@@ -2909,7 +2959,9 @@ begin
 end;
 
 
-{ TsChartErrorBars }
+{===============================================================================
+                             TsChartErrorBars
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartErrorBars class
@@ -3084,7 +3136,9 @@ begin
 end;
 
 
-{ TsChartSeries }
+{===============================================================================
+                               TsChartSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChartSeries class
@@ -3530,7 +3584,9 @@ begin
 end;
 
 
-{ TsAreaSeries }
+{===============================================================================
+                                  TsAreaSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsAreaSeries class
@@ -3546,7 +3602,9 @@ begin
 end;
 
 
-{ TsBarSeries }
+{===============================================================================
+                                TsBarSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsBarSeries class
@@ -3562,7 +3620,9 @@ begin
 end;
 
 
-{ TsBubbleSeries }
+{===============================================================================
+                             TsBubbleSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsBubbleSeries class
@@ -3625,7 +3685,9 @@ begin
 end;
 
 
-{ TsCustomLineSeries }
+{===============================================================================
+                              TsCustomLineSeries
+===============================================================================}
 
 {@@-----------------------------------------------------------------------------
   Constructor of the TsCustomLineSeries class. It is the ancestor of
@@ -3663,7 +3725,10 @@ begin
 end;
 
 
-{ TsLineSeries }
+{===============================================================================
+                              TsLineSeries
+===============================================================================}
+
 {@@ ----------------------------------------------------------------------------
   Constructor of TsLineSeries
 -------------------------------------------------------------------------------}
@@ -3673,7 +3738,10 @@ begin
   FGroupIndex := 0;
 end;
 
-{ TsPieSeries }
+
+{===============================================================================
+                               TsPieSeries
+===============================================================================}
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsPieSeries
 -------------------------------------------------------------------------------}
@@ -3687,7 +3755,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the chart type: ctPie, or ctRing, depending on the value of hte
-    InnerRadiusPercent property.
+  InnerRadiusPercent property.
 -------------------------------------------------------------------------------}
 function TsPieSeries.GetChartType: TsChartType;
 begin
@@ -3718,7 +3786,9 @@ begin
 end;
 
 
-{ TsRadarSeries }
+{===============================================================================
+                               TsRadarSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsRadarSeries
@@ -3731,7 +3801,9 @@ begin
 end;
 
 
-{ TsFilledRadarSeries }
+{===============================================================================
+                            TsFilledRadarSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsFilledRadarSeries, a specialized, filled TsRadarSeries
@@ -3744,7 +3816,9 @@ begin
 end;
 
 
-{ TsTrendlineEquation }
+{===============================================================================
+                              TsTrendlineEquation
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsTrendLineEquation class
@@ -3776,7 +3850,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns true when the trendline equation is displayed without border.
+  Returns @(true) when the trendline equation is displayed without a border.
 -------------------------------------------------------------------------------}
 function TsTrendlineEquation.IsDefaultBorder: Boolean;
 begin
@@ -3838,7 +3912,9 @@ begin
 end;
 
 
-{ TsChartTrendline }
+{===============================================================================
+                            TsChartTrendline
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor for the TsChartTrendLine class
@@ -3866,7 +3942,9 @@ begin
 end;
 
 
-{ TsCustomScatterSeries }
+{===============================================================================
+                           TsCustomScatterSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsCustomScatterSeries class
@@ -3879,7 +3957,9 @@ begin
 end;
 
 
-{ TsStockSeries }
+{===============================================================================
+                               TsStockSeries
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsStockSeries class
@@ -4063,7 +4143,9 @@ procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
  end;
 
 
-{ TsChart }
+{===============================================================================
+                                  TsChart
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsChart class
@@ -4224,7 +4306,9 @@ begin
 end;
 
 
-{ TsChartList }
+{===============================================================================
+                                TsChartList
+===============================================================================}
 
 function TsChartList.GetItem(AIndex: Integer): TsChart;
 begin
