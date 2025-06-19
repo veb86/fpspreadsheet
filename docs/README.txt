@@ -25,11 +25,16 @@
 - You also have to copy the OpenSSL DLLs libeay32.dll and ssleay32.dll of the
   correct bitness to the folder docs/wiki of the fpspreadsheed installation.
   
-- Run the script "make_docs.bat" (no Linux script at the moment, but it should
+- Run the script "make_chms.bat" (no Linux script at the moment, but it should
   be easy to write one...)
 
 - This script downloads the current fpspreadsheet wiki articles and creates
   a chm help file. 
+  
+- If you want to create a PDF file from the wiki articles run the script
+  "make_pdf.bat". Note that it requires the wkhtmltopdf utility:
+  download from https://wkhtmltopdf.org/ and specify the path to its binary
+  at the top of "make_pdf.bat".
   
   
 --------------------------------------------------------------------------------
