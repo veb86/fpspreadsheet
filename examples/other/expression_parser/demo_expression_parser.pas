@@ -48,7 +48,7 @@ begin
     WriteLn('A1: ', worksheet.ReadAsText(0, 0));
     WriteLn('B1: ', worksheet.ReadAsText(0, 1));
 
-    parser := TsSpreadsheetParser.Create(worksheet);
+    parser := TsSpreadsheetParser.Create(worksheet, cell^.Row, cell^.Col);
     try
       try
         parser.Expression[fdExcelA1] := worksheet.ReadFormula(cell);
@@ -93,7 +93,7 @@ begin
       end;
     end;
 
-    parser := TsSpreadsheetParser.Create(worksheet);
+    parser := TsSpreadsheetParser.Create(worksheet, cell^.Row, cell^.Col);
     try
       try
         parser.RPNFormula := formula;

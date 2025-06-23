@@ -7,9 +7,9 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
-      <Target FileName="fpschart\worksheetchartsource-deprecated\fpschart.lpi">
+      <Target FileName="fpschart\fpschartlink\chart_demo.lpi">
         <BuildModes>
-          <Mode Name="default"/>
+          <Mode Name="Default"/>
         </BuildModes>
       </Target>
       <Target FileName="fpsctrls\demo_ctrls.lpi">

@@ -42,6 +42,11 @@
           <Mode Name="default"/>
         </BuildModes>
       </Target>
+      <Target FileName="comments\comments_demo_write.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="metadata\demo_metadata.lpi">
         <BuildModes>
           <Mode Name="Default"/>

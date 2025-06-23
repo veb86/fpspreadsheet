@@ -35,15 +35,11 @@
         <PackageName Value="LazUtils"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="1">
       <Unit0>
         <Filename Value="demo_expression_parser.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
-      <Unit1>
-        <Filename Value="..\..\source\common\fpsexprparser.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -59,6 +55,7 @@
     </SearchPaths>
     <Linking>
       <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
     </Linking>
