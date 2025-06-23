@@ -72,6 +72,16 @@
           <Mode Name="default"/>
         </BuildModes>
       </Target>
+      <Target FileName="htmldemo\htmlwrite.lpi">
+        <BuildModes>
+          <Mode Name="default"/>
+        </BuildModes>
+      </Target>
+      <Target FileName="htmldemo\htmlread.lpi">
+        <BuildModes>
+          <Mode Name="default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="wikitabledemo\wikitablewrite.lpi">
         <BuildModes>
           <Mode Name="default"/>
