@@ -2,7 +2,7 @@ program read_chart_demo;
 
 uses
   SysUtils, TypInfo,
-  fpSpreadsheet, fpsTypes, fpsUtils, fpsChart, fpsOpenDocument;
+  fpSpreadsheet, fpsTypes, fpsUtils, fpsChart, fpsPatterns, fpsOpenDocument;
 
 function GetFontStr(AFont: TsFont): String;
 begin
@@ -16,9 +16,9 @@ end;
 
 function GetFillStr(AFill: TsChartFill): String;
 begin
-  Result := Format('Style=%s, Color=%.6x, Gradient=%d, Hatch=%d, Transparency=%.2f', [
+  Result := Format('Style=%s, Color=%.6x, Gradient=%d, Pattern=%d, Transparency=%.2f', [
     GetEnumName(TypeInfo(TsChartFillStyle), ord(AFill.Style)),
-    AFill.Color.Color, AFill.Gradient, AFill.Hatch, AFill.Color.Transparency
+    AFill.Color.Color, AFill.Gradient, AFill.Pattern, AFill.Color.Transparency
   ]);
 end;
 
@@ -26,10 +26,9 @@ function GetLineStr(ALine: TsChartLine): String;
 var
   s: String;
 begin
-
-  if ALine.Style = -1 then
+  if ALine.Style = clsSolid then
     s := 'solid'
-  else if ALine.Style = -2 then
+  else if ALine.Style = clsNoLine then
     s := 'noLine'
   else if ALine.Style = clsFineDot then
     s := 'fine-dot'
@@ -46,7 +45,7 @@ begin
   else if ALine.Style = clsLongDashDotDot then
     s := 'long dash-dot-dot'
   else
-    s := 'custom #' + IntToStr(ALine.Style);
+    s := 'unknown';
 
   Result := Format('Style=%s, Width=%.0fmm, Color=%.6x, Transparency=%.2f', [
     s, ALine.Width, ALine.Color.Color, ALine.Color.Transparency
@@ -85,6 +84,8 @@ var
   series: TsChartSeries;
   trendline: TsChartTrendline;
   i, j: Integer;
+  rawFP: TsRawFillPattern;
+  colFP: TsChartFillPattern;
 begin
   FormatSettings.DecimalSeparator := '.';
 
@@ -104,18 +105,23 @@ begin
         'width:', chart.Width:0:0, 'mm height:', chart.Height:0:0,  'mm');
 
       Write('  LINE STYLES: ');
-      for j := 0 to chart.LineStyles.Count-1 do
-        Write('"', chart.GetLineStyle(j).Name, '" ');
+      for j := 0 to GetRawLinePatternCount-1 do
+        Write('"', GetRawLinePattern(j).Name, '" ');
       WriteLn;
 
       WriteLn  ('  HATCH STYLES: ');
-      for j := 0 to chart.Hatches.Count-1 do
-        WriteLn('    ', j, ': "', chart.Hatches[j].Name, '" ',
-          GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
-          'PatternColor:', IntToHex(chart.Hatches[j].PatternColor.Color, 6), ' ',
-          'Distance:', chart.Hatches[j].PatternWidth:0:0, 'mm ',
-          'Angle:', chart.Hatches[j].PatternAngle:0:0, 'deg ');
-
+      for j := 0 to chart.FillPatterns.Count-1 do
+      begin
+        colFP := chart.Fillpatterns[j];
+        rawFP := GetRawFillPattern(colFP.Index);
+        Write('    ', j, ': "', rawFP.Name, '" ',
+          'PatternColor:', IntToHex(colFP.FgColor.Color, 6), ' ',
+          'BackgrColor:', IntToHex(colFP.BgColor.Color, 6), ' ');
+        if rawFP.LinePattern <> nil then
+          Write('Distance:', rawFP.LinePattern.Distance:0:0, 'mm ',
+                'Angle:', rawFP.LinePattern.Angle:0:0, 'deg ');
+        WriteLn;
+      end;
       WriteLn  ('  GRADIENT STYLES: ');
       for j := 0 to chart.Gradients.Count-1 do
         WriteLn('    ', j, ': "', chart.Gradients[j].Name, '" ',
@@ -124,7 +130,8 @@ begin
           'EndColor:', IntToHex(chart.Gradients[j].EndColor.Color, 6), ' ',
 //          'StartIntensity:', chart.Gradients[j].StartIntensity*100:0:0, '% ',
 //          'EndIntensity:', chart.Gradients[j].EndIntensity*100:0:0, '% ',
-          'Border:', chart.Gradients[j].Border*100:0:0, '% ',
+          'StartBorder:', chart.Gradients[j].StartBorder*100:0:0, '% ',
+          'EndBorder:', chart.Gradients[j].EndBorder*100:0:0, '% ',
           'Angle:', chart.Gradients[j].Angle:0:0, 'deg ',
           'CenterX:', chart.Gradients[j].CenterX*100:0:0, '% ',
           'CenterY:', chart.Gradients[j].CenterY*100:0:0, '% ');

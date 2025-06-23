@@ -8,7 +8,6 @@
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
         <MainUnitHasScaledStatement Value="False"/>
-        <LRSInOutputDirectory Value="False"/>
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
@@ -53,7 +52,7 @@
       <Filename Value="demo_write_images"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\..\source"/>
+      <IncludeFiles Value="..\..\..\source;$(ProjOutDir)"/>
       <OtherUnitFiles Value="..\..\..\source\common"/>
       <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
