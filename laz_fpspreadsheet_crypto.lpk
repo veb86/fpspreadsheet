@@ -4,6 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet_crypto"/>
     <Type Value="RunTimeOnly"/>
+    <Author Value="W. Pamler"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -13,6 +14,7 @@
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Encryption / decryption support for FPSpreadsheet"/>
+    <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="2"/>
     <Files Count="4">
       <Item1>
