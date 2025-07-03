@@ -13,7 +13,7 @@ unit fpsTypes;
 {$mode objfpc}{$H+}
 {$modeswitch advancedrecords}
 
-{$include fps.inc}
+{$include ..\fps.inc}
 
 interface
 

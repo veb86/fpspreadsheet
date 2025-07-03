@@ -13,7 +13,7 @@ unit fpsUtils;
 //        when this same modification is in LazUtils of Laz stable
 
 {$mode objfpc}{$H+}
-{$include fps.inc}
+{$include ..\fps.inc}
 
 interface
 
