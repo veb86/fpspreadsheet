@@ -359,7 +359,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts a word value from little-endian to big-endian byte-order.
+  Converts a word value from little-endian to the endianness of the system.
 
   @param    AValue  Little-endian word value
   @returns  Big-endian word value

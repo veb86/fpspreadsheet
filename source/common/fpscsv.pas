@@ -270,11 +270,32 @@ procedure TsCSVWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal
   const AValue: TDateTime; ACell: PCell);
 var
   s: String;
+  sheet: TsWorksheet;
+  cell: PCell;
+  nf: TsNumberFormat;
+  nfs: String;
+  nfp: TsNumFormatParser;
 begin
   Unused(AStream);
-  Unused(ARow, ACol, AValue);
-  s := (FWorksheet as TsWorksheet).ReadAsText(ACell);
-  s := ConvertEncoding(s, EncodingUTF8, FEncoding);
+  sheet := FWorksheet as TsWorksheet;
+  cell := sheet.FindCell(ARow, ACol);
+  if cell = nil then
+    s := ''
+  else
+  begin
+    sheet.ReadNumFormat(cell, nf, nfs);
+    if nf = nfCustom then
+    begin
+      nfp := TsNumFormatParser.Create(nfs, FFormatSettings);
+      nfs := nfp.FormatString;
+      nfp.Free;
+    end else
+      nfs := BuildDateTimeFormatString(nf, FFormatSettings);
+    s := FormatDateTime(nfs, AValue, FFormatSettings);
+    s := ConvertEncoding(s, EncodingUTF8, FEncoding);
+  end;
+//  s := (FWorksheet as TsWorksheet).ReadAsText(ACell);
+//  s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;
 

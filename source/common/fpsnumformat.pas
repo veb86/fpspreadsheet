@@ -2900,6 +2900,7 @@ begin
   begin
     FixMonthMinuteToken(section^);
     nfs := GetFormatString;
+    nfs := ReplaceText(nfs, '","', ',');
     if (nfkTimeInterval in section^.Kind) then
       section^.NumFormat := nfTimeInterval
     else
