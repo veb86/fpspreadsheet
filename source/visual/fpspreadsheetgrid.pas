@@ -1170,6 +1170,14 @@ begin
   Result := (ARect.Left < BRect.Right) and (ARect.Right > BRect.Left);
 end;
 
+function DefaultFontSize(AFont: TFont): Integer;
+var
+  fontData: TFontData;
+begin
+  fontData := GetFontData(AFont.Reference.Handle);
+  Result := abs(fontData.Height) * 72 div ScreenInfo.PixelsPerInchY;
+end;
+
 
 {*******************************************************************************
 *                                   TsSelPen                                   *
@@ -1497,7 +1505,7 @@ begin
     if w > maxw then maxw := w;
   end;
   if maxw > -1 then
-    maxw := maxw + 2*constCellPadding
+    maxw := maxw + 2*varCellPadding
   else
     maxw := DefaultColWidth;
   ColWidths[ACol] := maxW;
@@ -1755,7 +1763,7 @@ begin
   else
     txtalign := haDefault;
   PrepareCanvas(ACol, ARow, AState);
-  len := Canvas.TextWidth(txt) + 2*constCellPadding;
+  len := Canvas.TextWidth(txt) + 2*varCellPadding;
   ACol1 := ACol;
   ACol2 := ACol;
   r := GetWorksheetRow(ARow);
@@ -2170,6 +2178,8 @@ var
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
+  if Font.Size = 0 then
+    Canvas.Font.Size := DefaultFontSize(Font);
   //Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
   Canvas.Brush.Bitmap := nil;
   Canvas.Brush.Color := Color;
@@ -3398,7 +3408,7 @@ begin
     end;
   end;
 
-  InflateRect(ARect, -constCellPadding, -constCellPadding);
+  InflateRect(ARect, -varCellPadding, -varCellPadding);
 
   InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
     fntIndex, numfmtColor, lCell^.RichTextParams, RTL);
@@ -3858,7 +3868,7 @@ begin
       cellR := CellRect(LongInt(c1)+FHeaderCount, ARow);
       cellR.Right := CellRect(LongInt(c2)+FHeaderCount, ARow).Right;
     end;
-    InflateRect(cellR, -constCellPadding, -constCellPadding);
+    InflateRect(cellR, -varCellPadding, -varCellPadding);
 
     s := GetCellText(ACol, ARow, false);
     if s = '' then
@@ -3893,7 +3903,7 @@ begin
 
     Result := RichTextHeight(Canvas, Workbook, cellR, s, lCell^.RichTextParams,
                 fntIndex, txtRot, wrapped, RTL, ZoomFactor)
-            + 2 * constCellPadding;
+            + 2 * varCellPadding;
   end;
 end;
 
@@ -5792,7 +5802,7 @@ begin
     else
       cellSize := ColWidths[GetGridCol(ACell^.Col)];
   end;
-  cellSize := cellSize - 2*ConstCellPadding;
+  cellSize := cellSize - 2*varCellPadding;
 
   // Determine space needed for text
   if isStacked then
