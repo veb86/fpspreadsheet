@@ -8114,9 +8114,9 @@ begin
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
   WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
+  WriteHeaderFooter(FSSheets[FCurSheetNum], AWorksheet);
   WriteRowBreaks(FSSheets[FCurSheetNum], AWorksheet);
   WriteColBreaks(FSSheets[FCurSheetNum], AWorksheet);
-  WriteHeaderFooter(FSSheets[FCurSheetNum], AWorksheet);
 
   { This item is required for all embedded images and charts.
     There must be a matching file in "drawingN.xml" file in "../drawings"
