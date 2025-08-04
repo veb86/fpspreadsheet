@@ -319,6 +319,7 @@ This package is all you need if you don&apos;t want graphical components (such a
       </Item61>
     </Files>
     <CompatibilityMode Value="True"/>
+    <LazDoc Paths="docs\fpdoc"/>
     <i18n>
       <EnableI18N Value="True"/>
       <OutDir Value="languages"/>

@@ -38,6 +38,7 @@ type
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: String='Book');
     procedure ReadOLEStream(AStream: TStream; AOLEDocument: TOLEDocument; const AStreamName: String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
+    class function IsOLEStream(AStream: TStream; const AStreamName: String): Boolean;
   end;
 
 implementation
@@ -152,6 +153,36 @@ end;
 procedure TOLEStorage.FreeOLEDocumentData(AOLEDocument: TOLEDocument);
 begin
   if Assigned(AOLEDocument.Stream) then FreeAndNil(AOLEDocument.Stream);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the provided stream contains an OLE document of the given type.
+  Works also with Word and PowerPoint files:
+    AStreamName = 'Book' --> Excel BIFF 5
+                = 'Workbook' ---> Excel BIFF 8
+                = 'WordDocument' ---> Word .doc
+                = 'PowerPoint Document' --> PowerPoint .ppt
+-------------------------------------------------------------------------------}
+class function TOLEStorage.IsOLEStream(AStream: TStream;
+  const AStreamName: String): Boolean;
+var
+  fsOLE: TVirtualLayer_OLE;
+  OLEStream: TStream;
+  VLAbsolutePath: UTF8String;
+begin
+  // Virtual layer always uses absolute paths.
+  if pos('/', AStreamName) = 0 then
+    VLAbsolutePath := '/' + AStreamName
+  else
+    VLAbsolutePath := AStreamName;
+
+  fsOLE := TVirtualLayer_OLE.Create(AStream);
+  try
+    fsOLE.Initialize(); // Initialize the OLE container.
+    Result := fsOLE.FileExists(VLAbsolutePath);
+  finally
+    fsOLE.Free;
+  end;
 end;
 
 end.

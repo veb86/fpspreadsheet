@@ -808,17 +808,8 @@ end;
   'Workbook' - this is typical of BIFF8 files.
 -------------------------------------------------------------------------------}
 class function TsSpreadBIFF8Reader.CheckFileFormatDetails(AStream: TStream): Boolean;
-var
-  fsOLE: TVirtualLayer_OLE;
 begin
-  AStream.Position := 0;
-  fsOLE := TVirtualLayer_OLE.Create(AStream);
-  try
-    fsOLE.Initialize;
-    Result := fsOLE.FileExists('/Workbook');
-  finally
-    fsOLE.Free;
-  end;
+  Result := TOLEStorage.IsOLEStream(AStream, '/Workbook');
 end;
 
 {@@ ----------------------------------------------------------------------------

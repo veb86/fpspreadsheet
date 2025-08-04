@@ -369,17 +369,8 @@ type
   'Book' - this is typical of BIFF5 files.
 -------------------------------------------------------------------------------}
 class function TsSpreadBIFF5Reader.CheckFileFormatDetails(AStream: TStream): Boolean;
-var
-  fsOLE: TVirtualLayer_OLE;
 begin
-  AStream.Position := 0;
-  fsOLE := TVirtualLayer_OLE.Create(AStream);
-  try
-    fsOLE.Initialize;
-    Result := fsOLE.FileExists('/Book');
-  finally
-    fsOLE.Free;
-  end;
+  Result := TOLEStorage.IsOLEStream(AStream, '/Book');
 end;
 
 {@@ ----------------------------------------------------------------------------
