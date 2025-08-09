@@ -86,13 +86,10 @@ end;
 
 
 initialization
-
   // Registers this reader/writer for fpSpreadsheet
   sfidOOXML_Crypto := RegisterSpreadFormat(sfUser,
     TsSpreadOOXMLReaderCrypto, nil,
     STR_FILEFORMAT_EXCEL_XLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION, '.xlsm']
   );
-
-end.
 
 end.

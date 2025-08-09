@@ -165,7 +165,6 @@ initialization
   // Register so these tests are included in a full run
   RegisterTest(TSpreadExportTests);
   InitExportTestData; //useful to have norm data if other code want to use this unit
-end.
 
 end.
 
