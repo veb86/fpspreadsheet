@@ -3590,7 +3590,6 @@ procedure TsEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
-  err: TsErrorValue;
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
@@ -3704,9 +3703,6 @@ begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
-
   if IsBlank(LRes) or IsBlank(RRes) then
     AResult := BooleanResult(false)
   else
@@ -3746,9 +3742,6 @@ var
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
-
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
 
   if IsBlank(LRes) then
     AResult := BooleanResult(IsBlank(RRes))
@@ -3791,9 +3784,6 @@ var
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
-
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
 
   if IsBlank(LRes) then
     AResult := BooleanResult(IsBlank(RRes))
@@ -3880,9 +3870,6 @@ begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
-
   fL := ArgToFloat(LRes);
   fR := ArgToFloat(RRes);
   if IsNaN(fL) or IsNaN(fR) then
@@ -3916,9 +3903,6 @@ var
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
-
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
 
   fL := ArgToFloat(LRes);
   fR := ArgToFloat(RRes);
@@ -3954,8 +3938,6 @@ begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
   fL := ArgToFloat(LRes);
   fR := ArgToFloat(RRes);
   if IsNaN(fL) or IsNaN(fR) then
@@ -3993,9 +3975,6 @@ var
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
-
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
 
   fL := ArgToFloat(LRes);
   fR := ArgToFloat(RRes);
@@ -4043,8 +4022,6 @@ begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  Left.GetNodeValue(LRes);
-  Right.GetNodeValue(RRes);
   fL := ArgToFloat(LRes);
   fR := ArgToFloat(RRes);
   if IsNaN(fL) or IsNaN(fR) then
