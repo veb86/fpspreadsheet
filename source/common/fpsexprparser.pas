@@ -5249,6 +5249,8 @@ begin
       if (cell <> nil) then
       begin
         case cell^.ContentType of
+          cctEmpty:
+            Continue;
           cctNumber:
             AData[n] := cell^.NumberValue;
           cctDateTime:
@@ -5289,6 +5291,8 @@ begin
             if (cell <> nil) then
             begin
               case cell^.ContentType of
+                cctEmpty:
+                  Continue;
                 cctNumber:
                   AData[n] := cell^.NumberValue;
                 cctDateTime:

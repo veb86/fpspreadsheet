@@ -11,6 +11,7 @@ begin
   FWorksheet.WriteText   (3, 0, '4');
   FWorksheet.WriteText   (4, 0, 'abc');
   FWorksheet.WriteFormula(5, 0, '=1/0');
+  FWorksheet.WriteText   (8, 0, 'ABC');
 
   // Literal values
   FWorksheet.WriteFormula(0, 1, '=AVEDEV(1)');
@@ -98,6 +99,7 @@ begin
   FWorksheet.WriteText   (3, 0, '40');
   FWorksheet.WriteText   (4, 0, 'abc');
   FWorksheet.WriteFormula(5, 0, '=1/0');
+  FWorksheet.WriteText   (8, 0, 'ABC');   // A9
 
   // Literal values
   FWorksheet.WriteFormula(0, 1, '=AVERAGE(10)');
@@ -300,12 +302,13 @@ end;
 procedure TCalcStatsFormulaTests.Test_COUNT;
 begin
   // Test data
-  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (0, 0, 10);         // A1
   FWorksheet.WriteNumber (1, 0, 20);
   FWorksheet.WriteNumber (2, 0, 30);
   FWorksheet.WriteText   (3, 0, '40');
   FWorksheet.WriteText   (4, 0, 'abc');
-  FWorksheet.WriteFormula(5, 0, '=1/0');
+  FWorksheet.WriteFormula(5, 0, '=1/0');     // A6
+  FWorksheet.WriteText   (8, 0, 'ABC');      // A9
 
   // Count literal values
   FWorksheet.WriteFormula(0, 1, '=COUNT(10)');
@@ -354,7 +357,7 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 COUNT(A1:A4) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A5)');   // "real" and string  values
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A5)');   // "real" and string values
   FWorksheet.CalcFormulas;
   CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 COUNT(A1:A5) result mismatch');
 
@@ -373,7 +376,7 @@ begin
 
   FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A6)');     // error in cell
   FWorksheet.CalcFormulas;
-  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 COUNT(A1:A6) result mismatch');
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #16 COUNT(A1:A6) result mismatch');
 end;
 
 procedure TCalcStatsFormulaTests.Test_COUNTA;
@@ -394,6 +397,7 @@ begin
   FWorksheet.WriteNumber(1, 0, 10);
   FWorksheet.WriteText(2, 0, 'abc');
   FWorksheet.WriteNumber(3, 0, 40);
+  FWorksheet.WriteText(8, 0, 'ABC');  // A9
 
   FWorksheet.WriteFormula(4, 1, '=COUNTA(A1)');
   FWorksheet.CalcFormulas;
@@ -413,11 +417,11 @@ begin
 
   FWorksheet.WriteFormula(4, 1, '=COUNTA(A1:A10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(4, FWorksheet.ReadAsNumber(4, 1), 'Formula #8 COUNTA(A1:A10) result mismatch');
+  CheckEquals(5, FWorksheet.ReadAsNumber(4, 1), 'Formula #8 COUNTA(A1:A10) result mismatch');
 
   FWorksheet.WriteFormula(4, 1, '=COUNTA(A1,A2:A10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(4, FWorksheet.ReadAsNumber(4, 1), 'Formula #9 COUNTA(A1,A2:A10) result mismatch');
+  CheckEquals(5, FWorksheet.ReadAsNumber(4, 1), 'Formula #9 COUNTA(A1,A2:A10) result mismatch');
 
   FWorksheet.WriteFormula(4, 1, '=COUNTA(A1, 1/0, A3)');
   FWorksheet.CalcFormulas;
@@ -441,6 +445,7 @@ begin
 
   FWorksheet.WriteNumber(0, 0, 20);
   FWorksheet.WriteText(1, 0, 'abc');
+  FWorksheet.WriteText(4, 0, 'ABC');     //A5
 
   FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1)');
   FWorksheet.CalcFormulas;
@@ -450,14 +455,14 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #4 COUNTBLANK(A10) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A4)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A5)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #5 COUNTBLANK(A1:A4) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #5 COUNTBLANK(A1:A5) result mismatch');
 
   FWorksheet.WriteFormula(2, 0, '=1/0');
-  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A4)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A5)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNTBLANK(A1:A4) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNTBLANK(A1:A5) result mismatch');
 end;
 
 procedure TCalcStatsFormulaTests.Test_COUNTIF;
@@ -820,6 +825,7 @@ begin
   FWorksheet.WriteText   (3, 0, '4');
   FWorksheet.WriteText   (4, 0, 'abc');
   FWorksheet.WriteFormula(5, 0, '=1/0');
+  FWorksheet.WriteText   (8, 0, 'ABC');
 
   // Literal values
   FWorksheet.WriteFormula(0, 1, '=STDEV(1)');
@@ -909,6 +915,7 @@ begin
   FWorksheet.WriteText   (3, 0, '4');
   FWorksheet.WriteText   (4, 0, 'abc');
   FWorksheet.WriteFormula(5, 0, '=1/0');
+  FWorksheet.WriteText   (8, 0, 'ABC');
 
   // Literal values
   FWorksheet.WriteFormula(0, 1, '=STDEVP(1)');
