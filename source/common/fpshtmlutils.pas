@@ -1058,113 +1058,117 @@ begin
   FPlainText := APlainText;
 
   prevFnt := TsFont.Create;
-  prevFnt.CopyOf(FBaseFont);
 
-  if FRichTextParams[0].FirstIndex > 1 then
-    Result := GetTextOfRichTextParam(-1) else
-    Result := '';
+  try
+    prevFnt.CopyOf(FBaseFont);
+    if FRichTextParams[0].FirstIndex > 1 then
+      Result := GetTextOfRichTextParam(-1) else
+      Result := '';
 
-  GetFontsFromWorkbook(fonts);
-  for i:=0 to High(FRichTextParams) do
-  begin
-    currFnt := fonts[i];
-    openingTag := '';
-    closingTag := '';
-    if not SameFont(currFnt, prevFnt) then
+    GetFontsFromWorkbook(fonts);
+    for i:=0 to High(FRichTextParams) do
     begin
-      chgFlags := [];
-      if not SameText(prevFnt.FontName, currFnt.FontName) then
-        Include(chgFlags, cfFontName);
-      if not SameValue(currFnt.Size, prevFnt.Size, EPS) then
-        Include(chgFlags, cfFontSize);
-      if currFnt.Color <> prevFnt.Color then
-        Include(chgFlags, cfFontColor);
-
-      if [cfFontName, cfFontSize, cfFontColor] * chgFlags <> [] then
+      currFnt := fonts[i];
+      openingTag := '';
+      closingTag := '';
+      if not SameFont(currFnt, prevFnt) then
       begin
-        tag := FixTagCase('font');
-        openingTag := '<' + tag;
-        if cfFontName in chgFlags then
+        chgFlags := [];
+        if not SameText(prevFnt.FontName, currFnt.FontName) then
+          Include(chgFlags, cfFontName);
+        if not SameValue(currFnt.Size, prevFnt.Size, EPS) then
+          Include(chgFlags, cfFontSize);
+        if currFnt.Color <> prevFnt.Color then
+          Include(chgFlags, cfFontColor);
+
+        if [cfFontName, cfFontSize, cfFontColor] * chgFlags <> [] then
         begin
-          openingTag := openingTag + ' ' + FPrefix + FixTagCase('face') +
-            '="' + UnquoteStr(currFnt.FontName) + '"';
-          prevFnt.FontName := currFnt.FontName;
+          tag := FixTagCase('font');
+          openingTag := '<' + tag;
+          if cfFontName in chgFlags then
+          begin
+            openingTag := openingTag + ' ' + FPrefix + FixTagCase('face') +
+              '="' + UnquoteStr(currFnt.FontName) + '"';
+            prevFnt.FontName := currFnt.FontName;
+          end;
+          if cfFontSize in chgFlags then
+          begin
+            openingTag := openingTag + ' ' + FPrefix + FixTagCase('size') +
+              '="' + Format('%.gpt', [currFnt.Size], FPointSeparatorSettings) + '"';
+            prevFnt.Size := currFnt.Size;
+          end;
+          if cfFontColor in chgFlags then
+          begin
+            openingTag := openingTag + ' ' + FPrefix + FixTagCase('color') +
+              '="' + ColorToHTMLColorStr(currFnt.Color) + '"';
+            prevFnt.Size := currFnt.Color;
+          end;
+          openingTag := openingTag + '>';
+          closingTag :='</' + tag + '>' + closingTag;
         end;
-        if cfFontSize in chgFlags then
+
+        if (fssBold in currFnt.Style) then
         begin
-          openingTag := openingTag + ' ' + FPrefix + FixTagCase('size') +
-            '="' + Format('%.gpt', [currFnt.Size], FPointSeparatorSettings) + '"';
-          prevFnt.Size := currFnt.Size;
-        end;
-        if cfFontColor in chgFlags then
-        begin
-          openingTag := openingTag + ' ' + FPrefix + FixTagCase('color') +
-            '="' + ColorToHTMLColorStr(currFnt.Color) + '"';
-          prevFnt.Size := currFnt.Color;
-        end;
-        openingTag := openingTag + '>';
-        closingTag :='</' + tag + '>' + closingTag;
-      end;
-
-      if (fssBold in currFnt.Style) then
-      begin
-        tag := FixTagCase('b');
-        openingTag := openingTag + '<' + tag + '>';
-        closingTag := '</' + tag + '>' + closingTag;
-        prevFnt.Style := prevFnt.Style + [fssBold];
-      end else
-        prevFnt.Style := prevFnt.Style - [fssBold];;
-
-      if (fssItalic in currFnt.Style) then
-      begin
-        tag := FixTagCase('i');
-        openingTag := openingTag + '<' + tag + '>';
-        closingTag := '</' + tag + '>' + closingTag;
-        prevFnt.Style := prevFnt.Style + [fssItalic];
-      end else
-        prevFnt.Style := prevFnt.Style - [fssItalic];
-
-      if (fssUnderline in currFnt.Style) then
-      begin
-        tag := FixTagCase('u');
-        openingTag := openingTag + '<' + tag + '>';
-        closingTag := '</' + tag + '>' + closingTag;
-        prevFnt.Style := prevFnt.Style + [fssUnderline];
-      end else
-        prevFnt.Style := prevFnt.Style - [fssUnderline];
-
-      if (fssStrikeout in currFnt.Style) then
-      begin
-        tag := FixTagCase('s');
-        openingTag := openingTag + '<' + tag + '>';
-        closingTag := '</' + tag + '>' + closingTag;
-        prevFnt.Style := prevFnt.Style + [fssStrikeout];
-      end else
-        prevFnt.Style := prevFnt.Style - [fssStrikeout];
-
-      if currFnt.Position <> prevFnt.Position then
-      begin
-        if currFnt.Position = fpSuperscript then
-        begin
-          tag := FixTagCase('sup');
+          tag := FixTagCase('b');
           openingTag := openingTag + '<' + tag + '>';
           closingTag := '</' + tag + '>' + closingTag;
-          currFnt.Position := fpSuperscript;
+          prevFnt.Style := prevFnt.Style + [fssBold];
         end else
-        if currFnt.Position = fpSubscript then
+          prevFnt.Style := prevFnt.Style - [fssBold];;
+
+        if (fssItalic in currFnt.Style) then
         begin
-          tag := FixTagCase('sub');
+          tag := FixTagCase('i');
           openingTag := openingTag + '<' + tag + '>';
           closingTag := '</' + tag + '>' + closingTag;
-          currFnt.Position := fpSubscript;
+          prevFnt.Style := prevFnt.Style + [fssItalic];
         end else
-          currFnt.Position := fpNormal;
-      end;
-    end;
+          prevFnt.Style := prevFnt.Style - [fssItalic];
 
-    // Add the node text with opening and closing tags (reverse order as opening!)
-    Result := Result + openingTag + GetTextOfRichTextParam(i) + closingTag;
-  end;  // for
+        if (fssUnderline in currFnt.Style) then
+        begin
+          tag := FixTagCase('u');
+          openingTag := openingTag + '<' + tag + '>';
+          closingTag := '</' + tag + '>' + closingTag;
+          prevFnt.Style := prevFnt.Style + [fssUnderline];
+        end else
+          prevFnt.Style := prevFnt.Style - [fssUnderline];
+
+        if (fssStrikeout in currFnt.Style) then
+        begin
+          tag := FixTagCase('s');
+          openingTag := openingTag + '<' + tag + '>';
+          closingTag := '</' + tag + '>' + closingTag;
+          prevFnt.Style := prevFnt.Style + [fssStrikeout];
+        end else
+          prevFnt.Style := prevFnt.Style - [fssStrikeout];
+
+        if currFnt.Position <> prevFnt.Position then
+        begin
+          if currFnt.Position = fpSuperscript then
+          begin
+            tag := FixTagCase('sup');
+            openingTag := openingTag + '<' + tag + '>';
+            closingTag := '</' + tag + '>' + closingTag;
+            currFnt.Position := fpSuperscript;
+          end else
+          if currFnt.Position = fpSubscript then
+          begin
+            tag := FixTagCase('sub');
+            openingTag := openingTag + '<' + tag + '>';
+            closingTag := '</' + tag + '>' + closingTag;
+            currFnt.Position := fpSubscript;
+          end else
+            currFnt.Position := fpNormal;
+        end;
+      end;
+
+      // Add the node text with opening and closing tags (reverse order as opening!)
+      Result := Result + openingTag + GetTextOfRichTextParam(i) + closingTag;
+    end;  // for
+  finally
+    prevFnt.Free;
+  end;
 end;
 
 function TsHTMLComposer.FixTagCase(ATag: String): String;
