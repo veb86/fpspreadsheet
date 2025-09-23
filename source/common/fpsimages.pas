@@ -485,6 +485,12 @@ begin
   begin
     AStream.Read(chunk{%H-}, SizeOf(TPngChunk));
     chunk.chLength := BEToN(chunk.chLength);
+    // If the user inadvertently forgets to reset the source stream between loading images
+    // then chunk.chLength can become negative and then the application will loop here endlessly
+    // This check stops the application from hanging, but won't stop the wrong image from being
+    // embedded. Alternatively chunk.chLength := max(0, chunk.chLength) could be used instead.
+    if strlcomp(PChar(chunk.chType), 'IEND', 4) = 0 then
+      break;
     p := AStream.Position;
     if strlcomp(PChar(chunk.chType), 'pHYs', 4) = 0 then
     begin

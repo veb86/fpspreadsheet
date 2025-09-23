@@ -6453,7 +6453,10 @@ begin
       AppendToStream(FSMetaInfManifest, Format(
         '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="%s/%s" />' + LE,
         [ mime,
-          path, ExtractFileName(embObj.FileName)
+          path, 
+          IfThen(embObj.FileName <> '', 
+                 ExtractFileName(embObj.FileName),
+                 Format('Image%d.%s', [i+1, GetImageTypeExt(imgType)]))
         ]
       ));
     end;
@@ -6570,8 +6573,7 @@ procedure TsSpreadOpenDocWriter.ZipPictures(AZip: TZipper);
 var
   i: Integer;
   embObj: TsEmbeddedObj;
-  embName, path: String;
-//  ext: String;
+  embName, path, ext: String;
 begin
   for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
@@ -6586,7 +6588,14 @@ begin
       path := Format('Object %d/Pictures/', [embObj.BelongsToChart + 1])
     else
       path := 'Pictures/';
-    embName := path + ExtractFileName(embObj.FileName);
+    if embObj.FileName <> '' then
+      embName := path + ExtractFileName(embObj.FileName)
+    else
+    begin
+      // For stream-based images without filename, generate a name
+      ext := GetImageTypeExt(embObj.ImageType);
+      embName := path + Format('Image%d.%s', [i+1, ext]);
+    end;
     embObj.Stream.Position := 0;
     AZip.Entries.AddFileEntry(embObj.Stream, embname);
   end;
@@ -9430,7 +9439,13 @@ begin
   begin
     img := (ASheet as TsWorksheet).GetImage(i);
     embObj := (FWorkbook as TsWorkbook).GetEmbeddedObj(img.Index);
-    embName := ExtractFileName(embObj.FileName);
+    if embObj.FileName <> '' then
+      embName := ExtractFileName(embObj.FileName)
+    else
+    begin
+      // For stream-based images without filename, generate a name using embedded object index
+      embName := Format('Image%d.%s', [img.Index+1, GetImageTypeExt(embObj.ImageType)]);
+    end;
     imgType := embObj.ImageType;
     if imgType = itUnknown then
       Continue;
