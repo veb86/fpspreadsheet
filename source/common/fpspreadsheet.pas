@@ -1982,13 +1982,6 @@ var
   srcBook, destBook: TsWorkbook;
   srcSheet, destSheet: TsWorksheet;
   srcFormula, destFormula: PsFormula;
-  {
-  referencedSheet: TsWorksheet;
-  sheetName: String;
-  rpn: TsRPNFormula;
-  elem: TsFormulaElement;
-  i: Integer;
-}
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -1998,6 +1991,11 @@ begin
   srcBook := TsWorkbook(srcSheet.Workbook);
   destBook := TsWorkbook(destSheet.Workbook);
 
+  // Don't copy formula to the same cell because...
+  if (AFromCell = AToCell) and (srcSheet = destSheet) then
+    exit;
+
+  // ... source formula would be lost here!
   destSheet.DeleteFormula(AToCell);
 
   if not HasFormula(AFromCell) then
@@ -2011,35 +2009,7 @@ begin
   destFormula^.Parser.MoveCells(AFromCell, AToCell);               // TODO: handle 3D references!
   destFormula^.Text := destFormula^.Parser.Expression[fdExcelA1];
   UseFormulaInCell(AToCell, destFormula);
-  (*
-  srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
-  try
-    rpn := srcFormula^.Parser.RPNFormula;
-    // Make sure that referenced sheets exist in destination workbook
-    for i:=0 to High(rpn) do begin
-      elem := rpn[i];
-      if elem.ElementKind in [fekCell3D, fekCellRef3d, fekCellRange3d] then begin
-        sheetName := srcBook.GetWorksheetByIndex(elem.Sheet).Name;
-        referencedSheet := destBook.GetWorksheetByName(sheetName);
-        if referencedSheet = nil then
-          referencedSheet := destBook.AddWorksheet(sheetName);
-        rpn[i].Sheet := destBook.GetWorksheetIndex(referencedSheet);
-        if (elem.Sheet = elem.Sheet2) or (elem.Sheet2 = -1) then
-          continue;
-        sheetName := srcBook.GetWorksheetByIndex(elem.Sheet2).Name;
-        referencedSheet := destBook.GetWorksheetByName(sheetName);
-        if referencedSheet = nil then
-          referencedSheet := destBook.AddWorksheet(sheetName);
-        rpn[i].Sheet2 := destBook.GetWorksheetIndex(referencedSheet);
-      end;
-    end;
-    destFormula^.Parser.RPNFormula := rpn;
-    destFormula^.Text := destFormula^.Parser.Expression[fdExcelA1];
-    UseFormulaInCell(AToCell, destFormula);
-  finally
-    srcFormula^.Parser.PrepareCopyMode(nil, nil);
-  end;
-  *)
+
   ChangedCell(AToCell^.Row, AToCell^.Col);
 end;
 
