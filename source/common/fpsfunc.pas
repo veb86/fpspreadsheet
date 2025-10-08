@@ -1497,7 +1497,7 @@ begin
   end;
   interval := ArgToString(Args[2]);
 
-  if end_date > start_date then
+  if end_date < start_date then
     Result := ErrorResult(errOverflow)
   else if interval = 'Y' then
     Result := FloatResult(YearsBetween(end_date, start_date))

@@ -875,6 +875,7 @@ function ArgToDateTime(Arg: TsExpressionResult): TDateTime;
 function ArgToInt(Arg: TsExpressionResult): Integer;
 function ArgToError(Arg: TsExpressionResult): TsErrorValue;
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
+function ArgToFloat(Arg: TsExpressionResult; out IsDateTime: Boolean): TsExprFloat;
 function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
 procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boolean;
@@ -3866,14 +3867,18 @@ procedure TsAddExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
+  isDateTimeL, isDateTimeR: Boolean;
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  fL := ArgToFloat(LRes);
-  fR := ArgToFloat(RRes);
+  fL := ArgToFloat(LRes, isDateTimeL);
+  fR := ArgToFloat(RRes, isDateTimeR);
   if IsNaN(fL) or IsNaN(fR) then
     AResult := ErrorResult(errWrongType)
+  else
+  if isDateTimeL or isDateTimeR then
+    AResult := DateTimeResult(fL + fR)
   else
     AResult := FloatResult(fL + fR);
   AResult.Parser := FParser;
@@ -3900,14 +3905,18 @@ procedure TsSubtractExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   lRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
+  isDateTimeL, isDateTimeR: Boolean;
 begin
   if not GetLeftRightValues(LRes, RRes, AResult) then
     exit;
 
-  fL := ArgToFloat(LRes);
-  fR := ArgToFloat(RRes);
+  fL := ArgToFloat(LRes, isDateTimeL);
+  fR := ArgToFloat(RRes, isDateTimeR);
   if IsNaN(fL) or IsNaN(fR) then
     AResult := ErrorResult(errWrongType)
+  else
+  if isDateTimeL and not isDateTimeR then
+    AResult := DateTimeResult(fL - fR)
   else
     AResult := FloatResult(fL - fR);
   AResult.Parser := FParser;
@@ -5021,13 +5030,14 @@ end;
 { Utility function for the built-in math functions. Accepts also integers and
  other data types in place of floating point arguments. To be called in
  builtins or user-defined callbacks having float results or arguments. }
-function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
+function ArgToFloat(Arg: TsExpressionResult; out IsDateTime: Boolean): TsExprFloat;
 var
   cell: PCell;
   s: String;
   fs: TFormatSettings;
 begin
   Result := 0.0;
+  IsDateTime := false;
   case Arg.ResultType of
     rtInteger   : result := Arg.ResInteger;
     rtDateTime  : result := Arg.ResDateTime;
@@ -5043,7 +5053,10 @@ begin
                         cctNumber:
                           Result := cell^.NumberValue;
                         cctDateTime:
-                          Result := cell^.DateTimeValue;
+                          begin
+                            Result := cell^.DateTimeValue;
+                            IsDateTime := true;
+                          end;
                         cctBool:
                           if cell^.BoolValue then Result := 1.0 else Result := 0.0;
                         cctUTF8String:
@@ -5058,6 +5071,13 @@ begin
                        end;
                   end;
   end;
+end;
+
+function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
+var
+  isDateTime: Boolean;
+begin
+  Result := ArgToFloat(Arg, isDateTime);
 end;
 
 { Converts the expression result to a floating point value. Unlike ArgToFloat,
