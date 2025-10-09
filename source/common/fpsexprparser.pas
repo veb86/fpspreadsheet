@@ -5064,7 +5064,10 @@ begin
                             fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
                             s := cell^.UTF8StringValue;
                             if not TryStrToFloat(s, Result, fs) then
-                              Result := NaN;
+                              if TryStrToDate(s, Result, fs) then
+                                IsDateTime := true
+                              else
+                                Result := NaN;
                           end;
                         cctError:
                           Result := NaN;
