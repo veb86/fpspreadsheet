@@ -100,6 +100,45 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), '#15 Formula DATE(2025, 1, 1/0) result mismatch');
 end;
 
+procedure TCalcDateTimeFormulaTests.Test_DateAdd;
+var
+  date1, date2, delta: Double;
+  cell: PCell;
+begin
+  date1 := EncodeDate(2024,10,1);
+  date2 := EncodeDate(2024,10,11);
+  delta := 10;
+  FWorksheet.WriteDateTime(0, 0, date1, nfShortDate);
+  FWorksheet.WriteDateTime(1, 0, date2, nfShortDate);
+  FWorksheet.WriteNumber(2, 0, delta);
+
+  // Date cell + number --> Date cell
+  cell := FWorksheet.WriteFormula(0, 1, 'A1+10');
+  FWorksheet.CalcFormulas;
+  CheckEquals(date1+delta, FWorksheet.ReadAsNumber(cell), 'Formula #1 A1+10 result mismatch');
+  CheckEquals(ord(cctDateTime), ord(cell^.ContentType), 'Formula #1 A1+10 content type mismatch');
+
+  // Number + Date cell = Date cell
+  cell := FWorksheet.WriteFormula(0, 1, '10+A1');
+  FWorksheet.CalcFormulas;
+  CheckEquals(delta+date1, FWorksheet.ReadAsNumber(cell), 'Formula #2 10+A1 result mismatch');
+  CheckEquals(ord(cctDateTime), ord(cell^.ContentType), 'Formula #2 10+A1 content type mismatch');
+
+  // Date cell + Date cell = Number cell
+  cell := FWorksheet.WriteFormula(0, 1, 'A1+A2');
+  FWorksheet.CalcFormulas;
+  CheckEquals(date1+date2, FWorksheet.ReadAsNumber(cell), 'Formula #3 A1+A2 result mismatch');
+  CheckEquals(ord(cctNumber), ord(cell^.ContentType), 'Formula #3 A1+A2 content type mismatch');
+
+  (*     --- This crashes in FPS. It is kind of nonsense, anyway...
+  // Date string + number = Number cell
+  cell := FWorksheet.WriteFormula(0, 1, Format('="%s"+10', [DateToStr(date1)]));
+  FWorksheet.CalcFormulas;
+  CheckEquals(date1+10, FWorksheet.ReadAsNumber(cell), 'Formula #4 datestring+10 result mismatch');
+  CheckEquals(ord(cctNumber), ord(cell^.ContentType), 'Formula #4 datestring+10 content type mismatch');
+  *)
+end;
+
 procedure TCalcDateTimeFormulaTests.Test_DATEDIF;
 var
   date1, date2: TDateTime;
