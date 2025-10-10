@@ -100,6 +100,78 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), '#15 Formula DATE(2025, 1, 1/0) result mismatch');
 end;
 
+procedure TCalcDateTimeFormulaTests.Test_DATEVALUE;
+var
+  expectedDateValue, actualDateValue: Double;
+  s: String;
+begin
+  expectedDateValue := EncodeDate(2000,1,12);
+
+  // String formatted in system's formatsettings;
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("' + DateToStr(expectedDateValue) + '")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #1 DATEVALUE("<2000-01-12 in system format>") result mismatch');
+
+  // String formatted according to arbitrary FormatSettings
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("2000-01-12")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #2 DATEVALUE("2000-01-12") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("2000/01/12")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #3 DATEVALUE("2000/01/12") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("2000.01.12")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #4 DATEVALUE("2000.01.12") result mismatch');
+
+  { ABBREVIATED OR FULL MONTH NAMES SEEMINGLY ARE NOT SUPPORTED BY FPS HERE....
+  // With abbreviated month name
+  s := FormatDateTime('yyyy-mmmm-d', expectedDateValue);
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("' + s + '")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #5 DATEVALUE("' + s + '") result mismatch');
+  }
+
+  // Reference to string cell
+  FWorksheet.WriteText(0,0, DateToStr(expectedDateValue));
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE(A1)');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #5 DATEVALUE(A1) result mismatch');
+
+  FWorksheet.WriteText(0,0, '2000-01-12');
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE(A1)');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #6 DATEVALUE(A1) (A1 = "2000-01-12") result mismatch');
+
+  FWorksheet.WriteText(0,0, '2000/01/12');
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE(A1)');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #7 DATEVALUE(A1) (A1 = "2000/01/12") result mismatch');
+
+  FWorksheet.WriteText(0,0, '2000.01.12');
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE(A1)');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #8 DATEVALUE(A1) (A1 = "2000.01.12") result mismatch');
+
+  // Year missing (will be replaced by current year)
+  expectedDateValue := EncodeDate(YearOf(Date), 1, 12);
+  FWorksheet.WriteFormula(0, 1, '=DATEVALUE("01-12")');
+  FWorksheet.CalcFormulas;
+  FWorksheet.ReadAsDateTime(0, 1, actualDateValue);
+  CheckEquals(expectedDateValue, actualDateValue, 'Formula #9 DATEVALUE("01-12") result mismatch');
+
+end;
+
 procedure TCalcDateTimeFormulaTests.Test_TIME;
 var
   actualTime, expectedTime: TTime;

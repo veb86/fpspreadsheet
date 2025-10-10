@@ -1512,10 +1512,18 @@ end;
 // Returns the serial number of a date. Input is a string.
 // DATE( date_string )
 procedure fpsDATEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+const
+  DATE_FORMATS: array[0..2] of string = (
+    'yyyy/m/d', 'm/d/yyyy', 'd/m/yyyy'  // FPS does not support partial or full month names here (unlike Excel)
+  );
+  DATE_SEPARATORS: array[0..2] of char = (
+    '/', '-', '.'
+  );
 var
   d: TDateTime;
   fs: TFormatSettings;
-  book: TsWorkBook;
+  fmt: String;
+  ds: Char;
   s: String;
 begin
   if IsError(Args[0], Result) then
@@ -1525,26 +1533,38 @@ begin
 
   if (Args[0].ResultType in [rtCell, rtCellRange]) then
     s := ArgToString(Args[0])
-  else
-  if Args[0].ResultType = rtString then
+  else if Args[0].ResultType = rtString then
     s := Args[0].ResString
   else
     exit;
 
   if TryStrToDate(s, d) then
-    Result := DateTimeResult(d)
-  else
   begin
-    if Args[0].ResultType in [rtCell, rtCellRange] then
-    begin
-      book := TsWorksheet(Args[0].Worksheet).Workbook;
-      fs := book.FormatSettings;
-    end
-    else
-      fs := ExprFormatSettings;
-    if TryStrToDate(s, d, fs) then
-      Result := DateTimeResult(d);
+    Result := DateTimeResult(d);
+    exit;
   end;
+
+  if (Args[0].ResultType in [rtCell, rtCellRange]) then
+  begin
+    fs := TsWorksheet(Args[0].Worksheet).Workbook.FormatSettings;
+    if TryStrToDate(s, d, fs) then
+    begin
+      Result := DateTimeResult(d);
+      exit;
+    end;
+  end;
+
+  for fmt in DATE_FORMATS do
+    for ds in DATE_SEPARATORS do
+    begin
+      fs.ShortDateFormat := fmt;
+      fs.DateSeparator := ds;
+      if TryStrToDate(s, d, fs) then
+      begin
+        Result := DateTimeResult(d);
+        exit;
+      end;
+    end;
 end;
 
 // DAY( date_value )

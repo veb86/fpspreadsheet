@@ -5,7 +5,7 @@ unit calcformulatests;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry,
+  Classes, SysUtils, DateUtils, fpcunit, testutils, testregistry,
   fpstypes, fpspreadsheet, fpsexprparser;
 
 type
@@ -26,7 +26,7 @@ type
   published
     procedure Test_DATE;
 //    procedure Test_DATEDIF;  to be written
-//    procedure Test_DATEVALUE;  to be written
+    procedure Test_DATEVALUE;
 //    procedure Test_DAY;        to be written
 //    procedure Test_HOUR;       to be written
 //    procedure Test_MINUTE;     to be written
