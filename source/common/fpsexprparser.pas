@@ -5113,7 +5113,8 @@ begin
                             fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
                             s := cell^.UTF8StringValue;
                             if not TryStrToFloat(s, Result, fs) then
-                              Result := NaN;
+                              if not TryStrToDate(s, Result, fs) then
+                                Result := NaN;
                           end;
                         otherwise      // bool, error
                           ;

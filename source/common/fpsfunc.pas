@@ -1514,14 +1514,37 @@ end;
 procedure fpsDATEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   d: TDateTime;
+  fs: TFormatSettings;
+  book: TsWorkBook;
+  s: String;
 begin
   if IsError(Args[0], Result) then
     exit;
 
-  if TryStrToDate(Args[0].ResString, d) then
+  Result := ErrorResult(errWrongType);      // #VALUE!
+
+  if (Args[0].ResultType in [rtCell, rtCellRange]) then
+    s := ArgToString(Args[0])
+  else
+  if Args[0].ResultType = rtString then
+    s := Args[0].ResString
+  else
+    exit;
+
+  if TryStrToDate(s, d) then
     Result := DateTimeResult(d)
   else
-    Result := ErrorResult(errWrongType);      // #VALUE!
+  begin
+    if Args[0].ResultType in [rtCell, rtCellRange] then
+    begin
+      book := TsWorksheet(Args[0].Worksheet).Workbook;
+      fs := book.FormatSettings;
+    end
+    else
+      fs := ExprFormatSettings;
+    if TryStrToDate(s, d, fs) then
+      Result := DateTimeResult(d);
+  end;
 end;
 
 // DAY( date_value )
