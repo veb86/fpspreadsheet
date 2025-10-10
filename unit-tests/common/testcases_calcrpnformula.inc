@@ -1881,16 +1881,16 @@
   // DATEDIF
   if AFormat <> sfExcel2 then begin
     inc(Row);
-    formula := 'DATEDIF(DATE(2014,7,1),DATE(2014,1,1),"D")';
+    formula := 'DATEDIF(DATE(2014,1,1),DATE(2014,7,1),"D")';
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
         RPNNumber(2014,
-        RPNNumber(7,
+        RPNNumber(1,
         RPNNumber(1,
         RPNFunc('DATE',
         RPNNumber(2014,
-        RPNNumber(1,
+        RPNNumber(7,
         RPNNumber(1,
         RPNFunc('DATE',
         RPNString('D',

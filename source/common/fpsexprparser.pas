@@ -3915,7 +3915,7 @@ begin
   if IsNaN(fL) or IsNaN(fR) then
     AResult := ErrorResult(errWrongType)
   else
-  if isDateTimeL and not isDateTimeR then
+  if (isDateTimeL and not isDateTimeR) or (not isDateTimeL and isDateTimeR) then
     AResult := DateTimeResult(fL - fR)
   else
     AResult := FloatResult(fL - fR);
