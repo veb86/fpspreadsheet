@@ -25,7 +25,7 @@ type
   TCalcDateTimeFormulaTests = class(TCalcFormulaTests)
   published
     procedure Test_DATE;
-//    procedure Test_DATEDIF;  to be written
+    procedure Test_DATEDIF;
     procedure Test_DATEVALUE;
 //    procedure Test_DAY;        to be written
 //    procedure Test_HOUR;       to be written

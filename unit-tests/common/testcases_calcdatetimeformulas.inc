@@ -100,6 +100,68 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), '#15 Formula DATE(2025, 1, 1/0) result mismatch');
 end;
 
+procedure TCalcDateTimeFormulaTests.Test_DATEDIF;
+var
+  date1, date2: TDateTime;
+  expectedDiff: Integer;
+  actualDiff: Double;
+begin
+  date1 := EncodeDate(2024,10,1);
+  date2 := EncodeDate(2025,11,10);
+
+  FWorksheet.WriteDateTime(0, 0, date1, nfShortDate);
+  FWorksheet.WriteDateTime(1, 0, date2, nfShortDate);
+
+  // DATEDIF as days
+  // ... between cell references
+  expectedDiff := DaysBetween(date1, date2);
+  FWorksheet.WriteFormula(0, 1, '=DATEDIF(A1,A2,"D")');
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #1 DATEDIFF(A1,A2,"D") result mismatch.');
+  // ... between number constants
+  FWorksheet.WriteFormula(0, 1, Format('=DATEDIF(%.0f,%.0f,"D")',[date1,date2]));
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #2 DATEDIFF(date1,date2,"D") result mismatch.');
+  // ... between strings
+  FWorksheet.WriteFormula(0, 1, Format('=DATEDIF("%s","%s","D")',[DateToStr(date1),DateToStr(date2)]));
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #3 DATEDIFF("date1","date2","D") result mismatch.');
+  // ... mixed: between cell and string
+  FWorksheet.WriteFormula(0, 1, Format('=DATEDIF(A1,"%s","D")',[DateToStr(date2)]));
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #4 DATEDIFF(A1,"date2","D") result mismatch.');
+  // ... mixed: between integer const and string
+  FWorksheet.WriteFormula(0, 1, Format('=DATEDIF(%.0f,"%s","D")',[date1,DateToStr(date2)]));
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #5 DATEDIFF(date1,"date2","D") result mismatch.');
+
+  // DATEDIF as monthsbetween cell references (months)
+  // ... between cell references
+  expectedDiff := MonthsBetween(date1, date2);
+  FWorksheet.WriteFormula(0, 1, '=DATEDIF(A1,A2,"M")');
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #6 DATEDIFF(A1,A2,"M") result mismatch.');
+
+  // DATEDIF between cell references (years)
+  expectedDiff := YearsBetween(date1, date2);
+  FWorksheet.WriteFormula(0, 1, '=DATEDIF(A1,A2,"Y")');
+  FWorksheet.CalcFormulas;
+  actualDiff := FWorksheet.ReadAsNumber(0, 1);
+  CheckEquals(expectedDiff, actualDiff, 'Formula #7 DATEDIFF(A1,A2,"Y") result mismatch.');
+
+  // Reverse order --> error #NUM!
+  FWorksheet.WriteFormula(0, 1, '=DATEDIF(A2,A1,"Y")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #8 DATEDIFF(A2,A1,"M") error not detected.');
+end;
+
+
 procedure TCalcDateTimeFormulaTests.Test_DATEVALUE;
 var
   expectedDateValue, actualDateValue: Double;
