@@ -4780,7 +4780,7 @@ begin
 
   case Key of
     VK_C, VK_X, VK_V:
-      if Shift = [ssCtrl] then Key := 0;
+      if (Shift = [ssCtrl]) and (not Editor.Visible) then Key := 0;
       // Clipboard has already been handled, avoid passing key to CellAction
   end;
 end;
