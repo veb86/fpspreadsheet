@@ -128,7 +128,7 @@ type
     procedure WriteStockSeries(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; APosInAxisGroup: Integer);
     procedure WriteStockSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer; WriteCache: Boolean);
 
-    procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
+    procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont; ARotationAngle: Single);
     procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
 
     procedure WriteCellNumberValue(AStream: TStream; AIndent: Integer; AWorksheet: TsBasicWorksheet; ARow,ACol,AIndex: Cardinal);
@@ -4144,7 +4144,7 @@ begin
 
   // Axis labels
   if Axis.ShowLabels then
-    WriteChartLabels(AStream, AIndent + 2, Axis.LabelFont);
+    WriteChartLabels(AStream, AIndent + 2, Axis.LabelFont, Axis.LabelRotation);
 
   // Axis position
   if delete = 0 then
@@ -4304,23 +4304,31 @@ end;
   @param  AFont    Font to be used by the labels
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartLabels(AStream: TStream;
-  AIndent: Integer; AFont: TsFont);
+  AIndent: Integer; AFont: TsFont; ARotationAngle: Single);
 var
   indent: String;
+  rotStr: String;
 begin
   indent := DupeString(' ', AIndent);
+  if ARotationAngle <> 0 then
+  begin
+    str(-ARotationAngle * ANGLE_MULTIPLIER:0:0, rotStr);
+    rotStr := Format('rot="%s"', [rotStr]);
+  end else
+    rotStr := '';
 
-  AppendToStream(AStream,
+  AppendToStream(AStream, Format(
     indent + '<c:txPr>' + LE +
-    indent + '  <a:bodyPr/>' + LE +
+    indent + '  <a:bodyPr %s/>' + LE +
     indent + '  <a:lstStyle/>' + LE +
     indent + '  <a:p>' + LE +
     indent + '    <a:pPr>' + LE +
                     GetChartFontXML(AIndent + 6, AFont, 'a:defRPr') + LE +
     indent + '    </a:pPr>' + LE +
     indent + '  </a:p>' + LE +
-    indent + '</c:txPr>' + LE
-  );
+    indent + '</c:txPr>' + LE,
+    [rotStr]
+  ));
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -20,7 +20,7 @@ interface
 {$ifdef FPS_CHARTS}
 
 uses
-  lazloggerbase,
+//  lazloggerbase,
 
   // RTL/FCL
   Classes, Contnrs, SysUtils, Types, FPImage, FPCanvas,
@@ -401,6 +401,21 @@ begin
     Result := Result + 'f';
   if isPercent then
     Result := Result + '%%';
+end;
+
+
+{ Calculates the mantisse of a number }
+function Mantisse(x: Double): Double;
+var
+  exponent: Integer;
+begin
+  if x = 0 then
+    Result := x
+  else
+  begin
+    exponent := trunc(Log10(abs(x)));
+    Result := x / IntPower(10.0, exponent);
+  end;
 end;
 
 
@@ -2353,6 +2368,8 @@ var
   minorAxis: TChartMinorAxis;
   T: TAxisTransform;
   logTransf: TLogarithmAxisTransform;
+  fmt: String;
+  value: Double;
 begin
   if (AWorkbookAxis = nil) or (not AWorkbookAxis.Visible) then
     exit;
@@ -2402,37 +2419,16 @@ begin
   // Labels
   Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);
   axis.Marks.LabelFont.Orientation := round(AWorkbookAxis.LabelRotation * 10);
+  if axis.Marks.LabelFont.Orientation <> 0 then
+    axis.Marks.RotationCenter := rcEdge
+  else
+    axis.Marks.RotationCenter := rcCenter;
   if (AWorkbookAxis.LabelFormat <> '') and not IsDateTimeFormat(AWorkbookAxis.LabelFormat) then
     axis.Marks.Format := Convert_NumFormatStr_to_FormatStr(AWorkbookAxis.LabelFormat);
 
   // Axis line
   UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.AxisLine, axis.AxisPen);
   axis.AxisPen.Visible := axis.AxisPen.Style <> psClear;
-
-  // Major axis grid
-  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MajorGridLines, axis.Grid);
-  axis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
-  axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
-  axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
-  axis.TickColor := axis.AxisPen.Color;
-  {$IF LCL_FullVersion >= 3000000}
-  axis.TickWidth := axis.AxisPen.Width;
-  {$IFEND}
-
-  // Minor axis grid
-  minorAxis := axis.Minors.Add;
-  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
-  minorAxis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
-  if AWorkbookAxis.Logarithmic then
-    minorAxis.Intervals.Count := 9
-  else
-    minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
-  minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
-  minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
-  minorAxis.TickColor := axis.AxisPen.Color;
-  {$IF LCL_FullVersion >= 3000000}
-  minorAxis.TickWidth := minorAxis.Grid.Width;
-  {$IFEND}
 
   // Inverted?
   axis.Inverted := AWorkbookAxis.Inverted;
@@ -2460,7 +2456,49 @@ begin
     axis.Intervals.MaxLength := 100;
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
+    if AWorkbookAxis.AutomaticMajorInterval then
+      axis.Intervals.NiceSteps := '0.2|0.5|1.0'
+    else
+    begin
+      value := Mantisse(AWorkbookAxis.MajorInterval);
+      if AWorkbookAxis.LabelFormat <> '' then
+        fmt := AWorkbookAxis.LabelFormat
+      else
+        fmt := '0.000000';
+      axis.Intervals.NiceSteps := FormatFloat(fmt, value);
+    end;
   end;
+
+  // Major axis grid
+  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MajorGridLines, axis.Grid);
+  axis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
+  axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
+  axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
+  axis.TickColor := axis.AxisPen.Color;
+  {$IF LCL_FullVersion >= 3000000}
+  axis.TickWidth := axis.AxisPen.Width;
+  {$IFEND}
+
+  // Minor axis grid
+  minorAxis := axis.Minors.Add;
+  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
+  minorAxis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
+  if AWorkbookAxis.Logarithmic then
+    minorAxis.Intervals.Count := 9
+  else
+  if not AWorkbookAxis.AutomaticMinorInterval then
+  begin
+    if (AWorkbookAxis.MajorInterval > 0) and (AWorkbookAxis.MinorInterval > 0) then
+      minorAxis.Intervals.Count := round(AWorkbookAxis.MajorInterval / AWorkbookAxis.MinorInterval)
+    else
+      minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
+  end;
+  minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
+  minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
+  minorAxis.TickColor := axis.AxisPen.Color;
+  {$IF LCL_FullVersion >= 3000000}
+  minorAxis.TickWidth := minorAxis.Grid.Width;
+  {$IFEND}
 
   // Axis position
   case AWorkbookAxis.Position of
