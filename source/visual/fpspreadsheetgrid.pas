@@ -1405,6 +1405,8 @@ begin
   FDragTimer.OnTimer := @DragTimerElapsed;
   FAllowDragAndDrop := true;
 
+  FastEditing := false;  // left-/right arrow keys are not allowed to exit the edited cell
+
   SetWorkbookSource(FInternalWorkbookSource);
  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
