@@ -194,6 +194,7 @@ type
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
     function  ReadCellProtection(ACell: PCell): TsCellProtections;
     function  ReadDoNotPrintCell(ACell: PCell): Boolean;
+    function  ReadShrinkToFit(ACell: PCell): Boolean;
     function  IsTrueValue(ACell: PCell): Boolean;
 
     function IsEmpty: Boolean;
@@ -392,6 +393,9 @@ type
 
     function WriteDoNotPrintCell(ARow, ACol: Cardinal; AValue: boolean): PCell; overload;
     procedure WriteDoNotPrintCell(ACell: PCell; AValue: Boolean); overload;
+
+    function WriteShrinkToFit(ARow, ACol: Cardinal; AValue: Boolean): PCell; overload;
+    procedure WriteShrinkToFit(ACell: PCell; AValue: Boolean); overload;
 
     { Conditional formatting }
     

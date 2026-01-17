@@ -66,6 +66,8 @@ type
     procedure TestWriteRead_TextRotation(AFormat:TsSpreadsheetFormat);
     // Test word wrapping
     procedure TestWriteRead_WordWrap(AFormat: TsSpreadsheetFormat);
+    // Test shrink-to-fit
+    procedure TestWriteRead_ShrinkToFit(AFormat: TsSpreadsheetFormat);
     // Test number formats
     procedure TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat;
       AVariant: Integer = 0);
@@ -124,6 +126,7 @@ type
     procedure TestWriteRead_BIFF8_NumberFormats;
     procedure TestWriteRead_BIFF8_TextRotation;
     procedure TestWriteRead_BIFF8_WordWrap;
+    procedure TestWriteRead_BIFF8_ShrinkToFit;
     procedure TestWriteRead_BIFF8_FormatStrings;
 
     { ODS Tests }
@@ -138,6 +141,7 @@ type
     procedure TestWriteRead_ODS_NumberFormats;
     procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
+    procedure TestWriteRead_ODS_ShrinkToFit;
     procedure TestWriteRead_ODS_FormatStrings;
 
     { OOXML Tests }
@@ -152,6 +156,7 @@ type
     procedure TestWriteRead_OOXML_NumberFormats;
     procedure TestWriteRead_OOXML_TextRotation;
     procedure TestWriteRead_OOXML_WordWrap;
+    procedure TestWriteRead_OOXML_ShrinkToFit;
     procedure TestWriteRead_OOXML_FormatStrings;
 
     { Excel 2003/XML Tests }
@@ -166,6 +171,7 @@ type
     procedure TestWriteRead_XML_NumberFormats;
     procedure TestWriteRead_XML_TextRotation;
     procedure TestWriteRead_XML_WordWrap;
+    procedure TestWriteRead_XML_ShrinkToFit;
     procedure TestWriteRead_XML_FormatStrings;
 
     { CSV Tests }
@@ -189,6 +195,7 @@ const
   AlignmentSheet = 'TextAlignments';
   TextRotationSheet = 'TextRotation';
   WordwrapSheet = 'Wordwrap';
+  ShrinkToFitSheet = 'Shrink-to-fit';
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
@@ -1519,6 +1526,94 @@ procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_Wordwrap;
 begin
   TestWriteRead_Wordwrap(sfExcelXML);
 end;
+
+
+{ Shrink-to-fit }
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ShrinkToFit(AFormat: TsSpreadsheetFormat);
+const
+  LONGTEXT = 'This is a very long text.';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  if AFormat in [sfExcel2, sfExcel5] then
+    exit;
+
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values:
+  // Cell A1 is word-wrapped, Cell B1 is NOT word-wrapped
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(ShrinkToFitSheet);
+    MyWorksheet.WriteText(0, 0, LONGTEXT);
+    MyWorksheet.WriteShrinkToFit(0, 0, true);
+    MyCell := MyWorksheet.FindCell(0, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get shrink-to-fit cell.');
+    CheckEquals(true, MyWorksheet.ReadShrinkToFit(MyCell),
+      'Test unsaved shrink-to-fit cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+    MyWorksheet.WriteText(1, 0, LONGTEXT);
+    MyWorksheet.WriteShrinkToFit(1, 0, false);
+    MyCell := MyWorksheet.FindCell(1, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get shrink-to-fit cell.');
+    CheckEquals(false, MyWorksheet.ReadShrinkToFit(MyCell),
+      'Test unsaved non-shrink-to-fit cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+      MyWorksheet := GetWorksheetByName(MyWorkBook, ShrinkToFitSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    MyCell := MyWorksheet.FindCell(0, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get shrink-to-fit cell.');
+    CheckEquals(true, MyWorksheet.ReadShrinkToFit(MyCell),
+      'Failed to return correct shrink-to-fit flag, cell ' + CellNotation(MyWorksheet,0,0));
+    MyCell := MyWorksheet.FindCell(1, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get non-shrink-to-fit cell.');
+    CheckEquals(false, MyWorksheet.ReadShrinkToFit(MyCell),
+      'Failed to return correct shrink-to-fit flag, cell ' + CellNotation(MyWorksheet,0,0));
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_ShrinkToFit;
+begin
+  TestWriteRead_ShrinkToFit(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_ShrinkToFit;
+begin
+  TestWriteRead_ShrinkToFit(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_ShrinkToFit;
+begin
+  TestWriteRead_ShrinkToFit(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_ShrinkToFit;
+begin
+  TestWriteRead_ShrinkToFit(sfExcelXML);
+end;
+
 
 
 { --- Merged tests --- }

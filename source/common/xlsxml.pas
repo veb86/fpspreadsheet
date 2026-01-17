@@ -563,6 +563,12 @@ begin
     with AFormat do
       Include(UsedFormattingFields, uffWordWrap);
 
+  // Shrink-to-fit
+  s := GetAttrValue(ANode, 'ss:ShrinkToFit');
+  if s = '1' then
+    with AFormat do
+      Include(UsedFormattingFields, uffShrinkToFit);
+
   // BiDi
   s := GetAttrValue(ANode, 'ss:ReadingOrder');
   if s <> '' then
@@ -3231,7 +3237,7 @@ procedure TsSpreadExcelXMLWriter.WriteStyle(AStream: TStream; AIndex: Integer);
 var
   fmt: PsCellFormat;
   deffnt, fnt: TsFont;
-  s, fmtVert, fmtHor, fmtWrap, fmtRot: String;
+  s, fmtVert, fmtHor, fmtWrap, fmtShrink, fmtRot: String;
   nfp: TsNumFormatParams;
   nfs: String;
   fill: TsFillPattern;
@@ -3293,6 +3299,11 @@ begin
       fmtWrap := 'ss:WrapText="1" ' else
       fmtWrap := '';
 
+    // Shrink-to-fit
+    if uffShrinkToFit in fmt^.UsedFormattingFields then
+      fmtShrink := 'ss:ShrinkToFit="1" ' else
+      fmtShrink := '';
+
     // Text rotation
     fmtRot := '';
     if uffTextRotation in fmt^.UsedFormattingFields then
@@ -3304,8 +3315,8 @@ begin
 
     // Write all the alignment, text rotation and wordwrap attributes to stream
     AppendToStream(AStream, Format(INDENT3 +
-      '<Alignment %s%s%s%s />' + LF,
-      [fmtHor, fmtVert, fmtWrap, fmtRot])
+      '<Alignment %s%s%s%s%s />' + LF,
+      [fmtHor, fmtVert, fmtWrap, fmtShrink, fmtRot])
     );
 
     // Font

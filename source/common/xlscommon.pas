@@ -170,6 +170,7 @@ const
   MASK_XF_HOR_ALIGN                      = $07;
   MASK_XF_VERT_ALIGN                     = $70;
   MASK_XF_TEXTWRAP                       = $08;
+  MASK_XF_SHRINK_TO_FIT                  = $10;
 
   { XF HORIZONTAL ALIGN }
   MASK_XF_HOR_ALIGN_LEFT                 = $01;

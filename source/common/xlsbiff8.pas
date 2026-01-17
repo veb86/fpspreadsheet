@@ -2032,12 +2032,17 @@ begin
   if (rec.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0 then
     Include(fmt.UsedFormattingFields, uffWordwrap);
 
+  // Shrink-to-fit
+  b := (rec.Indent_Shrink_TextDir and MASK_XF_SHRINK_TO_FIT);
+  if b <> 0 then
+    Include(fmt.UsedFormattingFields, uffShrinkToFit);
+
   // BiDi mode
   b := (rec.Indent_Shrink_TextDir and MASK_XF_BIDI) shr 6;
   if b in [0..2] then fmt.BiDiMode := TsBiDiMode(b);
   if b > 0 then Include(fmt.UsedFormattingFields, uffBiDi);
 
-  // TextRotation
+  // Text rotation
   case rec.TextRotation of
     XF_ROTATION_HORIZONTAL : fmt.TextRotation := trHorizontal;
     XF_ROTATION_90DEG_CCW  : fmt.TextRotation := rt90DegreeCounterClockwiseRotation;
@@ -4972,11 +4977,16 @@ begin
     Bit 5: MergeCell
     Bits 6-7: Reading direction  }
   rec.Indent_Shrink_TextDir := 0;
-  if (AFormatRecord <> nil) and (uffBiDi in AFormatRecord^.UsedFormattingFields) then
+  if (AFormatRecord <> nil) then
   begin
-    b := ord(AFormatRecord^.BiDiMode);
-    if b > 0 then
-      rec.Indent_Shrink_TextDir := rec.Indent_Shrink_TextDir or (b shl 6);
+    if (uffShrinkToFit in AFormatRecord^.UsedFormattingFields) then
+      rec.Indent_Shrink_TextDir := rec.Indent_Shrink_TextDir or MASK_XF_SHRINK_TO_FIT;
+    if (uffBiDi in AFormatRecord^.UsedFormattingFields) then
+    begin
+      b := ord(AFormatRecord^.BiDiMode);
+      if b > 0 then
+        rec.Indent_Shrink_TextDir := rec.Indent_Shrink_TextDir or (b shl 6);
+    end;
   end;
 
   { Used attributes }

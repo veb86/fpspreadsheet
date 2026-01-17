@@ -215,6 +215,22 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns whether the cell is formatted with the shrink-to-fit option, i.e.
+  its font size is adjusted so that the entire text fits into the given cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadShrinkToFit(ACell: PCell): Boolean;
+var
+  fmt: PsCellFormat;
+begin
+  Result := false;
+  if ACell <> nil then
+  begin
+    fmt := WorkBook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := uffShrinkToFit in fmt.UsedFormattingFields;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Returns the horizontal alignment of a specific cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadHorAlignment(ACell: PCell): TsHorAlignment;
@@ -766,6 +782,27 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
+function TsWorksheet.WriteShrinkToFit(ARow, ACol: Cardinal;
+  AValue: boolean): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteShrinkToFit(Result, AValue);
+end;
+
+procedure TsWorksheet.WriteShrinkToFit(ACell: PCell; AValue: Boolean);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell = nil then
+    exit;
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  if AValue then
+    Include(fmt.UsedFormattingfields, uffShrinkToFit)
+  else
+    Exclude(fmt.UsedFormattingFields, uffShrinkToFit);
+  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Defines the horizontal alignment of text in a cell.

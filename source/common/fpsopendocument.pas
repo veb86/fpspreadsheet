@@ -302,6 +302,7 @@ type
     function WritePrintRangesXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteSheetProtectionXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteSheetProtectionDetailsXMLAsString(ASheet: TsBasicWorksheet): String;
+    function WriteShrinkToFitStyleXMLAsString(AFormat: TsCellFormat): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -5675,6 +5676,11 @@ begin
   s := GetAttrValue(ANode, 'style:print-content');
   if s = 'false' then
     Include(AFormat.UsedFormattingFields, uffDoNotPrint);
+
+  // Shrink-to-fit
+  s := GetAttrValue(ANode, 'style:shrink-to-fit');
+  if s = 'true' then
+    Include(AFormat.UsedFormattingFields, uffShrinkToFit);
 end;
 
 procedure TsSpreadOpenDocReader.ReadStyle_TextProperties(ANode: TDOMNode;
@@ -6689,7 +6695,8 @@ begin
        WriteWordwrapStyleXMLAsString(AFormat) +
        WriteTextRotationStyleXMLAsString(AFormat) +
        WriteVertAlignmentStyleXMLAsString(AFormat) +
-       WritePrintContentStyleXMLAsString(AFormat);
+       WritePrintContentStyleXMLAsString(AFormat) +
+       WriteShrinkToFitStyleXMLAsString(AFormat);
   if addProtection then
     s := s +  WriteCellProtectionStyleXMLAsString(AFormat);
   if AFormat.HorAlignment = haFilled then
@@ -9320,6 +9327,16 @@ begin
       Result := Result + ' loext:select-protected-cells="true"';
     Result := '<loext:table-protection' + Result + '/>';
   end;
+end;
+
+function TsSpreadOpenDocWriter.WriteShrinkToFitStyleXMLAsString(
+  AFormat: TsCellFormat): String;
+// <style:table-cell-properties style:shrink-to-fit="true"/>
+begin
+  if uffShrinkToFit in AFormat.UsedFormattingFields then
+    Result := 'style:shrink-to-fit="true" '
+  else
+    Result := '';
 end;
 
 procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;

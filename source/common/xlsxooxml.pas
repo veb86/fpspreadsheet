@@ -1557,6 +1557,10 @@ begin
               fmt.TextRotation := rtStacked
             else
               fmt.TextRotation := trHorizontal;
+
+            s1 := GetAttrValue(childNode, 'shrinkToFit');
+            if s1 = '1' then
+              Include(fmt.UsedFormattingFields, uffShrinkToFit);
           end;
           childNode := childNode.NextSibling;
         end;
@@ -1598,6 +1602,7 @@ begin
         Include(fmt.UsedFormattingFields, uffBiDi);
       if fmt.Protection <> DEFAULT_CELL_PROTECTION then
         Include(fmt.UsedFormattingFields, uffProtection);
+
       FCellFormatList.Add(fmt);
     end;
     node := node.NextSibling;
@@ -6568,9 +6573,14 @@ begin
     sAlign := sAlign + 'wrapText="1" ';
 
   { BiDi mode }
-  if (uffBiDi in Aformat^.UsedFormattingFields) and (AFormat^.BiDiMode <> bdDefault) then
+  if (uffBiDi in AFormat^.UsedFormattingFields) and (AFormat^.BiDiMode <> bdDefault) then
     sAlign := sAlign + Format('readingOrder="%d" ', [Ord(AFormat^.BiDiMode)]);
 
+  { Shrink to fit }
+  if (uffShrinkToFit in AFormat^.UsedFormattingFields) then
+    sAlign := sAlign + 'shrinkToFit="1" ';
+
+  { Write out alignment attributes }
   if sAlign <> '' then
   begin
     s := s + 'applyAlignment="1" ';
