@@ -262,8 +262,8 @@ type
     procedure AdaptToZoomFactor;
     procedure AutoAdjustColumn(ACol: Integer); override;
     procedure AutoAdjustRow(ARow: Integer); virtual;
-    procedure AutoExpandToCol(ACol: Integer; AMode: TsAutoExpandMode);
-    procedure AutoExpandToRow(ARow: Integer; AMode: TsAutoExpandMode);
+    function AutoExpandToCol(ACol: Integer; AMode: TsAutoExpandMode; RaiseOnError: boolean = true): boolean;
+    function AutoExpandToRow(ARow: Integer; AMode: TsAutoExpandMode; RaiseOnError: boolean = true): boolean;
     function CalcTopLeft(AHeaderOnly: Boolean): TPoint;
     function CalcWorksheetColWidth(AValue: Integer): Single;
     function CalcWorksheetRowHeight(AValue: Integer): Single;
@@ -1532,30 +1532,42 @@ end;
 {@@ ----------------------------------------------------------------------------
   Automatically expands the ColCount such that the specified column fits in
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.AutoExpandToCol(ACol: Integer;
-  AMode: TsAutoExpandMode);
+function TsCustomWorksheetGrid.AutoExpandToCol(ACol: Integer;
+  AMode: TsAutoExpandMode; RaiseOnError: Boolean = true): Boolean;
 begin
+  Result := true;
   if ACol >= ColCount then
   begin
     if (AMode in FAutoExpand) then
       ColCount := ACol + 1
     else
-      raise Exception.CreateFmt(rsOperationExceedsColCount, [ACol, ColCount]);
+    begin
+      if RaiseOnError then
+        raise Exception.CreateFmt(rsOperationExceedsColCount, [ACol, ColCount])
+      else
+        Result := false;
+    end;
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
   Automatically expands the RowCount such that the specified column fits in
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.AutoExpandToRow(ARow: Integer;
-  AMode: TsAutoExpandMode);
+function TsCustomWorksheetGrid.AutoExpandToRow(ARow: Integer;
+  AMode: TsAutoExpandMode; RaiseOnError: Boolean = true): Boolean;
 begin
+  Result := true;
   if ARow >= RowCount then
   begin
     if (AMode in FAutoExpand) then
       RowCount := ARow + 1
     else
-      raise Exception.CreateFmt(rsOperationExceedsRowCount, [ARow, RowCount]);
+    begin
+      if RaiseOnError then
+        raise Exception.CreateFmt(rsOperationExceedsRowCount, [ARow, RowCount])
+      else
+        Result := false;
+    end;
   end;
 end;
 
@@ -4979,8 +4991,8 @@ begin
         LeftCol := gCol;
       end;
       // Select active cell
-      AutoExpandToRow(actgrow, aeNavigation);
-      AutoExpandToCol(actgcol, aeNavigation);
+      if not AutoExpandToRow(actgrow, aeNavigation, false) then actgrow := Row;
+      if not AutoExpandToCol(actgcol, aeNavigation, false) then actgcol := Col;
       if (actgrow <> Row) or (actgcol <> Col) then
         MoveExtend(false, actgcol, actgrow);
     finally
@@ -4995,11 +5007,12 @@ begin
     if (cell <> nil) then begin
       grow := GetGridRow(cell^.Row);
       gcol := GetGridCol(cell^.Col);
-      AutoExpandToRow(grow, aeData);
-      AutoExpandToCol(gcol, aeData);
-      lRow := Worksheet.FindRow(cell^.Row);
-      if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
-        UpdateRowHeight(grow, true);
+      if AutoExpandToRow(grow, aeData) and AutoExpandToCol(gcol, aeData) then
+      begin
+        lRow := Worksheet.FindRow(cell^.Row);
+        if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
+          UpdateRowHeight(grow, true);
+      end;
     end;
     Invalidate;
   end;
@@ -5009,8 +5022,8 @@ begin
   begin
     grow := GetGridRow(Worksheet.ActiveCellRow);
     gcol := GetGridCol(Worksheet.ActiveCellCol);
-    AutoExpandToRow(grow, aeNavigation);
-    AutoExpandToCol(gcol, aeNavigation);
+    if not AutoExpandToRow(grow, aeNavigation, false) then grow := Row;
+    if not AutoExpandToCol(gcol, aeNavigation, false) then gcol := COl;
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
     if Worksheet.IsProtected then
