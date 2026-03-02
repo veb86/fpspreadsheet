@@ -2014,11 +2014,21 @@ end;
   @param  AGridRow   Grid index of the row to be deleted
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DeleteRow(AGridRow: Integer);
+var
+  lastRowIdx: Integer;
 begin
   if AGridRow < FHeaderCount then
     exit;
 
+  // Delete the row from the worksheet
   Worksheet.DeleteRow(GetWorksheetRow(AGridRow));
+
+  // Adjust rowcount if required.
+  if FAutoExpand * [aeNavigation, aeData] = [] then
+  begin
+    lastRowIdx := GetGridRow(Worksheet.GetLastRowIndex);
+    RowCount := lastRowIdx + 1;
+  end;
 
   // Update following row heights because their index has changed
   UpdateRowHeights(AGridRow);
