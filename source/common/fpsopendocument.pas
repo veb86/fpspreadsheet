@@ -3011,7 +3011,6 @@ begin
     try
       formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
       formula^.Parser := TsSpreadsheetParser.Create(FWorksheet, ARow, ACol);
-      TsSpreadsheetParser(formula^.Parser).AddDefinedNames;
       formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
       formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
       cell^.Flags := cell^.Flags + [cfHasFormula];

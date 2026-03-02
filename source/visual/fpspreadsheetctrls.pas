@@ -2610,7 +2610,6 @@ begin
     parser := TsSpreadsheetParser.Create(Worksheet, cell^.Row, cell^.Col);
     try
       try
-        parser.AddDefinedNames;
         parser.Expression[fdLocalized] := AFormula;
       except
         on E: Exception do begin

@@ -2468,6 +2468,7 @@ begin
   FRow := ARow;
   FCol := ACol;
   BuiltIns := AllBuiltIns;
+  AddDefinedNames;
 end;
 
 procedure TsSpreadsheetParser.AddDefinedNames;

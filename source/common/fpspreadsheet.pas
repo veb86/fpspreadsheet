@@ -1380,7 +1380,6 @@ begin
   if AFormula^.Parser = nil then begin
     parser := TsSpreadsheetParser.Create(self, AFormula^.Row, AFormula^.Col);
     try
-      parser.AddDefinedNames;
       parser.Expression[fdExcelA1] := AFormula^.Text;
       AFormula^.Parser := parser;
     except
@@ -5130,7 +5129,6 @@ begin
   begin
     parser := TsSpreadsheetParser.Create(self, ACell^.Row, ACell^.Col);
     try
-      parser.AddDefinedNames;
       if ALocalized then
         parser.Expression[fdLocalized] := AFormula
       else
