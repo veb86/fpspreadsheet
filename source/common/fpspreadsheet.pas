@@ -5877,7 +5877,7 @@ begin
     for i:= FRows.Count-1 downto 0 do begin
       row := PRow(FRows.Items[i]);
       if Integer(row^.Row) = AIndex then
-        FRows.Remove(row)
+        RemoveRow(i)
       else
       if Integer(row^.Row) > AIndex then
         dec(row^.Row)
@@ -5893,7 +5893,7 @@ begin
     for i:=FCols.Count-1 downto 0 do begin
       col := PCol(FCols.Items[i]);
       if Integer(col^.Col) = AIndex then
-        FCols.Remove(col)
+        RemoveCol(i)
       else
       if Integer(col^.Col) > AIndex then
         dec(col^.Col)
@@ -6137,11 +6137,12 @@ end;
 procedure TsWorksheet.RemoveAllRows;
 var
   Node: Pointer;
-  i: Integer;
+  i, sizeOfRow: Integer;
 begin
+  sizeOfRow := SizeOf(TRow);
   for i := FRows.Count-1 downto 0 do begin
     Node := FRows.Items[i];
-    FreeMem(Node, SizeOf(TRow));
+    FreeMem(Node, sizeOfRow);
   end;
   FRows.Clear;
 end;
