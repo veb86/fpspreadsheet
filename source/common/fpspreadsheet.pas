@@ -5878,6 +5878,9 @@ begin
   begin
     for i:= FRows.Count-1 downto 0 do begin
       row := PRow(FRows.Items[i]);
+      if Integer(row^.Row) = AIndex then
+        FRows.Remove(row)
+      else
       if Integer(row^.Row) > AIndex then
         dec(row^.Row)
       else
@@ -5891,6 +5894,9 @@ begin
     // Update column index of col records
     for i:=FCols.Count-1 downto 0 do begin
       col := PCol(FCols.Items[i]);
+      if Integer(col^.Col) = AIndex then
+        FCols.Remove(col)
+      else
       if Integer(col^.Col) > AIndex then
         dec(col^.Col)
       else
