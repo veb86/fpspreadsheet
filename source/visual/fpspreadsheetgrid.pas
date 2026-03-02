@@ -5046,10 +5046,12 @@ begin
   begin
     srow := {%H-}PtrInt(AData);  // sheet row
     grow := GetGridRow(srow);    // grid row
-    AutoExpandToRow(grow, aeData);
-    lRow := Worksheet.FindRow(srow);
-    if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
-      UpdateRowHeight(grow, true);
+    if AutoExpandToRow(grow, aeData, false) then
+    begin
+      lRow := Worksheet.FindRow(srow);
+      if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
+        UpdateRowHeight(grow, true);
+    end;
   end;
 
   // Column width
@@ -6063,7 +6065,8 @@ begin
     exit;
 
   if AStartRow = -1 then
-    r1 := FHeaderCount else
+    r1 := FHeaderCount
+  else
     r1 := AStartRow;
 
   BeginUpdate;
