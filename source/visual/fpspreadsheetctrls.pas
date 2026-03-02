@@ -2605,9 +2605,12 @@ begin
   if Assigned(Worksheet) and (AFormula <> '') and (AFormula[1] = '=') then
   begin
     cell := GetSelectedCell;
+    if cell = nil then
+      exit;
     parser := TsSpreadsheetParser.Create(Worksheet, cell^.Row, cell^.Col);
     try
       try
+        parser.AddDefinedNames;
         parser.Expression[fdLocalized] := AFormula;
       except
         on E: Exception do begin
