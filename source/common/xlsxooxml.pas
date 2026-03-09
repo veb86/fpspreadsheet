@@ -7760,7 +7760,7 @@ begin
     begin
       defName := sheet.DefinedNames[i];
       sTotal := sTotal + Format('<definedName name = "%s" localSheetId="%d">%s</definedName>',
-        [defName.Name, i, defName.RangeAsString(FWorkbook) ]
+        [defName.Name, j, defName.RangeAsString(FWorkbook) ]
       );
     end;
   end;
