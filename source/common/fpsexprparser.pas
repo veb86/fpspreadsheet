@@ -894,6 +894,7 @@ function IntegerResult(const AValue: Integer): TsExpressionResult;
 function IsBlank(const AValue: TsExpressionResult): Boolean;
 function IsError(const AValue: TsExpressionResult; out AError: TsExpressionResult): boolean;
 function IsInteger(const AValue: TsExpressionResult): Boolean;
+function IsRangeReference(const AValue: TsExpressionResult): Boolean;
 function IsReference(const AValue: TsExpressionResult): Boolean;
 function IsString(const AValue: TsExpressionResult): Boolean;
 function StringResult(const AValue: String): TsExpressionResult;
@@ -5527,6 +5528,11 @@ begin
                end;
     rtCellRange: Result := false;
   end;
+end;
+
+function IsRangeReference(const AValue: TsExpressionResult): Boolean;
+begin
+  Result := AValue.ResultType = rtCellRange;
 end;
 
 function IsReference(const AValue: TsExpressionResult): Boolean;

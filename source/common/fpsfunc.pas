@@ -1840,6 +1840,45 @@ begin
   end;
 end;
 
+procedure fpsCONCAT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  s: String;
+  a: Integer;
+  r, c, r1, c1, r2, c2: Cardinal;
+  sheetIdx1, sheetIdx2: Integer;
+  sheet: TsWorksheet;
+  wBook: TsWorkbook;
+begin
+  s := '';
+  for a := 0 to Length(Args)-1 do
+  begin
+    if IsError(Args[a], Result) then
+      exit;
+    if IsRangeReference(Args[a]) then
+    begin
+      wBook := TsWorkbook(TsWorksheet(Args[a].Worksheet).Workbook);
+      r1 := Args[a].ResCellRange.Row1;
+      c1 := Args[a].ResCellRange.Col1;
+      r2 := Args[a].ResCellRange.Row2;
+      c2 := Args[a].ResCellRange.Col2;
+      sheetIdx1 := Args[a].ResCellRange.Sheet1;
+      sheetIdx2 := Args[a].ResCellRange.Sheet2;
+      // Supporting only single-sheet case
+      if sheetIdx1 <> sheetIdx2 then
+      begin
+        Result := ErrorResult(errIllegalRef);
+        exit;
+      end;
+      sheet := wBook.GetWorksheetByIndex(sheetIdx1);
+      for r := r1 to r2 do
+        for c := c1 to c2 do
+          s := s + sheet.ReadAsText(r, c);
+    end else
+      s := s + ArgToString(Args[a]);
+  end;
+  Result := StringResult(s);
+end;
+
 procedure fpsCONCATENATE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // CONCATENATE( text1, text2, ... text_n )
 // Joins two or more strings together
@@ -3644,6 +3683,7 @@ begin
     cat := bcStrings;
     AddFunction(cat, 'CHAR',      'S', 'I',    INT_EXCEL_SHEET_FUNC_CHAR,       @fpsCHAR);
     AddFunction(cat, 'CODE',      'I', 'S',    INT_EXCEL_SHEET_FUNC_CODE,       @fpsCODE);
+    AddFunction(cat, '_xlfn.CONCAT', 'S', 'S+',INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsCONCAT);
     AddFunction(cat, 'CONCATENATE','S','S+',   INT_EXCEL_SHEET_FUNC_CONCATENATE,@fpsCONCATENATE);
     AddFunction(cat, 'EXACT',     'B', 'SS',   INT_EXCEL_SHEET_FUNC_EXACT,      @fpsEXACT);
     AddFunction(cat, 'LEFT',      'S', 'Si',   INT_EXCEL_SHEET_FUNC_LEFT,       @fpsLEFT);
