@@ -1840,6 +1840,9 @@ begin
   end;
 end;
 
+// CONCAT( text1, text2, ... text_n )
+// Joins two or more strings together where text_X can be a cell range
+// Requires Excel 2019+. Is not reckognized in LibreOffice Calc.
 procedure fpsCONCAT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   s: String;
@@ -1879,9 +1882,9 @@ begin
   Result := StringResult(s);
 end;
 
-procedure fpsCONCATENATE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // CONCATENATE( text1, text2, ... text_n )
 // Joins two or more strings together
+procedure fpsCONCATENATE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   s: String;
   i: Integer;
@@ -2115,6 +2118,71 @@ begin
     Result := StringResult(FormatDateTime(fmt, value))
   else
     Result := StringResult(Format(fmt, [value]));
+end;
+
+// TEXTJOIN(delimiter, ignore_empty, text1, [text2], …)
+// Similar to CONCAT with additional parameters for delimiter (string, required)
+// and ignoring of empty cells (boolean, optional, default true).
+// Requires Excel 2019+. No problem in LibreOffice Calc.
+procedure fpsTEXTJOIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  delimiter: String;
+  ignoreEmpty: Boolean;
+  s, cellText: String;
+  a: Integer;
+  r, c, r1, c1, r2, c2: Cardinal;
+  sheetIdx1, sheetIdx2: Integer;
+  sheet: TsWorksheet;
+  wBook: TsWorkbook;
+begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+
+  delimiter := ArgToString(Args[0]);
+  if IsBlank(Args[1]) then ignoreEmpty := true else ignoreEmpty := ArgToBoolean(Args[1], true);
+
+  s := '';
+  for a := 2 to Length(Args)-1 do
+  begin
+    if IsError(Args[a], Result) then
+      exit;
+    if IsRangeReference(Args[a]) then
+    begin
+      wBook := TsWorkbook(TsWorksheet(Args[a].Worksheet).Workbook);
+      r1 := Args[a].ResCellRange.Row1;
+      c1 := Args[a].ResCellRange.Col1;
+      r2 := Args[a].ResCellRange.Row2;
+      c2 := Args[a].ResCellRange.Col2;
+      sheetIdx1 := Args[a].ResCellRange.Sheet1;
+      sheetIdx2 := Args[a].ResCellRange.Sheet2;
+      // Supporting only single-sheet case
+      if sheetIdx1 <> sheetIdx2 then
+      begin
+        Result := ErrorResult(errIllegalRef);
+        exit;
+      end;
+      sheet := wBook.GetWorksheetByIndex(sheetIdx1);
+      for r := r1 to r2 do
+        for c := c1 to c2 do
+        begin
+          cellText := sheet.ReadAsText(r, c);
+          if ignoreEmpty and (cellText = '') then
+            Continue;
+          s := s + delimiter + cellText;
+        end;
+    end else
+    begin
+      cellText := ArgToString(Args[a]);
+      if not (ignoreEmpty and (cellText = '')) then
+        s := s + delimiter + cellText;
+    end;
+  end;
+  Delete(s, 1, Length(delimiter));
+  Result := StringResult(s);
 end;
 
 procedure fpsTRIM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -3695,6 +3763,7 @@ begin
     AddFunction(cat, 'RIGHT',     'S', 'Si',   INT_EXCEL_SHEET_FUNC_RIGHT,      @fpsRIGHT);
     AddFunction(cat, 'SUBSTITUTE','S', 'SSSi', INT_EXCEL_SHEET_FUNC_SUBSTITUTE, @fpsSUBSTITUTE);
     AddFunction(cat, 'TEXT',      'S', '?S',   INT_EXCEL_SHEET_FUNC_TEXT,       @fpsTEXT);
+    AddFunction(cat, '_xlfn.TEXTJOIN','S','S+',INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsTextJoin);
     AddFunction(cat, 'TRIM',      'S', 'S',    INT_EXCEL_SHEET_FUNC_TRIM,       @fpsTRIM);
     AddFunction(cat, 'UPPER',     'S', 'S',    INT_EXCEL_SHEET_FUNC_UPPER,      @fpsUPPER);
     AddFunction(cat, 'VALUE',     'F', 'S',    INT_EXCEL_SHEET_FUNC_VALUE,      @fpsVALUE);
